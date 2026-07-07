@@ -32,7 +32,7 @@ export class OutboundMessagesService {
   ) {}
 
   async create(clinicId: string, dto: CreateOutboundMessageDto) {
-    if (dto.clinicId !== clinicId) {
+    if (dto.clinicId && dto.clinicId !== clinicId) {
       throw new BadRequestException(
         'clinicId does not match x-clinic-id scope',
       );
@@ -47,6 +47,7 @@ export class OutboundMessagesService {
 
     const outboundMessage = this.outboundMessageRepository.create({
       ...dto,
+      clinicId,
       payloadJson: dto.payloadJson ?? {},
       status: dto.status ?? OutboundMessageStatus.QUEUED,
     });
