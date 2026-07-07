@@ -19,7 +19,7 @@ export class ExpensesService {
   ) {}
 
   async create(clinicId: string, dto: CreateExpenseDto) {
-    if (dto.clinicId !== clinicId) {
+    if (dto.clinicId && dto.clinicId !== clinicId) {
       throw new BadRequestException(
         'clinicId does not match x-clinic-id scope',
       );
@@ -27,6 +27,7 @@ export class ExpensesService {
 
     const expense = this.expenseRepository.create({
       ...dto,
+      clinicId,
       spentAt: new Date(dto.spentAt),
       notes: dto.notes ?? null,
       recordedByMembershipId: dto.recordedByMembershipId ?? null,

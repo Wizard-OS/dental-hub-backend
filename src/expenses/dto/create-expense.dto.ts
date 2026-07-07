@@ -11,9 +11,13 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { ExpenseCategory } from '../interfaces/expense-category.enum';
 
 export class CreateExpenseDto {
-  @ApiProperty({ description: 'UUID de la clínica' })
+  @ApiPropertyOptional({
+    description:
+      'UUID de la clínica. Opcional/deprecado en endpoints con x-clinic-id.',
+  })
   @IsUUID()
-  clinicId: string;
+  @IsOptional()
+  clinicId?: string;
 
   @ApiProperty({
     enum: ExpenseCategory,
