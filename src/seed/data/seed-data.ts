@@ -148,8 +148,10 @@ export const initialData: SeedData = {
     {
       clinicCode: 'clinic-main',
       userCode: 'admin-1',
-      role: ClinicMembershipRole.admin,
+      role: ClinicMembershipRole.owner,
       permissionsJson: {
+        canManageClinic: true,
+        canManageTeam: true,
         canManageBilling: true,
         canManageSchedule: true,
       },
@@ -162,7 +164,12 @@ export const initialData: SeedData = {
     {
       clinicCode: 'clinic-east',
       userCode: 'doctor-2',
-      role: ClinicMembershipRole.odontologist,
+      role: ClinicMembershipRole.owner,
+      permissionsJson: {
+        canManageClinic: true,
+        canManageTeam: true,
+        canManageSchedule: true,
+      },
     },
   ],
   patients: [
