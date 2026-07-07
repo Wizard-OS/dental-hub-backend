@@ -46,16 +46,6 @@ describe('Phase 2 Flow (e2e)', () => {
     adminToken = loginResponse.body.token;
     adminUserId = loginResponse.body.id;
 
-    await request(app.getHttpServer())
-      .post('/clinic-memberships')
-      .set('Authorization', `Bearer ${adminToken}`)
-      .send({
-        clinicId: clinicEastId,
-        userId: adminUserId,
-        role: 'admin',
-      })
-      .expect(201);
-
     const patientAna = await request(app.getHttpServer())
       .get('/patients/ana.perez@example.com')
       .set('Authorization', `Bearer ${adminToken}`)
@@ -123,7 +113,7 @@ describe('Phase 2 Flow (e2e)', () => {
         clinicalRecordId: clinicalRecordAnaId,
         content: 'Nota fuera de alcance de clinica',
       })
-      .expect(400);
+      .expect(401);
   });
 
   it('creates treatment and valid treatment session for same patient', async () => {

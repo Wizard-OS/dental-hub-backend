@@ -43,7 +43,7 @@ describe('Phase 1 Flow (e2e)', () => {
     }
   });
 
-  it('creates clinic and membership', async () => {
+  it('creates clinic with owner membership', async () => {
     const clinicResponse = await request(app.getHttpServer())
       .post('/clinics')
       .set('Authorization', `Bearer ${adminToken}`)
@@ -56,17 +56,19 @@ describe('Phase 1 Flow (e2e)', () => {
 
     clinicId = clinicResponse.body.id;
 
-    const membershipResponse = await request(app.getHttpServer())
-      .post('/clinic-memberships')
+    const membershipsResponse = await request(app.getHttpServer())
+      .get('/clinic-memberships')
       .set('Authorization', `Bearer ${adminToken}`)
-      .send({
-        clinicId,
-        userId: adminUserId,
-        role: 'admin',
-      })
-      .expect(201);
+      .set('x-clinic-id', clinicId)
+      .expect(200);
 
-    membershipId = membershipResponse.body.id;
+    const ownerMembership = membershipsResponse.body.find(
+      (membership: { userId: string; role: string }) =>
+        membership.userId === adminUserId && membership.role === 'owner',
+    );
+
+    expect(ownerMembership).toBeDefined();
+    membershipId = ownerMembership.id;
   });
 
   it('creates patient, appointment type and appointment in clinic scope', async () => {
