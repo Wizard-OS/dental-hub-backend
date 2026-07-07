@@ -20,7 +20,7 @@ export class MessageTemplatesService {
   ) {}
 
   async create(clinicId: string, dto: CreateMessageTemplateDto) {
-    if (dto.clinicId !== clinicId) {
+    if (dto.clinicId && dto.clinicId !== clinicId) {
       throw new BadRequestException(
         'clinicId does not match x-clinic-id scope',
       );
@@ -28,6 +28,7 @@ export class MessageTemplatesService {
 
     const template = this.messageTemplateRepository.create({
       ...dto,
+      clinicId,
       status: dto.status ?? MessageTemplateStatus.ACTIVE,
     });
 

@@ -12,9 +12,13 @@ import { NotificationChannel } from '../../common/interfaces/notification-channe
 import { MessageTemplateStatus } from '../interfaces/message-template-status.enum';
 
 export class CreateMessageTemplateDto {
-  @ApiProperty({ description: 'UUID de la clínica' })
+  @ApiPropertyOptional({
+    description:
+      'UUID de la clínica. Opcional/deprecado en endpoints con x-clinic-id.',
+  })
   @IsUUID()
-  clinicId: string;
+  @IsOptional()
+  clinicId?: string;
 
   @ApiProperty({
     enum: NotificationChannel,
