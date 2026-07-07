@@ -12,6 +12,7 @@ import { Repository } from 'typeorm';
 
 import { JwtPayload } from './interfaces';
 import { User } from './entities/user.entity';
+import { ClinicMembership } from '../clinic-memberships/entities/clinic-membership.entity';
 import {
   CreateUserDto,
   LoginUserDto,
@@ -24,6 +25,9 @@ export class AuthService {
   constructor(
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+
+    @InjectRepository(ClinicMembership)
+    private readonly clinicMembershipRepository: Repository<ClinicMembership>,
 
     private readonly jwtService: JwtService,
   ) {}
@@ -41,10 +45,7 @@ export class AuthService {
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { password: _, ...userWithoutPassword } = user;
 
-      return {
-        ...userWithoutPassword,
-        token: this.getJwtToken({ id: user.id }),
-      };
+      return this.buildAuthResponse(userWithoutPassword as User);
       // TODO: Retornar el JWT de acceso
     } catch (error) {
       this.handleDBErrors(error);
@@ -55,8 +56,20 @@ export class AuthService {
     const { password, email } = loginUserDto;
 
     const user = await this.userRepository.findOne({
-      where: { email },
-      select: { email: true, password: true, id: true }, //! OJO!
+      where: { email: email.toLowerCase().trim() },
+      select: {
+        id: true,
+        email: true,
+        password: true,
+        firstName: true,
+        lastName: true,
+        isActive: true,
+        roles: true,
+        phone: true,
+        profilePhotoUrl: true,
+        createdAt: true,
+        updatedAt: true,
+      },
     });
 
     if (!user)
@@ -65,17 +78,11 @@ export class AuthService {
     if (!bcrypt.compareSync(password, user.password))
       throw new UnauthorizedException('Credentials are not valid (password)');
 
-    return {
-      ...user,
-      token: this.getJwtToken({ id: user.id }),
-    };
+    return this.buildAuthResponse(user);
   }
 
-  checkAuthStatus(user: User) {
-    return {
-      ...user,
-      token: this.getJwtToken({ id: user.id }),
-    };
+  async checkAuthStatus(user: User) {
+    return this.buildAuthResponse(user);
   }
 
   async updateProfilePhoto(
@@ -98,10 +105,7 @@ export class AuthService {
       throw new InternalServerErrorException('User not found');
     }
 
-    return {
-      ...updatedUser,
-      token: this.getJwtToken({ id: updatedUser.id }),
-    };
+    return this.buildAuthResponse(updatedUser);
   }
 
   async updateProfile(user: User, updateProfileDto: UpdateProfileDto) {
@@ -129,10 +133,7 @@ export class AuthService {
       throw new InternalServerErrorException('User not found after update');
     }
 
-    return {
-      ...updatedUser,
-      token: this.getJwtToken({ id: updatedUser.id }),
-    };
+    return this.buildAuthResponse(updatedUser);
   }
 
   async changePassword(user: User, changePasswordDto: ChangePasswordDto) {
@@ -170,7 +171,7 @@ export class AuthService {
       throw new InternalServerErrorException('User not found');
     }
 
-    return fullUser;
+    return this.buildAuthResponse(fullUser);
   }
 
   logout() {
@@ -181,6 +182,34 @@ export class AuthService {
 
   private getJwtToken(payload: JwtPayload) {
     return this.jwtService.sign(payload);
+  }
+
+  private async buildAuthResponse(user: User) {
+    const { password: _, ...userWithoutPassword } = user as User & {
+      password?: string;
+    };
+
+    return {
+      ...userWithoutPassword,
+      memberships: await this.getActiveMemberships(user.id),
+      token: this.getJwtToken({ id: user.id }),
+    };
+  }
+
+  private async getActiveMemberships(userId: string) {
+    const memberships = await this.clinicMembershipRepository.find({
+      where: { userId, isActive: true, clinic: { isActive: true } },
+      relations: { clinic: true },
+      order: { createdAt: 'ASC' },
+    });
+
+    return memberships.map((membership) => ({
+      clinicId: membership.clinicId,
+      clinicName: membership.clinic.name,
+      membershipId: membership.id,
+      role: membership.role,
+      permissionsJson: membership.permissionsJson ?? {},
+    }));
   }
 
   private handleDBErrors(error: any): never {

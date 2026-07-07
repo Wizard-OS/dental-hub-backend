@@ -11,11 +11,18 @@ import { JwtStrategy } from './strategies/jwt.strategy';
 import { ClinicMembership } from '../clinic-memberships/entities/clinic-membership.entity';
 import { ClinicScopeGuard } from './guards/clinic-scope.guard';
 import { UserRoleGuard } from './guards/user-role.guard';
+import { ClinicRoleGuard } from './guards/clinic-role.guard';
 
 @Global()
 @Module({
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy, ClinicScopeGuard, UserRoleGuard],
+  providers: [
+    AuthService,
+    JwtStrategy,
+    ClinicScopeGuard,
+    UserRoleGuard,
+    ClinicRoleGuard,
+  ],
   imports: [
     ConfigModule,
 
@@ -51,6 +58,7 @@ import { UserRoleGuard } from './guards/user-role.guard';
     JwtModule,
     ClinicScopeGuard,
     UserRoleGuard,
+    ClinicRoleGuard,
   ],
 })
 export class AuthModule {}

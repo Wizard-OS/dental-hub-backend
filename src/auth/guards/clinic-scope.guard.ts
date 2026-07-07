@@ -40,7 +40,9 @@ export class ClinicScopeGuard implements CanActivate {
         clinicId,
         userId: user.id,
         isActive: true,
+        clinic: { isActive: true },
       },
+      relations: { clinic: true },
     });
 
     if (!membership) {
@@ -51,6 +53,8 @@ export class ClinicScopeGuard implements CanActivate {
 
     req.clinicId = clinicId;
     req.clinicMembershipId = membership.id;
+    req.clinicMembershipRole = membership.role;
+    req.clinicPermissions = membership.permissionsJson ?? {};
 
     return true;
   }
