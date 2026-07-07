@@ -185,9 +185,10 @@ export class AuthService {
   }
 
   private async buildAuthResponse(user: User) {
-    const { password: _, ...userWithoutPassword } = user as User & {
+    const userWithoutPassword = { ...user } as Omit<User, 'password'> & {
       password?: string;
     };
+    delete userWithoutPassword.password;
 
     return {
       ...userWithoutPassword,
