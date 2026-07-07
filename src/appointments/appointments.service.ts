@@ -40,6 +40,7 @@ export class AppointmentsService {
 
     await this.assertPatientInClinic(dto.patientId, clinicId);
     await this.assertMembershipInClinic(dto.professionalMembershipId, clinicId);
+    await this.assertUserMembershipInClinic(dto.dentistId, clinicId);
     await this.assertAppointmentTypeInClinic(dto.appointmentTypeId, clinicId);
 
     await this.assertNoOverlap(
@@ -53,6 +54,7 @@ export class AppointmentsService {
     try {
       const appointment = this.appointmentRepository.create({
         ...dto,
+        clinicId,
         status: dto.status ?? AppointmentStatus.SCHEDULED,
       });
       return await this.appointmentRepository.save(appointment);
@@ -99,6 +101,9 @@ export class AppointmentsService {
         clinicId,
       );
     }
+    if (dto.dentistId !== undefined) {
+      await this.assertUserMembershipInClinic(dto.dentistId, clinicId);
+    }
     if (dto.appointmentTypeId !== undefined) {
       await this.assertAppointmentTypeInClinic(dto.appointmentTypeId, clinicId);
     }
@@ -132,7 +137,10 @@ export class AppointmentsService {
   async createType(clinicId: string, dto: CreateAppointmentTypeDto) {
     this.ensureClinicScope(clinicId, dto.clinicId);
     try {
-      const appointmentType = this.appointmentTypeRepository.create(dto);
+      const appointmentType = this.appointmentTypeRepository.create({
+        ...dto,
+        clinicId,
+      });
       return await this.appointmentTypeRepository.save(appointmentType);
     } catch (error) {
       this.handleDBErrors(error);
@@ -184,8 +192,8 @@ export class AppointmentsService {
     return await this.appointmentTypeRepository.save(appointmentType);
   }
 
-  private ensureClinicScope(headerClinicId: string, bodyClinicId: string) {
-    if (headerClinicId !== bodyClinicId) {
+  private ensureClinicScope(headerClinicId: string, bodyClinicId?: string) {
+    if (bodyClinicId && headerClinicId !== bodyClinicId) {
       throw new BadRequestException(
         'clinicId does not match x-clinic-id scope',
       );
@@ -225,6 +233,25 @@ export class AppointmentsService {
     if (!membership) {
       throw new BadRequestException(
         'Professional membership does not belong to the requested clinic',
+      );
+    }
+  }
+
+  private async assertUserMembershipInClinic(
+    userId: string | undefined,
+    clinicId: string,
+  ) {
+    if (!userId) return;
+
+    const membership = await this.clinicMembershipRepository.findOne({
+      where: { userId, clinicId, isActive: true, user: { isActive: true } },
+      relations: { user: true },
+      select: { id: true },
+    });
+
+    if (!membership) {
+      throw new BadRequestException(
+        'Dentist/user does not belong to the requested clinic',
       );
     }
   }

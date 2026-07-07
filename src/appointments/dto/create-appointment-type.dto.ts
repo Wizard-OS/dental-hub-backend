@@ -10,9 +10,13 @@ import {
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateAppointmentTypeDto {
-  @ApiProperty({ description: 'UUID de la clínica' })
+  @ApiPropertyOptional({
+    description:
+      'UUID de la clínica. Opcional/deprecado en endpoints con x-clinic-id.',
+  })
   @IsUUID()
-  clinicId: string;
+  @IsOptional()
+  clinicId?: string;
 
   @ApiProperty({ example: 'Limpieza', description: 'Nombre del tipo de cita' })
   @IsString()
