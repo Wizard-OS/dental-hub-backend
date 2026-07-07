@@ -39,6 +39,7 @@ export class InvoicesService {
     try {
       const invoice = this.invoiceRepository.create({
         ...dto,
+        clinicId,
         subtotal,
         totalAmount,
       });
@@ -241,8 +242,8 @@ export class InvoicesService {
     return invoice;
   }
 
-  private ensureClinicScope(headerClinicId: string, bodyClinicId: string) {
-    if (headerClinicId !== bodyClinicId) {
+  private ensureClinicScope(headerClinicId: string, bodyClinicId?: string) {
+    if (bodyClinicId && headerClinicId !== bodyClinicId) {
       throw new BadRequestException(
         'clinicId does not match x-clinic-id scope',
       );

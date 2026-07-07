@@ -15,9 +15,13 @@ import { InvoiceStatus } from '../InvoiceStatus/InvoiceStatus.enum';
 import { CreateInvoiceItemDto } from './create-invoice-item.dto';
 
 export class CreateInvoiceDto {
-  @ApiProperty({ description: 'UUID de la clínica' })
+  @ApiPropertyOptional({
+    description:
+      'UUID de la clínica. Opcional/deprecado en endpoints con x-clinic-id.',
+  })
   @IsUUID()
-  clinicId: string;
+  @IsOptional()
+  clinicId?: string;
 
   @ApiProperty({ description: 'UUID del paciente' })
   @IsUUID()

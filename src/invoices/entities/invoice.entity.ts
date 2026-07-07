@@ -28,8 +28,8 @@ export class Invoice {
   @JoinColumn({ name: 'clinicId' })
   clinic: Clinic;
 
-  @Column('uuid', { nullable: true })
-  clinicId: string | null;
+  @Column('uuid')
+  clinicId: string;
 
   @ManyToOne(() => Patient, (patient) => patient.invoices)
   @JoinColumn({ name: 'patientId' })
