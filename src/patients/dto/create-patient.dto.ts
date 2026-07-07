@@ -11,12 +11,14 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Gender } from '../../common/interfaces/gender.enum';
 
 export class CreatePatientDto {
-  @ApiProperty({
+  @ApiPropertyOptional({
     example: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
-    description: 'UUID de la clínica',
+    description:
+      'UUID de la clínica. Opcional/deprecado en endpoints con x-clinic-id.',
   })
   @IsUUID()
-  clinicId: string;
+  @IsOptional()
+  clinicId?: string;
 
   @ApiPropertyOptional({
     example: 'paciente@email.com',

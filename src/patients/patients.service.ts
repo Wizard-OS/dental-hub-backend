@@ -22,14 +22,18 @@ export class PatientsService {
   ) {}
 
   async create(clinicId: string, createPatientDto: CreatePatientDto) {
-    if (clinicId !== createPatientDto.clinicId) {
+    if (createPatientDto.clinicId && clinicId !== createPatientDto.clinicId) {
       throw new BadRequestException(
         'clinicId does not match x-clinic-id scope',
       );
     }
 
     try {
-      return await this.patientRepository.save(createPatientDto);
+      const patient = this.patientRepository.create({
+        ...createPatientDto,
+        clinicId,
+      });
+      return await this.patientRepository.save(patient);
     } catch (error) {
       this.handleDBErrors(error);
     }

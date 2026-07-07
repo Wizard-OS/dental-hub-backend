@@ -5,12 +5,14 @@ import {
   CreateDateColumn,
   DeleteDateColumn,
   Entity,
+  Index,
   JoinColumn,
   ManyToOne,
   OneToMany,
   OneToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
+  Unique,
 } from 'typeorm';
 
 import { Gender } from '../../common/interfaces/gender.enum';
@@ -20,6 +22,9 @@ import { Invoice } from '../../invoices/entities/invoice.entity';
 import { Clinic } from '../../clinics/entities/clinic.entity';
 
 @Entity('patients')
+@Index(['clinicId'])
+@Unique(['clinicId', 'email'])
+@Unique(['clinicId', 'phone'])
 export class Patient {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -30,14 +35,13 @@ export class Patient {
   @JoinColumn({ name: 'clinicId' })
   clinic: Clinic;
 
-  @Column('uuid', { nullable: true })
-  clinicId: string | null;
+  @Column('uuid')
+  clinicId: string;
 
   @Column('text', {
-    unique: true,
     nullable: true,
   })
-  email: string;
+  email: string | null;
 
   @Column('text')
   firstName: string;
@@ -60,9 +64,8 @@ export class Patient {
 
   @Column('text', {
     nullable: true,
-    unique: true,
   })
-  phone: string;
+  phone: string | null;
 
   @OneToMany(() => Appointment, (appointment) => appointment.patient)
   appointments: Appointment[];
