@@ -9,9 +9,9 @@ import { isUUID } from 'class-validator';
 
 import { Treatment } from './entities/treatment.entity';
 import { Patient } from '../patients/entities/patient.entity';
-import { User } from '../auth/entities/user.entity';
 import { CreateTreatmentDto } from './dto/create-treatment.dto';
 import { UpdateTreatmentDto } from './dto/update-treatment.dto';
+import { ClinicMembership } from '../clinic-memberships/entities/clinic-membership.entity';
 
 @Injectable()
 export class TreatmentsService {
@@ -22,13 +22,13 @@ export class TreatmentsService {
     @InjectRepository(Patient)
     private readonly patientRepository: Repository<Patient>,
 
-    @InjectRepository(User)
-    private readonly userRepository: Repository<User>,
+    @InjectRepository(ClinicMembership)
+    private readonly clinicMembershipRepository: Repository<ClinicMembership>,
   ) {}
 
   async create(clinicId: string, dto: CreateTreatmentDto) {
     await this.assertPatientInClinic(dto.patientId, clinicId);
-    await this.assertDoctorExists(dto.doctorId);
+    await this.assertDoctorInClinic(dto.doctorId, clinicId);
 
     const treatment = this.treatmentRepository.create({
       ...dto,
@@ -76,7 +76,7 @@ export class TreatmentsService {
     }
 
     if (dto.doctorId && dto.doctorId !== treatment.doctorId) {
-      await this.assertDoctorExists(dto.doctorId);
+      await this.assertDoctorInClinic(dto.doctorId, clinicId);
     }
 
     Object.assign(treatment, dto);
@@ -103,15 +103,19 @@ export class TreatmentsService {
     }
   }
 
-  private async assertDoctorExists(doctorId: string) {
-    const user = await this.userRepository.findOne({
-      where: { id: doctorId, isActive: true },
-      select: { id: true },
-    });
+  private async assertDoctorInClinic(doctorId: string, clinicId: string) {
+    const membership = await this.clinicMembershipRepository
+      .createQueryBuilder('membership')
+      .innerJoin('membership.user', 'user')
+      .where('membership.clinicId = :clinicId', { clinicId })
+      .andWhere('membership.userId = :doctorId', { doctorId })
+      .andWhere('membership.isActive = true')
+      .andWhere('user.isActive = true')
+      .getOne();
 
-    if (!user) {
+    if (!membership) {
       throw new BadRequestException(
-        `Doctor/user with id ${doctorId} not found`,
+        `Doctor/user with id ${doctorId} does not belong to the requested clinic`,
       );
     }
   }
