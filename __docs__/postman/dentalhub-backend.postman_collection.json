@@ -1,0 +1,1382 @@
+{
+  "info": {
+    "_postman_id": "f5f3b36d-4db2-4e5d-91c4-dentalhubbackend",
+    "name": "DentalHub Backend API",
+    "description": "Coleccion importable para DentalHub Backend. Ejecutar primero `00 Setup / Seed` y luego `00 Setup / Login`. La coleccion guarda automaticamente `token`, `clinicId` y IDs reutilizables para probar el flujo MVP multi-tenant.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{dentalhubToken}}",
+        "type": "string"
+      }
+    ]
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "if (!pm.collectionVariables.get('baseUrl')) {",
+          "  pm.collectionVariables.set('baseUrl', 'http://localhost:3000/api');",
+          "}",
+          "",
+          "const publicRequests = ['Seed', 'Login', 'Register User for Membership', 'Get FAQs', 'Get Contact Info'];",
+          "const token = pm.collectionVariables.get('dentalhubToken') || pm.collectionVariables.get('token');",
+          "if (token) {",
+          "  pm.request.headers.upsert({ key: 'Authorization', value: `Bearer ${token}` });",
+          "} else if (!publicRequests.includes(pm.info.requestName)) {",
+          "  throw new Error('Falta token. Ejecuta primero 00 Setup / Login y verifica que la variable de coleccion token tenga valor.');",
+          "}"
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000/api",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "dentalhubToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "clinicId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "clinicMainId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "clinicEastId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "createdUserId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "clinicMembershipId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "patientId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "appointmentTypeId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "appointmentId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "clinicalRecordId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "clinicalNoteId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "treatmentId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "treatmentSessionId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "invoiceId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "invoiceItemId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "paymentId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "expenseId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "templateId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "reminderId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "outboundMessageId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "paymentMethodId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "supportRequestId",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "00 Setup",
+      "item": [
+        {
+          "name": "Seed",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Seed ejecutado', function () { pm.response.to.have.status(200); });",
+                  "const json = pm.response.json();",
+                  "if (json.clinicIds) {",
+                  "  pm.collectionVariables.set('clinicMainId', json.clinicIds['clinic-main']);",
+                  "  pm.collectionVariables.set('clinicEastId', json.clinicIds['clinic-east']);",
+                  "  pm.collectionVariables.set('clinicId', json.clinicIds['clinic-main']);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/seed",
+            "description": "Reinicia/carga datos seed. Guarda `clinicMainId`, `clinicEastId` y setea `clinicId` con la clinica principal."
+          }
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Login OK', function () { pm.response.to.have.status(201); });",
+                  "const json = pm.response.json();",
+                  "const auth = json.data || json;",
+                  "const token = auth.token || auth.accessToken || auth.jwt;",
+                  "pm.test('Login devuelve token', function () { pm.expect(token, 'token').to.be.a('string').and.not.empty; });",
+                  "if (token) {",
+                  "  pm.collectionVariables.set('token', token);",
+                  "  pm.collectionVariables.set('dentalhubToken', token);",
+                  "}",
+                  "if (auth.id) pm.collectionVariables.set('currentUserId', auth.id);",
+                  "if (!pm.collectionVariables.get('clinicId') && Array.isArray(auth.memberships) && auth.memberships.length) {",
+                  "  pm.collectionVariables.set('clinicId', auth.memberships[0].clinicId);",
+                  "}",
+                  "if (!pm.collectionVariables.get('clinicMembershipId') && Array.isArray(auth.memberships) && auth.memberships.length) {",
+                  "  pm.collectionVariables.set('clinicMembershipId', auth.memberships[0].membershipId);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"test1@google.com\",\n  \"password\": \"Abc123\"\n}"
+            },
+            "url": "{{baseUrl}}/auth/login",
+            "description": "Autentica el usuario seed admin/owner y guarda `token`."
+          }
+        },
+        {
+          "name": "Check Status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/auth/check-status"
+          }
+        },
+        {
+          "name": "Get Profile",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/auth/profile"
+          }
+        },
+        {
+          "name": "Set Active Clinic = Main",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('clinicId', pm.collectionVariables.get('clinicMainId'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('clinicId seteado a clinicMainId', function () {",
+                  "  pm.expect(pm.collectionVariables.get('clinicId')).to.eql(pm.collectionVariables.get('clinicMainId'));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/",
+            "description": "Request utilitaria: setea `clinicId` con `clinicMainId` antes de ejecutarse."
+          }
+        }
+      ]
+    },
+    {
+      "name": "01 Clinics & Memberships",
+      "item": [
+        {
+          "name": "List My Clinics",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/clinics"
+          }
+        },
+        {
+          "name": "Get Active Clinic",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/clinics/{{clinicId}}"
+          }
+        },
+        {
+          "name": "Create Clinic",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Clinica creada', function () { pm.response.to.have.status(201); });",
+                  "const json = pm.response.json();",
+                  "if (json.id) pm.collectionVariables.set('createdClinicId', json.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Dental Hub Postman {{$timestamp}}\",\n  \"timezone\": \"America/Montevideo\",\n  \"currency\": \"USD\"\n}"
+            },
+            "url": "{{baseUrl}}/clinics"
+          }
+        },
+        {
+          "name": "Update Active Clinic",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-clinic-id",
+                "value": "{{clinicId}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Dental Hub Centro Actualizada\",\n  \"timezone\": \"America/Montevideo\",\n  \"currency\": \"USD\"\n}"
+            },
+            "url": "{{baseUrl}}/clinics/{{clinicId}}"
+          }
+        },
+        {
+          "name": "Register User for Membership",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Usuario creado', function () { pm.response.to.have.status(201); });",
+                  "const json = pm.response.json();",
+                  "if (json.id) pm.collectionVariables.set('createdUserId', json.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"postman_user_{{$timestamp}}@example.com\",\n  \"password\": \"Abc123\",\n  \"firstName\": \"Postman\",\n  \"lastName\": \"Member\"\n}"
+            },
+            "url": "{{baseUrl}}/auth/register"
+          }
+        },
+        {
+          "name": "Create Membership",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Membresia creada', function () { pm.response.to.have.status(201); });",
+                  "const json = pm.response.json();",
+                  "if (json.id) pm.collectionVariables.set('clinicMembershipId', json.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-clinic-id",
+                "value": "{{clinicId}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"clinicId\": \"{{clinicId}}\",\n  \"userId\": \"{{createdUserId}}\",\n  \"role\": \"receptionist\",\n  \"permissionsJson\": {\n    \"canManageSchedule\": true\n  }\n}"
+            },
+            "url": "{{baseUrl}}/clinic-memberships"
+          }
+        },
+        {
+          "name": "List Memberships",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-clinic-id",
+                "value": "{{clinicId}}"
+              }
+            ],
+            "url": "{{baseUrl}}/clinic-memberships"
+          }
+        },
+        {
+          "name": "Get Membership",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-clinic-id",
+                "value": "{{clinicId}}"
+              }
+            ],
+            "url": "{{baseUrl}}/clinic-memberships/{{clinicMembershipId}}"
+          }
+        },
+        {
+          "name": "Update Membership",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-clinic-id",
+                "value": "{{clinicId}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"clinicId\": \"{{clinicId}}\",\n  \"role\": \"receptionist\",\n  \"permissionsJson\": {\n    \"canManageSchedule\": true,\n    \"canManageBilling\": false\n  }\n}"
+            },
+            "url": "{{baseUrl}}/clinic-memberships/{{clinicMembershipId}}"
+          }
+        },
+        {
+          "name": "Archive Membership",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "x-clinic-id",
+                "value": "{{clinicId}}"
+              }
+            ],
+            "url": "{{baseUrl}}/clinic-memberships/{{clinicMembershipId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 Patients",
+      "item": [
+        {
+          "name": "Create Patient",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Paciente creado', function () { pm.response.to.have.status(201); });",
+                  "const json = pm.response.json();",
+                  "if (json.id) pm.collectionVariables.set('patientId', json.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-clinic-id",
+                "value": "{{clinicId}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"patient_{{$timestamp}}@example.com\",\n  \"firstName\": \"Ana\",\n  \"lastName\": \"Postman\",\n  \"birthDate\": \"1993-08-20\",\n  \"gender\": \"Female\",\n  \"address\": \"Montevideo Centro\",\n  \"phone\": \"+598{{$timestamp}}\"\n}"
+            },
+            "url": "{{baseUrl}}/patients/create"
+          }
+        },
+        {
+          "name": "List Patients",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-clinic-id",
+                "value": "{{clinicId}}"
+              }
+            ],
+            "url": "{{baseUrl}}/patients?limit=10&offset=0"
+          }
+        },
+        {
+          "name": "Get Patient",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-clinic-id",
+                "value": "{{clinicId}}"
+              }
+            ],
+            "url": "{{baseUrl}}/patients/{{patientId}}"
+          }
+        },
+        {
+          "name": "Update Patient",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-clinic-id",
+                "value": "{{clinicId}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"address\": \"Montevideo Actualizado\",\n  \"phone\": \"+59890001234\"\n}"
+            },
+            "url": "{{baseUrl}}/patients/{{patientId}}"
+          }
+        },
+        {
+          "name": "Delete Patient",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "x-clinic-id",
+                "value": "{{clinicId}}"
+              }
+            ],
+            "url": "{{baseUrl}}/patients/{{patientId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "03 Appointments",
+      "item": [
+        {
+          "name": "Create Appointment Type",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Tipo de cita creado', function () { pm.response.to.have.status(201); });",
+                  "const json = pm.response.json();",
+                  "if (json.id) pm.collectionVariables.set('appointmentTypeId', json.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-clinic-id",
+                "value": "{{clinicId}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"clinicId\": \"{{clinicId}}\",\n  \"name\": \"Consulta Postman\",\n  \"durationMin\": 30,\n  \"defaultPrice\": \"60.00\",\n  \"color\": \"#2F66E8\"\n}"
+            },
+            "url": "{{baseUrl}}/appointments/types"
+          }
+        },
+        {
+          "name": "List Appointment Types",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-clinic-id",
+                "value": "{{clinicId}}"
+              }
+            ],
+            "url": "{{baseUrl}}/appointments/types/all"
+          }
+        },
+        {
+          "name": "Create Appointment",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Cita creada', function () { pm.response.to.have.status(201); });",
+                  "const json = pm.response.json();",
+                  "if (json.id) pm.collectionVariables.set('appointmentId', json.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-clinic-id",
+                "value": "{{clinicId}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"clinicId\": \"{{clinicId}}\",\n  \"patientId\": \"{{patientId}}\",\n  \"appointmentTypeId\": \"{{appointmentTypeId}}\",\n  \"description\": \"Control inicial desde Postman\",\n  \"startTime\": \"2030-04-15T09:00:00.000Z\",\n  \"endTime\": \"2030-04-15T09:30:00.000Z\",\n  \"status\": \"scheduled\"\n}"
+            },
+            "url": "{{baseUrl}}/appointments"
+          }
+        },
+        {
+          "name": "List Appointments",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-clinic-id",
+                "value": "{{clinicId}}"
+              }
+            ],
+            "url": "{{baseUrl}}/appointments"
+          }
+        },
+        {
+          "name": "Get Appointment",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-clinic-id",
+                "value": "{{clinicId}}"
+              }
+            ],
+            "url": "{{baseUrl}}/appointments/{{appointmentId}}"
+          }
+        },
+        {
+          "name": "Update Appointment",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-clinic-id",
+                "value": "{{clinicId}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"confirmed\",\n  \"reason\": \"Confirmada por telefono\"\n}"
+            },
+            "url": "{{baseUrl}}/appointments/{{appointmentId}}"
+          }
+        },
+        {
+          "name": "Delete Appointment",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "x-clinic-id",
+                "value": "{{clinicId}}"
+              }
+            ],
+            "url": "{{baseUrl}}/appointments/{{appointmentId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "04 Clinical Records",
+      "item": [
+        {
+          "name": "Create Clinical Record",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Historia clinica creada', function () { pm.expect([201, 400]).to.include(pm.response.code); });",
+                  "if (pm.response.code === 201) {",
+                  "  const json = pm.response.json();",
+                  "  if (json.id) pm.collectionVariables.set('clinicalRecordId', json.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-clinic-id",
+                "value": "{{clinicId}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patientId\": \"{{patientId}}\",\n  \"allergies\": \"Penicilina\",\n  \"chronicDiseases\": \"Ninguna\"\n}"
+            },
+            "url": "{{baseUrl}}/clinical-records"
+          }
+        },
+        {
+          "name": "List Clinical Records",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-clinic-id",
+                "value": "{{clinicId}}"
+              }
+            ],
+            "url": "{{baseUrl}}/clinical-records"
+          }
+        },
+        {
+          "name": "Create Clinical Note",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Nota clinica creada', function () { pm.response.to.have.status(201); });",
+                  "const json = pm.response.json();",
+                  "if (json.id) pm.collectionVariables.set('clinicalNoteId', json.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-clinic-id",
+                "value": "{{clinicId}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"clinicalRecordId\": \"{{clinicalRecordId}}\",\n  \"content\": \"Se realiza control odontologico inicial desde Postman.\"\n}"
+            },
+            "url": "{{baseUrl}}/clinical-notes"
+          }
+        },
+        {
+          "name": "List Clinical Notes",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-clinic-id",
+                "value": "{{clinicId}}"
+              }
+            ],
+            "url": "{{baseUrl}}/clinical-notes"
+          }
+        }
+      ]
+    },
+    {
+      "name": "05 Treatments",
+      "item": [
+        {
+          "name": "Create Treatment",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Tratamiento creado', function () { pm.response.to.have.status(201); });",
+                  "const json = pm.response.json();",
+                  "if (json.id) pm.collectionVariables.set('treatmentId', json.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-clinic-id",
+                "value": "{{clinicId}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Ortodoncia Postman\",\n  \"patientId\": \"{{patientId}}\",\n  \"doctorId\": \"{{currentUserId}}\",\n  \"description\": \"Plan de tratamiento generado desde Postman\",\n  \"basePrice\": \"450.00\"\n}"
+            },
+            "url": "{{baseUrl}}/treatments"
+          }
+        },
+        {
+          "name": "List Treatments",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-clinic-id",
+                "value": "{{clinicId}}"
+              }
+            ],
+            "url": "{{baseUrl}}/treatments"
+          }
+        },
+        {
+          "name": "Create Treatment Session",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Sesion creada', function () { pm.response.to.have.status(201); });",
+                  "const json = pm.response.json();",
+                  "if (json.id) pm.collectionVariables.set('treatmentSessionId', json.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-clinic-id",
+                "value": "{{clinicId}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"clinicalRecordId\": \"{{clinicalRecordId}}\",\n  \"treatmentId\": \"{{treatmentId}}\",\n  \"price\": \"150.00\",\n  \"performedAt\": \"2030-04-15T10:00:00.000Z\"\n}"
+            },
+            "url": "{{baseUrl}}/treatment-sessions"
+          }
+        },
+        {
+          "name": "List Treatment Sessions",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-clinic-id",
+                "value": "{{clinicId}}"
+              }
+            ],
+            "url": "{{baseUrl}}/treatment-sessions"
+          }
+        }
+      ]
+    },
+    {
+      "name": "06 Invoices & Payments",
+      "item": [
+        {
+          "name": "Create Invoice",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Invoice creada', function () { pm.response.to.have.status(201); });",
+                  "const json = pm.response.json();",
+                  "if (json.id) pm.collectionVariables.set('invoiceId', json.id);",
+                  "if (Array.isArray(json.items) && json.items[0]?.id) pm.collectionVariables.set('invoiceItemId', json.items[0].id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-clinic-id",
+                "value": "{{clinicId}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"clinicId\": \"{{clinicId}}\",\n  \"patientId\": \"{{patientId}}\",\n  \"number\": \"POSTMAN-{{$timestamp}}\",\n  \"status\": \"pending\",\n  \"subtotal\": \"100.00\",\n  \"discount\": \"0.00\",\n  \"tax\": \"0.00\",\n  \"totalAmount\": \"100.00\",\n  \"items\": [\n    {\n      \"type\": \"custom\",\n      \"description\": \"Consulta inicial\",\n      \"qty\": 1,\n      \"unitPrice\": \"100.00\",\n      \"lineTotal\": \"100.00\"\n    }\n  ]\n}"
+            },
+            "url": "{{baseUrl}}/invoices"
+          }
+        },
+        {
+          "name": "List Invoices",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-clinic-id",
+                "value": "{{clinicId}}"
+              }
+            ],
+            "url": "{{baseUrl}}/invoices"
+          }
+        },
+        {
+          "name": "Add Invoice Item",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Item agregado', function () { pm.response.to.have.status(201); });",
+                  "const json = pm.response.json();",
+                  "if (Array.isArray(json.items) && json.items.length) {",
+                  "  pm.collectionVariables.set('invoiceItemId', json.items[json.items.length - 1].id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-clinic-id",
+                "value": "{{clinicId}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"custom\",\n  \"description\": \"Radiografia\",\n  \"qty\": 1,\n  \"unitPrice\": \"35.00\",\n  \"lineTotal\": \"35.00\"\n}"
+            },
+            "url": "{{baseUrl}}/invoices/{{invoiceId}}/items"
+          }
+        },
+        {
+          "name": "Create Payment",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Pago creado', function () { pm.response.to.have.status(201); });",
+                  "const json = pm.response.json();",
+                  "if (json.id) pm.collectionVariables.set('paymentId', json.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-clinic-id",
+                "value": "{{clinicId}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"invoiceId\": \"{{invoiceId}}\",\n  \"amount\": \"40.00\",\n  \"method\": \"cash\",\n  \"paidAt\": \"2030-04-15T11:00:00.000Z\",\n  \"reference\": \"POSTMAN-CASH\"\n}"
+            },
+            "url": "{{baseUrl}}/payments"
+          }
+        },
+        {
+          "name": "List Payments",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-clinic-id",
+                "value": "{{clinicId}}"
+              }
+            ],
+            "url": "{{baseUrl}}/payments"
+          }
+        }
+      ]
+    },
+    {
+      "name": "07 Operations",
+      "item": [
+        {
+          "name": "Create Expense",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Gasto creado', function () { pm.response.to.have.status(201); });",
+                  "const json = pm.response.json();",
+                  "if (json.id) pm.collectionVariables.set('expenseId', json.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-clinic-id",
+                "value": "{{clinicId}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"clinicId\": \"{{clinicId}}\",\n  \"category\": \"supplies\",\n  \"amount\": \"35.50\",\n  \"spentAt\": \"2030-04-15T12:00:00.000Z\",\n  \"notes\": \"Guantes y mascarillas\"\n}"
+            },
+            "url": "{{baseUrl}}/expenses"
+          }
+        },
+        {
+          "name": "Get Expense Totals",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-clinic-id",
+                "value": "{{clinicId}}"
+              }
+            ],
+            "url": "{{baseUrl}}/expenses/totals"
+          }
+        },
+        {
+          "name": "Create Message Template",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Template creado', function () { pm.response.to.have.status(201); });",
+                  "const json = pm.response.json();",
+                  "if (json.id) pm.collectionVariables.set('templateId', json.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-clinic-id",
+                "value": "{{clinicId}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"clinicId\": \"{{clinicId}}\",\n  \"channel\": \"email\",\n  \"name\": \"Recordatorio Postman\",\n  \"body\": \"Hola {{firstName}}, recordamos tu cita.\",\n  \"status\": \"active\"\n}"
+            },
+            "url": "{{baseUrl}}/message-templates"
+          }
+        },
+        {
+          "name": "Create Reminder",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Recordatorio creado', function () { pm.response.to.have.status(201); });",
+                  "const json = pm.response.json();",
+                  "if (json.id) pm.collectionVariables.set('reminderId', json.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-clinic-id",
+                "value": "{{clinicId}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"appointmentId\": \"{{appointmentId}}\",\n  \"templateId\": \"{{templateId}}\",\n  \"type\": \"email\",\n  \"channel\": \"email\",\n  \"status\": \"scheduled\",\n  \"scheduledAt\": \"2030-04-14T08:00:00.000Z\"\n}"
+            },
+            "url": "{{baseUrl}}/reminders"
+          }
+        },
+        {
+          "name": "Create Outbound Message",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Mensaje creado', function () { pm.response.to.have.status(201); });",
+                  "const json = pm.response.json();",
+                  "if (json.id) pm.collectionVariables.set('outboundMessageId', json.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-clinic-id",
+                "value": "{{clinicId}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"clinicId\": \"{{clinicId}}\",\n  \"patientId\": \"{{patientId}}\",\n  \"appointmentId\": \"{{appointmentId}}\",\n  \"templateId\": \"{{templateId}}\",\n  \"channel\": \"email\",\n  \"payloadJson\": {\n    \"firstName\": \"Ana\",\n    \"appointmentDate\": \"2030-04-15\"\n  },\n  \"status\": \"queued\"\n}"
+            },
+            "url": "{{baseUrl}}/outbound-messages"
+          }
+        }
+      ]
+    },
+    {
+      "name": "08 User Settings",
+      "item": [
+        {
+          "name": "List User Sessions",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/user-sessions"
+          }
+        },
+        {
+          "name": "Get Notification Preferences",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/notification-preferences"
+          }
+        },
+        {
+          "name": "Update Notification Preferences",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"emailNotifications\": true,\n  \"smsNotifications\": false,\n  \"pushNotifications\": true,\n  \"appointmentReminders\": true,\n  \"marketingEmails\": false,\n  \"treatmentUpdates\": true,\n  \"billingAlerts\": true\n}"
+            },
+            "url": "{{baseUrl}}/notification-preferences"
+          }
+        },
+        {
+          "name": "Create Payment Method",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Metodo creado', function () { pm.response.to.have.status(201); });",
+                  "const json = pm.response.json();",
+                  "if (json.id) pm.collectionVariables.set('paymentMethodId', json.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"card\",\n  \"label\": \"Visa ****1234\",\n  \"last4\": \"1234\",\n  \"expiryMonth\": 12,\n  \"expiryYear\": 2028\n}"
+            },
+            "url": "{{baseUrl}}/payment-methods"
+          }
+        },
+        {
+          "name": "Set Default Payment Method",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": "{{baseUrl}}/payment-methods/{{paymentMethodId}}/set-default"
+          }
+        }
+      ]
+    },
+    {
+      "name": "09 Help & Dashboard",
+      "item": [
+        {
+          "name": "Dashboard",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-clinic-id",
+                "value": "{{clinicId}}"
+              }
+            ],
+            "url": "{{baseUrl}}/common/dashboard"
+          }
+        },
+        {
+          "name": "FAQs",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/help-center/faqs"
+          }
+        },
+        {
+          "name": "Contact Info",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/help-center/contact"
+          }
+        },
+        {
+          "name": "Create Support Request",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Solicitud creada', function () { pm.response.to.have.status(201); });",
+                  "const json = pm.response.json();",
+                  "if (json.id) pm.collectionVariables.set('supportRequestId', json.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"subject\": \"Consulta desde Postman\",\n  \"message\": \"Necesito ayuda con la prueba de la API desde Postman.\",\n  \"contactEmail\": \"soporte-postman@example.com\"\n}"
+            },
+            "url": "{{baseUrl}}/help-center/support-request"
+          }
+        },
+        {
+          "name": "My Support Requests",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/help-center/support-requests"
+          }
+        }
+      ]
+    }
+  ]
+}
