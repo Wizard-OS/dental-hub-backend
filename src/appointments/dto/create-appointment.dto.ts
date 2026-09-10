@@ -1,13 +1,16 @@
 import {
   IsDateString,
   IsEnum,
+  IsInt,
   IsOptional,
   IsString,
   IsUUID,
+  Min,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 import { AppointmentStatus } from '../interfaces/AppointmentStatus.enum';
+import { AppointmentConfirmationStatus } from '../interfaces/appointment-confirmation-status.enum';
 
 export class CreateAppointmentDto {
   @ApiPropertyOptional({
@@ -73,6 +76,48 @@ export class CreateAppointmentDto {
   @IsEnum(AppointmentStatus)
   @IsOptional()
   status?: AppointmentStatus;
+
+  @ApiPropertyOptional({
+    enum: AppointmentConfirmationStatus,
+    example: AppointmentConfirmationStatus.PENDING,
+    description: 'Estado de confirmación de asistencia',
+  })
+  @IsEnum(AppointmentConfirmationStatus)
+  @IsOptional()
+  confirmationStatus?: AppointmentConfirmationStatus;
+
+  @ApiPropertyOptional({
+    example: '2026-09-14T10:00:00.000Z',
+    description: 'Fecha/hora en que se solicitó confirmación',
+  })
+  @IsDateString()
+  @IsOptional()
+  confirmationRequestedAt?: Date;
+
+  @ApiPropertyOptional({
+    example: '2026-09-14T12:00:00.000Z',
+    description: 'Fecha/hora en que el paciente confirmó',
+  })
+  @IsDateString()
+  @IsOptional()
+  confirmedAt?: Date;
+
+  @ApiPropertyOptional({
+    example: '2026-09-14T12:30:00.000Z',
+    description: 'Fecha/hora del último cambio de horario solicitado',
+  })
+  @IsDateString()
+  @IsOptional()
+  lastRescheduledAt?: Date;
+
+  @ApiPropertyOptional({
+    example: 1,
+    description: 'Cantidad de reprogramaciones realizadas para la cita',
+  })
+  @IsInt()
+  @Min(0)
+  @IsOptional()
+  rescheduleCount?: number;
 
   @ApiPropertyOptional({
     example: 'Dolor de muela',

@@ -16,6 +16,7 @@ import { Patient } from '../../patients/entities/patient.entity';
 import { Reminder } from '../../reminders/entities/reminder.entity';
 import { AppointmentStatus } from '../interfaces/AppointmentStatus.enum';
 import { ClinicMembership } from '../../clinic-memberships/entities/clinic-membership.entity';
+import { AppointmentConfirmationStatus } from '../interfaces/appointment-confirmation-status.enum';
 
 @Entity('appointments')
 export class Appointment {
@@ -85,6 +86,25 @@ export class Appointment {
     enum: AppointmentStatus,
   })
   status: AppointmentStatus;
+
+  @Column({
+    type: 'enum',
+    enum: AppointmentConfirmationStatus,
+    default: AppointmentConfirmationStatus.PENDING,
+  })
+  confirmationStatus: AppointmentConfirmationStatus;
+
+  @Column({ type: 'timestamp', nullable: true })
+  confirmationRequestedAt: Date | null;
+
+  @Column({ type: 'timestamp', nullable: true })
+  confirmedAt: Date | null;
+
+  @Column({ type: 'timestamp', nullable: true })
+  lastRescheduledAt: Date | null;
+
+  @Column('int', { default: 0 })
+  rescheduleCount: number;
 
   @Column({ nullable: true })
   reason: string;

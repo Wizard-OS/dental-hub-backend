@@ -1,3 +1,4 @@
+import { Transform } from 'class-transformer';
 import {
   IsBoolean,
   IsInt,
@@ -6,6 +7,8 @@ import {
   IsUUID,
   Matches,
   Min,
+  MaxLength,
+  ValidateIf,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
@@ -19,7 +22,10 @@ export class CreateAppointmentTypeDto {
   clinicId?: string;
 
   @ApiProperty({ example: 'Limpieza', description: 'Nombre del tipo de cita' })
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
   @IsString()
+  @Matches(/\S/)
+  @MaxLength(120)
   name: string;
 
   @ApiProperty({
@@ -31,17 +37,24 @@ export class CreateAppointmentTypeDto {
   @Min(5)
   durationMin: number;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
+    nullable: true,
     example: '500.00',
     description: 'Precio por defecto (decimal string)',
   })
-  @Matches(/^\d+(\.\d{1,2})?$/)
-  defaultPrice: string;
+  @IsOptional()
+  @Matches(/^\d{1,10}(\.\d{1,2})?$/)
+  defaultPrice?: string | null;
 
   @ApiPropertyOptional({ example: '#3498db', description: 'Color en hex' })
-  @IsString()
-  @IsOptional()
+  @ValidateIf((_, value) => value !== undefined)
+  @Matches(/^#[0-9a-fA-F]{6}$/)
   color?: string;
+
+  @ApiPropertyOptional({ example: 'UYU', default: 'UYU' })
+  @ValidateIf((_, value) => value !== undefined)
+  @Matches(/^[A-Z]{3}$/)
+  currency?: string;
 
   @ApiPropertyOptional({ example: true, description: '¿Activo?' })
   @IsBoolean()

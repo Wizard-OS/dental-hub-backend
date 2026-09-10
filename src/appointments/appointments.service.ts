@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { ILike, Repository } from 'typeorm';
 import { isUUID } from 'class-validator';
 
 import { Appointment } from './entities/appointment.entity';
@@ -17,6 +17,7 @@ import { UpdateAppointmentDto } from './dto/update-appointment.dto';
 import { CreateAppointmentTypeDto } from './dto/create-appointment-type.dto';
 import { UpdateAppointmentTypeDto } from './dto/update-appointment-type.dto';
 import { AppointmentStatus } from './interfaces/AppointmentStatus.enum';
+import { AppointmentConfirmationStatus } from './interfaces/appointment-confirmation-status.enum';
 import {
   ClinicAccessContext,
   PatientAccessService,
@@ -75,6 +76,9 @@ export class AppointmentsService {
         ...dto,
         clinicId: context.clinicId,
         status: dto.status ?? AppointmentStatus.SCHEDULED,
+        confirmationStatus:
+          dto.confirmationStatus ?? AppointmentConfirmationStatus.PENDING,
+        rescheduleCount: dto.rescheduleCount ?? 0,
       });
       return await this.appointmentRepository.save(appointment);
     } catch (error) {
@@ -208,11 +212,38 @@ export class AppointmentsService {
     }
   }
 
-  async findTypes(clinicId: string) {
+  async findTypes(clinicId: string, search?: string, includeInactive = false) {
     return await this.appointmentTypeRepository.find({
-      where: { clinicId },
+      where: {
+        clinicId,
+        ...(includeInactive ? {} : { isActive: true }),
+        ...(search ? { name: ILike(`%${search}%`) } : {}),
+      },
       order: { name: 'ASC' },
     });
+  }
+
+  async recentColors(clinicId: string) {
+    const rows = await this.appointmentTypeRepository
+      .createQueryBuilder('type')
+      .select('UPPER(type.color)', 'color')
+      .where('type.clinicId = :clinicId', { clinicId })
+      .groupBy('UPPER(type.color)')
+      .orderBy('MAX(type.updatedAt)', 'DESC')
+      .addOrderBy('UPPER(type.color)', 'ASC')
+      .limit(8)
+      .getRawMany<{ color: string }>();
+    return rows.map((row) => row.color);
+  }
+
+  async findType(clinicId: string, id: string) {
+    if (!isUUID(id))
+      throw new BadRequestException('Invalid appointment type id');
+    const type = await this.appointmentTypeRepository.findOne({
+      where: { id, clinicId },
+    });
+    if (!type) throw new NotFoundException('Appointment type not found');
+    return type;
   }
 
   async updateType(

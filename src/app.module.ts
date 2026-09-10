@@ -1,3 +1,4 @@
+import { PatientExamsModule } from './patient-exams/patient-exams.module';
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { ServeStaticModule } from '@nestjs/serve-static';
@@ -113,6 +114,7 @@ function isSeedEndpointEnabled() {
       });
     })(),
 
+    PatientExamsModule,
     CommonModule,
     BackofficeModule,
     ClinicsModule,

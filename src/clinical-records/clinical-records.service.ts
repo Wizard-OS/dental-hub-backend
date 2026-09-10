@@ -74,6 +74,17 @@ export class ClinicalRecordsService {
     return allowed;
   }
 
+  async findByPatient(context: ClinicAccessContext, patientId: string) {
+    await this.patientAccessService.assertPatientAccessible(context, patientId);
+    const record = await this.clinicalRecordRepository.findOne({
+      where: { patientId },
+      relations: { patient: true },
+    });
+    if (!record) throw new NotFoundException('Clinical record not found');
+    this.patientAccessService.sanitizePatient(record.patient, context);
+    return record;
+  }
+
   async findOne(context: ClinicAccessContext, id: string) {
     if (!isUUID(id)) {
       throw new BadRequestException('Invalid clinical record id');
@@ -111,20 +122,9 @@ export class ClinicalRecordsService {
     const record = await this.findOne(context, id);
 
     if (dto.patientId && dto.patientId !== record.patientId) {
-      await this.patientAccessService.assertPatientAccessible(
-        context,
-        dto.patientId,
+      throw new BadRequestException(
+        'Cannot move a clinical record to another patient',
       );
-
-      const existing = await this.clinicalRecordRepository.findOne({
-        where: { patientId: dto.patientId },
-      });
-
-      if (existing && existing.id !== id) {
-        throw new BadRequestException(
-          `Clinical record already exists for patient ${dto.patientId}`,
-        );
-      }
     }
 
     Object.assign(record, dto);

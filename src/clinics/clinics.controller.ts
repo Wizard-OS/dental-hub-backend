@@ -19,6 +19,7 @@ import {
 import { ClinicsService } from './clinics.service';
 import { CreateClinicDto } from './dto/create-clinic.dto';
 import { UpdateClinicDto } from './dto/update-clinic.dto';
+import { UpdateAppointmentSettingsDto } from './dto/update-appointment-settings.dto';
 import {
   Auth,
   AuthClinic,
@@ -59,6 +60,34 @@ export class ClinicsController {
   @ApiResponse({ status: 404, description: 'Clínica no encontrada' })
   findOne(@GetUser('id') userId: string, @Param('id') id: string) {
     return this.clinicsService.findOneForUser(userId, id);
+  }
+
+  @Get(':id/appointment-settings')
+  @AuthClinic()
+  @ApiSecurity('x-clinic-id')
+  @ApiOperation({ summary: 'Obtener configuración de agenda de la clínica' })
+  @ApiParam({ name: 'id', description: 'UUID de la clínica' })
+  @ApiResponse({ status: 200, description: 'Configuración de agenda' })
+  getAppointmentSettings(
+    @GetClinicId() clinicId: string,
+    @Param('id') id: string,
+  ) {
+    return this.clinicsService.getAppointmentSettings(clinicId, id);
+  }
+
+  @Patch(':id/appointment-settings')
+  @AuthClinic()
+  @ClinicRoles(ClinicMembershipRole.owner, ClinicMembershipRole.admin)
+  @ApiSecurity('x-clinic-id')
+  @ApiOperation({ summary: 'Actualizar configuración de agenda de la clínica' })
+  @ApiParam({ name: 'id', description: 'UUID de la clínica' })
+  @ApiResponse({ status: 200, description: 'Configuración de agenda guardada' })
+  updateAppointmentSettings(
+    @GetClinicId() clinicId: string,
+    @Param('id') id: string,
+    @Body() dto: UpdateAppointmentSettingsDto,
+  ) {
+    return this.clinicsService.updateAppointmentSettings(clinicId, id, dto);
   }
 
   @Patch(':id')

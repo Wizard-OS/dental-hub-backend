@@ -1,3 +1,5 @@
+import { QueryClinicalNotesDto } from './dto/query-clinical-notes.dto';
+import { PatientFileStorageStatus } from '../patient-files/interfaces/patient-file-storage-status.enum';
 import {
   BadRequestException,
   Injectable,
@@ -82,6 +84,55 @@ export class ClinicalNotesService {
     return allowed;
   }
 
+  async findByPatient(
+    context: ClinicAccessContext,
+    patientId: string,
+    dto: QueryClinicalNotesDto,
+  ) {
+    await this.patientAccessService.assertPatientAccessible(context, patientId);
+    if (dto.from && dto.to && new Date(dto.from) > new Date(dto.to))
+      throw new BadRequestException('from must be before to');
+    const query = this.clinicalNoteRepository
+      .createQueryBuilder('note')
+      .innerJoin('note.clinicalRecord', 'record')
+      .leftJoin('note.author', 'author')
+      .addSelect(['author.id', 'author.firstName', 'author.lastName'])
+      .leftJoinAndSelect(
+        'note.files',
+        'file',
+        'file.storageStatus = :available',
+        { available: PatientFileStorageStatus.AVAILABLE },
+      )
+      .leftJoinAndSelect('note.exams', 'exam')
+      .leftJoinAndSelect(
+        'exam.files',
+        'examFile',
+        'examFile.storageStatus = :available',
+      )
+      .where('record.patientId = :patientId', { patientId });
+    if (dto.authorMembershipId)
+      query.andWhere('note.authorMembershipId = :authorId', {
+        authorId: dto.authorMembershipId,
+      });
+    if (dto.clinicalNoteId)
+      query.andWhere('note.id = :noteId', { noteId: dto.clinicalNoteId });
+    if (dto.from)
+      query.andWhere('note.occurredAt >= :from', { from: dto.from });
+    if (dto.to) query.andWhere('note.occurredAt <= :to', { to: dto.to });
+    if (dto.search)
+      query.andWhere(
+        '(note.title ILIKE :search OR note.content ILIKE :search OR note.reason ILIKE :search)',
+        { search: `%${dto.search}%` },
+      );
+    const [items, total] = await query
+      .orderBy('note.occurredAt', 'DESC')
+      .addOrderBy('note.id', 'DESC')
+      .skip(dto.offset)
+      .take(dto.limit)
+      .getManyAndCount();
+    return { items, total, limit: dto.limit, offset: dto.offset };
+  }
+
   async findOne(context: ClinicAccessContext, id: string) {
     if (!isUUID(id)) {
       throw new BadRequestException('Invalid clinical note id');
@@ -126,13 +177,8 @@ export class ClinicalNotesService {
       dto.clinicalRecordId &&
       dto.clinicalRecordId !== note.clinicalRecordId
     ) {
-      const record = await this.assertRecordInClinic(
-        dto.clinicalRecordId,
-        context.clinicId,
-      );
-      await this.patientAccessService.assertPatientAccessible(
-        context,
-        record.patientId,
+      throw new BadRequestException(
+        'Cannot move a clinical note to another record',
       );
     }
 

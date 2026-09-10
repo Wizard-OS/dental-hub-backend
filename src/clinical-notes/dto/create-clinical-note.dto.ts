@@ -1,5 +1,9 @@
+import { Type } from 'class-transformer';
 import {
   IsArray,
+  IsDate,
+  MaxLength,
+  ValidateIf,
   IsOptional,
   IsString,
   IsUUID,
@@ -54,4 +58,19 @@ export class CreateClinicalNoteDto {
   @IsString({ each: true })
   @IsOptional()
   toothCodes?: string[];
+  @ApiPropertyOptional({ example: 'Control de ortodoncia' })
+  @IsOptional()
+  @IsString()
+  @MinLength(1)
+  @MaxLength(200)
+  title?: string;
+
+  @ApiPropertyOptional({
+    description: 'Fecha efectiva de consulta; por defecto ahora',
+    example: '2026-09-08T13:00:00Z',
+  })
+  @ValidateIf((_, value) => value !== undefined)
+  @Type(() => Date)
+  @IsDate()
+  occurredAt?: Date;
 }

@@ -1,5 +1,7 @@
+import { QueryAppointmentTypesDto } from './dto/query-appointment-types.dto';
 import {
   Body,
+  Query,
   Controller,
   Delete,
   Get,
@@ -64,8 +66,29 @@ export class AppointmentsController {
   @Get('types/all')
   @ApiOperation({ summary: 'Listar tipos de cita' })
   @ApiResponse({ status: 200, description: 'Lista de tipos de cita' })
-  findTypes(@GetClinicId() clinicId: string) {
-    return this.appointmentService.findTypes(clinicId);
+  findTypes(
+    @GetClinicId() clinicId: string,
+    @Query() query: QueryAppointmentTypesDto,
+  ) {
+    return this.appointmentService.findTypes(
+      clinicId,
+      query.search,
+      query.includeInactive === 'true',
+    );
+  }
+
+  @Get('types/recent-colors')
+  @ApiOperation({
+    summary: 'Colores usados recientemente en tipos de cita de la clínica',
+  })
+  recentColors(@GetClinicId() clinicId: string) {
+    return this.appointmentService.recentColors(clinicId);
+  }
+
+  @Get('types/:id')
+  @ApiOperation({ summary: 'Obtener tipo de cita' })
+  findType(@GetClinicId() clinicId: string, @Param('id') id: string) {
+    return this.appointmentService.findType(clinicId, id);
   }
 
   @Patch('types/:id')

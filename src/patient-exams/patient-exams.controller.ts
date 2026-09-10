@@ -1,5 +1,7 @@
+import { QueryPatientExamsDto } from './dto/query-patient-exams.dto';
 import {
   Body,
+  Query,
   ParseUUIDPipe,
   Controller,
   Delete,
@@ -17,9 +19,9 @@ import {
   ApiParam,
 } from '@nestjs/swagger';
 
-import { ClinicalRecordsService } from './clinical-records.service';
-import { CreateClinicalRecordDto } from './dto/create-clinical-record.dto';
-import { UpdateClinicalRecordDto } from './dto/update-clinical-record.dto';
+import { PatientExamsService } from './patient-exams.service';
+import { CreatePatientExamDto } from './dto/create-patient-exam.dto';
+import { UpdatePatientExamDto } from './dto/create-patient-exam.dto';
 import {
   AuthClinic,
   ClinicRoles,
@@ -31,10 +33,10 @@ import {
 import { ClinicMembershipRole } from '../clinic-memberships/interfaces/clinic-membership-role.enum';
 import { ClinicAccessContext } from '../patients/services/patient-access.service';
 
-@ApiTags('Clinical Records')
+@ApiTags('Patient Exams')
 @ApiBearerAuth()
 @ApiSecurity('x-clinic-id')
-@Controller('clinical-records')
+@Controller('patients/:patientId/exams')
 @AuthClinic()
 @ClinicRoles(
   ClinicMembershipRole.owner,
@@ -42,107 +44,106 @@ import { ClinicAccessContext } from '../patients/services/patient-access.service
   ClinicMembershipRole.odontologist,
   ClinicMembershipRole.specialist,
 )
-export class ClinicalRecordsController {
-  constructor(
-    private readonly clinicalRecordsService: ClinicalRecordsService,
-  ) {}
+export class PatientExamsController {
+  constructor(private readonly patientExamsService: PatientExamsService) {}
 
   @Post()
-  @ApiOperation({ summary: 'Crear registro clínico' })
-  @ApiResponse({ status: 201, description: 'Registro clínico creado' })
+  @ApiOperation({ summary: 'Crear examen complementario' })
+  @ApiResponse({ status: 201, description: 'Examen complementario creado' })
   create(
+    @Param('patientId', ParseUUIDPipe) patientId: string,
     @GetClinicId() clinicId: string,
     @GetClinicMembershipId() membershipId: string,
     @GetClinicMembershipRole() role: ClinicMembershipRole,
     @GetClinicPermissions() permissionsJson: Record<string, boolean>,
-    @Body() createClinicalRecordDto: CreateClinicalRecordDto,
+    @Body() createPatientExamDto: CreatePatientExamDto,
   ) {
-    return this.clinicalRecordsService.create(
+    return this.patientExamsService.create(
       this.context(clinicId, membershipId, role, permissionsJson),
-      createClinicalRecordDto,
+      patientId,
+      createPatientExamDto,
     );
   }
 
   @Get()
-  @ApiOperation({ summary: 'Listar registros clínicos' })
-  @ApiResponse({ status: 200, description: 'Lista de registros clínicos' })
+  @ApiOperation({ summary: 'Listar exámenes complementarios' })
+  @ApiResponse({
+    status: 200,
+    description: 'Lista de exámenes complementarios',
+  })
   findAll(
-    @GetClinicId() clinicId: string,
-    @GetClinicMembershipId() membershipId: string,
-    @GetClinicMembershipRole() role: ClinicMembershipRole,
-    @GetClinicPermissions() permissionsJson: Record<string, boolean>,
-  ) {
-    return this.clinicalRecordsService.findAll(
-      this.context(clinicId, membershipId, role, permissionsJson),
-    );
-  }
-
-  @Get('patient/:patientId')
-  @ApiOperation({ summary: 'Obtener registro clínico por ID' })
-  @ApiParam({ name: 'patientId', description: 'UUID del registro clínico' })
-  @ApiResponse({ status: 200, description: 'Registro clínico encontrado' })
-  findByPatient(
-    @GetClinicId() clinicId: string,
-    @GetClinicMembershipId() membershipId: string,
-    @GetClinicMembershipRole() role: ClinicMembershipRole,
-    @GetClinicPermissions() permissionsJson: Record<string, boolean>,
+    @Query() query: QueryPatientExamsDto,
     @Param('patientId', ParseUUIDPipe) patientId: string,
+    @GetClinicId() clinicId: string,
+    @GetClinicMembershipId() membershipId: string,
+    @GetClinicMembershipRole() role: ClinicMembershipRole,
+    @GetClinicPermissions() permissionsJson: Record<string, boolean>,
   ) {
-    return this.clinicalRecordsService.findByPatient(
+    return this.patientExamsService.findAll(
       this.context(clinicId, membershipId, role, permissionsJson),
       patientId,
+      query,
     );
   }
 
   @Get(':id')
-  @ApiOperation({ summary: 'Obtener registro clínico por ID' })
-  @ApiParam({ name: 'id', description: 'UUID del registro clínico' })
-  @ApiResponse({ status: 200, description: 'Registro clínico encontrado' })
+  @ApiOperation({ summary: 'Obtener examen complementario por ID' })
+  @ApiParam({ name: 'id', description: 'UUID del examen complementario' })
+  @ApiResponse({ status: 200, description: 'Examen complementario encontrado' })
   findOne(
+    @Param('patientId', ParseUUIDPipe) patientId: string,
     @GetClinicId() clinicId: string,
     @GetClinicMembershipId() membershipId: string,
     @GetClinicMembershipRole() role: ClinicMembershipRole,
     @GetClinicPermissions() permissionsJson: Record<string, boolean>,
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
   ) {
-    return this.clinicalRecordsService.findOne(
+    return this.patientExamsService.findOne(
       this.context(clinicId, membershipId, role, permissionsJson),
+      patientId,
       id,
     );
   }
 
   @Patch(':id')
-  @ApiOperation({ summary: 'Actualizar registro clínico' })
-  @ApiParam({ name: 'id', description: 'UUID del registro clínico' })
-  @ApiResponse({ status: 200, description: 'Registro clínico actualizado' })
+  @ApiOperation({ summary: 'Actualizar examen complementario' })
+  @ApiParam({ name: 'id', description: 'UUID del examen complementario' })
+  @ApiResponse({
+    status: 200,
+    description: 'Examen complementario actualizado',
+  })
   update(
+    @Param('patientId', ParseUUIDPipe) patientId: string,
     @GetClinicId() clinicId: string,
     @GetClinicMembershipId() membershipId: string,
     @GetClinicMembershipRole() role: ClinicMembershipRole,
     @GetClinicPermissions() permissionsJson: Record<string, boolean>,
-    @Param('id') id: string,
-    @Body() updateClinicalRecordDto: UpdateClinicalRecordDto,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() updatePatientExamDto: UpdatePatientExamDto,
   ) {
-    return this.clinicalRecordsService.update(
+    return this.patientExamsService.update(
       this.context(clinicId, membershipId, role, permissionsJson),
+      patientId,
       id,
-      updateClinicalRecordDto,
+      updatePatientExamDto,
     );
   }
 
   @Delete(':id')
-  @ApiOperation({ summary: 'Eliminar registro clínico' })
-  @ApiParam({ name: 'id', description: 'UUID del registro clínico' })
-  @ApiResponse({ status: 200, description: 'Registro clínico eliminado' })
+  @ApiOperation({ summary: 'Eliminar examen complementario' })
+  @ApiParam({ name: 'id', description: 'UUID del examen complementario' })
+  @ApiResponse({ status: 200, description: 'Examen complementario eliminado' })
   remove(
+    @Param('patientId', ParseUUIDPipe) patientId: string,
     @GetClinicId() clinicId: string,
     @GetClinicMembershipId() membershipId: string,
     @GetClinicMembershipRole() role: ClinicMembershipRole,
     @GetClinicPermissions() permissionsJson: Record<string, boolean>,
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
   ) {
-    return this.clinicalRecordsService.remove(
+    return this.patientExamsService.remove(
       this.context(clinicId, membershipId, role, permissionsJson),
+      patientId,
       id,
     );
   }

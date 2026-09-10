@@ -41,6 +41,18 @@ export class ClinicalRecord {
   @Column({ nullable: true, type: 'text' })
   observations: string | null;
 
+  @Column('text', { nullable: true })
+  bloodType: string | null;
+
+  @Column('text', { nullable: true })
+  healthInsurance: string | null;
+
+  @Column('text', { nullable: true })
+  currentMedication: string | null;
+
+  @Column('text', { nullable: true })
+  habits: string | null;
+
   @OneToMany(() => ClinicalNote, (note) => note.clinicalRecord)
   notes: ClinicalNote[];
 

@@ -1,5 +1,8 @@
+import { QueryClinicalNotesDto } from './dto/query-clinical-notes.dto';
 import {
   Body,
+  Query,
+  ParseUUIDPipe,
   Controller,
   Delete,
   Get,
@@ -75,6 +78,25 @@ export class ClinicalNotesController {
   ) {
     return this.clinicalNotesService.findAll(
       this.context(clinicId, membershipId, role, permissionsJson),
+    );
+  }
+
+  @Get('patient/:patientId')
+  @ApiOperation({ summary: 'Obtener nota clínica por ID' })
+  @ApiParam({ name: 'patientId', description: 'UUID de la nota clínica' })
+  @ApiResponse({ status: 200, description: 'Nota clínica encontrada' })
+  findByPatient(
+    @GetClinicId() clinicId: string,
+    @GetClinicMembershipId() membershipId: string,
+    @GetClinicMembershipRole() role: ClinicMembershipRole,
+    @GetClinicPermissions() permissionsJson: Record<string, boolean>,
+    @Param('patientId', ParseUUIDPipe) patientId: string,
+    @Query() query: QueryClinicalNotesDto,
+  ) {
+    return this.clinicalNotesService.findByPatient(
+      this.context(clinicId, membershipId, role, permissionsJson),
+      patientId,
+      query,
     );
   }
 

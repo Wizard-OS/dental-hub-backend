@@ -1,4 +1,4 @@
-import { IsOptional, IsString, IsUUID } from 'class-validator';
+import { IsIn, IsOptional, IsString, IsUUID } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateClinicalRecordDto {
@@ -45,4 +45,29 @@ export class CreateClinicalRecordDto {
   @IsString()
   @IsOptional()
   observations?: string;
+  @ApiPropertyOptional({
+    enum: ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'],
+    nullable: true,
+  })
+  @IsOptional()
+  @IsIn(['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'])
+  bloodType?: string | null;
+
+  @ApiPropertyOptional({
+    description: 'Mutualista o cobertura médica',
+    nullable: true,
+  })
+  @IsOptional()
+  @IsString()
+  healthInsurance?: string | null;
+
+  @ApiPropertyOptional({ description: 'Medicación habitual', nullable: true })
+  @IsOptional()
+  @IsString()
+  currentMedication?: string | null;
+
+  @ApiPropertyOptional({ description: 'Hábitos del paciente', nullable: true })
+  @IsOptional()
+  @IsString()
+  habits?: string | null;
 }

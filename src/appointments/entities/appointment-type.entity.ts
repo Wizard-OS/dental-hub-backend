@@ -32,8 +32,11 @@ export class AppointmentType {
   @Column('int')
   durationMin: number;
 
-  @Column({ type: 'decimal', precision: 12, scale: 2 })
-  defaultPrice: string;
+  @Column({ type: 'decimal', precision: 12, scale: 2, nullable: true })
+  defaultPrice: string | null;
+
+  @Column('varchar', { length: 3, default: 'UYU' })
+  currency: string;
 
   @Column('text', { default: '#1f7a8c' })
   color: string;

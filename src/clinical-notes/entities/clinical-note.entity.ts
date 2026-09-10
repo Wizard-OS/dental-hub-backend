@@ -1,3 +1,5 @@
+import { PatientExam } from '../../patient-exams/entities/patient-exam.entity';
+import { PatientFile } from '../../patient-files/entities/patient-file.entity';
 import {
   Column,
   CreateDateColumn,
@@ -5,6 +7,7 @@ import {
   JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
+  OneToMany,
 } from 'typeorm';
 
 import { User } from '../../auth/entities/user.entity';
@@ -61,6 +64,18 @@ export class ClinicalNote {
 
   @Column('text', { array: true, default: [] })
   toothCodes: string[];
+
+  @Column('text', { nullable: true })
+  title: string | null;
+
+  @Column('timestamptz', { default: () => 'CURRENT_TIMESTAMP' })
+  occurredAt: Date;
+
+  @OneToMany(() => PatientFile, (file) => file.clinicalNote)
+  files: PatientFile[];
+
+  @OneToMany(() => PatientExam, (exam) => exam.clinicalNote)
+  exams: PatientExam[];
 
   @CreateDateColumn()
   createdAt: Date;
