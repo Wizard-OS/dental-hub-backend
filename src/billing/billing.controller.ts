@@ -13,6 +13,7 @@ import {
   ClinicPermissions,
   ClinicRoles,
   GetClinicId,
+  GetClinicMembershipId,
 } from '../auth/decorators';
 import { ClinicPermission } from '../auth/interfaces';
 import { ClinicMembershipRole } from '../clinic-memberships/interfaces/clinic-membership-role.enum';
@@ -35,8 +36,9 @@ export class BillingController {
   createCheckout(
     @GetClinicId() clinicId: string,
     @Body() dto: CreateBillingCheckoutDto,
+    @GetClinicMembershipId() actorId: string,
   ) {
-    return this.billingService.createCheckout(clinicId, dto);
+    return this.billingService.createCheckout(clinicId, dto, actorId);
   }
 
   @Post('webhooks/paypal')

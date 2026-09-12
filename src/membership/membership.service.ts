@@ -14,9 +14,11 @@ import { BillingProvider } from './interfaces/billing-provider.enum';
 import { MembershipPlanCode } from './interfaces/membership-plan-code.enum';
 import { SubscriptionStatus } from './interfaces/subscription-status.enum';
 
+import type { MembershipQuote } from '../billing/membership-offer';
+
 type LimitValue = number | null;
 
-interface MembershipLimits {
+export interface MembershipLimits {
   professionalUsers: LimitValue;
   totalUsers: LimitValue;
   activePatients: LimitValue;
@@ -25,6 +27,7 @@ interface MembershipLimits {
 }
 
 interface BeginProviderSubscriptionInput {
+  checkoutQuote?: MembershipQuote;
   clinicId: string;
   provider: BillingProvider;
   providerSubscriptionId: string;
@@ -33,6 +36,8 @@ interface BeginProviderSubscriptionInput {
 }
 
 interface ActivateProviderSubscriptionInput {
+  trialStartedAt?: Date | null;
+  trialEndsAt?: Date | null;
   clinicId?: string;
   provider: BillingProvider;
   providerSubscriptionId: string;
@@ -133,6 +138,33 @@ export class MembershipService {
         currentPeriodStart: subscription.currentPeriodStart,
         currentPeriodEnd: subscription.currentPeriodEnd,
         cancelAtPeriodEnd: subscription.cancelAtPeriodEnd,
+        mode: subscription.billingMode,
+        nextChargeAt: subscription.nextChargeAt,
+        paidCycles: subscription.paidCycles,
+        paymentMethod: subscription.paymentMethodSummary ?? null,
+      },
+      checkout: subscription.checkoutQuote ?? null,
+      trial: {
+        eligible:
+          !subscription.trialStartedAt &&
+          !subscription.licenseIssuedAt &&
+          !subscription.recurringConsentAt &&
+          subscription.planCode !== MembershipPlanCode.premium,
+        startedAt: subscription.trialStartedAt ?? null,
+        endsAt: subscription.trialEndsAt ?? null,
+        reminderAt: subscription.trialEndsAt
+          ? new Date(subscription.trialEndsAt.getTime() - 2 * 86400000)
+          : null,
+        reminderScheduled: Boolean(
+          subscription.reminderDueAt &&
+          !subscription.reminderSentAt &&
+          subscription.status === SubscriptionStatus.trialing &&
+          getEnv('RESEND_API_KEY') &&
+          getEnv('MEMBERSHIP_EMAIL_FROM') &&
+          getEnv('BILLING_WORKER_ENABLED') !== 'false',
+        ),
+        reminderSentAt: subscription.reminderSentAt ?? null,
+        reminderError: subscription.reminderError ?? null,
       },
       license: {
         issuedAt: subscription.licenseIssuedAt,
@@ -142,7 +174,12 @@ export class MembershipService {
       limits,
       usage,
       warnings: this.buildWarnings(limits, usage),
-      entitlements: MVP_ENTITLEMENTS,
+      entitlements: {
+        ...MVP_ENTITLEMENTS,
+        checkout: Boolean(
+          getEnv('PAYPAL_CLIENT_ID') && getEnv('PAYPAL_CLIENT_SECRET'),
+        ),
+      },
     };
   }
 
@@ -168,6 +205,18 @@ export class MembershipService {
   async beginProviderSubscription(input: BeginProviderSubscriptionInput) {
     const subscription = await this.ensureSubscription(input.clinicId);
 
+    if (
+      subscription.providerSubscriptionId === input.providerSubscriptionId &&
+      subscription.status !== SubscriptionStatus.incomplete
+    )
+      return this.getCurrent(input.clinicId);
+    subscription.checkoutQuote = input.checkoutQuote ?? null;
+    subscription.billingMode = 'subscription';
+    subscription.selectedPaymentMethodId = null;
+    subscription.paymentMethodSummary = null;
+    subscription.nextChargeAt = null;
+    subscription.reminderDueAt = null;
+    subscription.reminderNextAttemptAt = null;
     subscription.billingProvider = input.provider;
     subscription.providerSubscriptionId = input.providerSubscriptionId;
     subscription.providerPlanId = input.providerPlanId;
@@ -195,7 +244,23 @@ export class MembershipService {
 
     subscription.planCode = MembershipPlanCode.premium;
     subscription.planVersion = PLAN_VERSION;
-    subscription.status = SubscriptionStatus.active;
+    subscription.trialStartedAt =
+      input.trialStartedAt ?? subscription.trialStartedAt;
+    subscription.trialEndsAt = input.trialEndsAt ?? subscription.trialEndsAt;
+    if (
+      input.trialEndsAt &&
+      !subscription.reminderDueAt &&
+      !subscription.reminderSentAt
+    ) {
+      subscription.reminderDueAt = new Date(
+        input.trialEndsAt.getTime() - 2 * 86400000,
+      );
+      subscription.reminderNextAttemptAt = subscription.reminderDueAt;
+    }
+    subscription.status =
+      input.trialEndsAt && input.trialEndsAt > now
+        ? SubscriptionStatus.trialing
+        : SubscriptionStatus.active;
     subscription.billingProvider = input.provider;
     subscription.providerSubscriptionId = input.providerSubscriptionId;
     subscription.providerPlanId =
@@ -265,6 +330,8 @@ export class MembershipService {
       )
     ) {
       subscription.planCode = MembershipPlanCode.free;
+      subscription.reminderDueAt = null;
+      subscription.reminderNextAttemptAt = null;
       subscription.changeReason = `Subscription ended through ${input.provider}`;
     }
 
@@ -350,16 +417,20 @@ export class MembershipService {
     if (existing) return existing;
 
     const now = new Date();
-    return await this.subscriptionRepository.save(
-      this.subscriptionRepository.create({
+    await this.subscriptionRepository
+      .createQueryBuilder()
+      .insert()
+      .values({
         clinicId,
         planCode: MembershipPlanCode.free,
         planVersion: PLAN_VERSION,
         status: SubscriptionStatus.active,
         startedAt: now,
         currentPeriodStart: now,
-      }),
-    );
+      })
+      .orIgnore()
+      .execute();
+    return this.subscriptionRepository.findOneByOrFail({ clinicId });
   }
 
   private async findProviderSubscription(
@@ -371,7 +442,12 @@ export class MembershipService {
       where: { billingProvider: provider, providerSubscriptionId },
     });
 
-    if (existing) return existing;
+    if (existing) {
+      if (clinicId && existing.clinicId !== clinicId) {
+        throw new BadRequestException('Subscription belongs to another clinic');
+      }
+      return existing;
+    }
 
     if (!clinicId) {
       throw new BadRequestException(
@@ -460,6 +536,19 @@ export class MembershipService {
   }
 
   private getEffectivePlanCode(subscription: ClinicSubscription) {
+    if (
+      subscription.billingMode === 'vault' &&
+      subscription.currentPeriodEnd &&
+      subscription.currentPeriodEnd <= new Date()
+    ) {
+      return MembershipPlanCode.free;
+    }
+    if (
+      subscription.status === SubscriptionStatus.trialing &&
+      (!subscription.trialEndsAt || subscription.trialEndsAt <= new Date())
+    ) {
+      return MembershipPlanCode.free;
+    }
     if (
       [SubscriptionStatus.active, SubscriptionStatus.trialing].includes(
         subscription.status,

@@ -1,11 +1,16 @@
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   Logger,
   UnauthorizedException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { IncomingHttpHeaders } from 'http';
+import { getEnv } from '../config/env';
+import { MembershipPaymentMethodsService } from './vault/membership-payment-methods.service';
+import { MembershipRenewalsService } from './vault/membership-renewals.service';
+import { createHash } from 'crypto';
 import { Repository } from 'typeorm';
 
 import { Clinic } from '../clinics/entities/clinic.entity';
@@ -14,6 +19,10 @@ import { MembershipService } from '../membership/membership.service';
 import { BillingProvider } from '../membership/interfaces/billing-provider.enum';
 import { SubscriptionStatus } from '../membership/interfaces/subscription-status.enum';
 import { OutboundMessagesService } from '../outbound-messages/outbound-messages.service';
+import { membershipQuote, PROMOTION_CODE } from './membership-offer';
+import { MembershipQuoteDto } from './dto/membership-quote.dto';
+import { BillingInterval } from './interfaces/billing-interval.enum';
+import { MembershipPlanCode } from '../membership/interfaces/membership-plan-code.enum';
 import { CreateBillingCheckoutDto } from './dto/create-billing-checkout.dto';
 import { BillingWebhookEvent } from './entities/billing-webhook-event.entity';
 import { BillingProviderAdapter } from './interfaces/billing-provider-adapter.interface';
@@ -39,30 +48,265 @@ export class BillingService {
     private readonly membershipService: MembershipService,
     private readonly outboundMessagesService: OutboundMessagesService,
     private readonly paypalProvider: PayPalBillingProvider,
+    private readonly savedMethods: MembershipPaymentMethodsService,
+    private readonly renewals: MembershipRenewalsService,
   ) {}
 
-  async createCheckout(clinicId: string, dto: CreateBillingCheckoutDto) {
-    const provider = this.getProvider(BillingProvider.paypal);
-    const created = await provider.createSubscription({
-      clinicId,
-      planCode: dto.planCode,
-      interval: dto.interval,
-    });
-
-    await this.membershipService.beginProviderSubscription({
-      clinicId,
-      provider: created.provider,
-      providerSubscriptionId: created.providerSubscriptionId,
-      providerPlanId: created.providerPlanId,
-      providerStatus: created.providerStatus,
-    });
-
+  getPlans() {
     return {
-      provider: created.provider,
-      providerSubscriptionId: created.providerSubscriptionId,
-      providerStatus: created.providerStatus,
-      approvalUrl: created.approvalUrl,
+      product: {
+        code: 'premium',
+        name: 'DentalHub Premium',
+        features: [
+          'unlimited_patients',
+          'cloud_clinical_files',
+          'appointment_reminders',
+          'clinic_reports',
+        ],
+      },
+      plans: [BillingInterval.yearly, BillingInterval.monthly].map(
+        (interval) => ({
+          ...membershipQuote(interval),
+          available: Boolean(
+            getEnv('PAYPAL_CLIENT_ID') && getEnv('PAYPAL_CLIENT_SECRET'),
+          ),
+        }),
+      ),
+      capabilities: {
+        provider: 'paypal',
+        hostedPaymentSelection: true,
+        savedPaymentMethods: true,
+        nativeCardEntry: true,
+        cardEntry: 'paypal_card_fields',
+        recurringBilling: true,
+        trialReminders: true,
+        restorePurchases: true,
+      },
     };
+  }
+
+  async quote(clinicId: string, dto: MembershipQuoteDto) {
+    const subscription =
+      await this.membershipService.ensureSubscription(clinicId);
+    const trialEligible =
+      !subscription.trialStartedAt &&
+      !subscription.licenseIssuedAt &&
+      !subscription.recurringConsentAt &&
+      subscription.planCode !== MembershipPlanCode.premium;
+    if (dto.promotionCode && !trialEligible)
+      throw new BadRequestException('Welcome promotion is no longer eligible');
+    const quote = membershipQuote(
+      dto.interval,
+      dto.promotionCode,
+      trialEligible,
+    );
+    const available = Boolean(
+      getEnv('PAYPAL_CLIENT_ID') && getEnv('PAYPAL_CLIENT_SECRET'),
+    );
+    return {
+      ...quote,
+      trialEligible,
+      available,
+      canCheckout:
+        (!subscription.providerSubscriptionId ||
+          [SubscriptionStatus.canceled, SubscriptionStatus.expired].includes(
+            subscription.status,
+          )) &&
+        subscription.planCode !== MembershipPlanCode.premium &&
+        available,
+    };
+  }
+
+  async promotions(clinicId: string, interval: BillingInterval) {
+    const quote = await this.quote(clinicId, { interval });
+    return {
+      stackable: false,
+      promotions:
+        interval === BillingInterval.yearly && quote.trialEligible
+          ? [
+              {
+                code: PROMOTION_CODE,
+                percentOff: 10,
+                appliesTo: 'first_charge',
+                discount: 1000,
+                currency: 'USD',
+                amountUnit: 'minor',
+                available: quote.available,
+              },
+            ]
+          : [],
+    };
+  }
+
+  paymentMethods(clinicId: string) {
+    return this.savedMethods.list(clinicId);
+  }
+
+  async createCheckout(
+    clinicId: string,
+    dto: CreateBillingCheckoutDto,
+    actorId?: string,
+  ) {
+    if (dto.paymentMethodId) {
+      if (!dto.requestId || !actorId || dto.acceptRecurringBilling !== true)
+        throw new BadRequestException(
+          'Request ID and recurring billing consent are required',
+        );
+      if (dto.planCode !== MembershipPlanCode.premium)
+        throw new BadRequestException(
+          'Only premium subscriptions are billable',
+        );
+      return this.renewals.start(clinicId, actorId, {
+        interval: dto.interval,
+        promotionCode: dto.promotionCode,
+        paymentMethodId: dto.paymentMethodId,
+        requestId: dto.requestId,
+        acceptRecurringBilling: dto.acceptRecurringBilling,
+        startTrial: dto.startTrial,
+      });
+    }
+    if (dto.planCode !== MembershipPlanCode.premium) {
+      throw new BadRequestException('Only premium subscriptions are billable');
+    }
+    if (dto.promotionCode && !dto.startTrial) {
+      throw new BadRequestException(
+        'Promotions require the membership trial offer',
+      );
+    }
+    // Serialize checkout attempts for a clinic, including requests from other instances.
+    return this.clinicRepository.manager.transaction(async (manager) => {
+      await manager.query(
+        'SELECT pg_advisory_xact_lock(hashtextextended($1, 0))',
+        [`membership-checkout:${clinicId}`],
+      );
+      const current = await this.membershipService.ensureSubscription(clinicId);
+      if (
+        (current.providerSubscriptionId &&
+          ![SubscriptionStatus.canceled, SubscriptionStatus.expired].includes(
+            current.status,
+          )) ||
+        current.planCode === MembershipPlanCode.premium
+      ) {
+        throw new ConflictException(
+          'A subscription already exists; confirm, restore or cancel it first',
+        );
+      }
+      if (
+        dto.startTrial &&
+        (current.trialStartedAt ||
+          current.licenseIssuedAt ||
+          current.recurringConsentAt)
+      ) {
+        throw new ConflictException('The clinic has already used its trial');
+      }
+      const quote = dto.startTrial
+        ? membershipQuote(dto.interval, dto.promotionCode)
+        : undefined;
+      const created = await this.paypalProvider.createSubscription({
+        clinicId,
+        requestId: createHash('sha256')
+          .update(
+            JSON.stringify([
+              clinicId,
+              current.id,
+              current.updatedAt,
+              dto.interval,
+              Boolean(dto.startTrial),
+              quote?.promotionCode ?? null,
+            ]),
+          )
+          .digest('hex')
+          .slice(0, 38),
+        planCode: dto.planCode,
+        interval: dto.interval,
+        startTrial: dto.startTrial,
+        promotionCode: quote?.promotionCode,
+      });
+      await this.membershipService.beginProviderSubscription({
+        clinicId,
+        provider: created.provider,
+        providerSubscriptionId: created.providerSubscriptionId,
+        providerPlanId: created.providerPlanId,
+        providerStatus: created.providerStatus,
+        checkoutQuote: quote,
+      });
+      return { ...created, status: 'approval_required', quote: quote ?? null };
+    });
+  }
+
+  async confirm(clinicId: string, providerSubscriptionId?: string) {
+    const subscription =
+      await this.membershipService.ensureSubscription(clinicId);
+    if (subscription.billingMode === 'vault') {
+      if (
+        providerSubscriptionId &&
+        providerSubscriptionId !== subscription.providerSubscriptionId
+      )
+        throw new BadRequestException(
+          'Subscription does not belong to this clinic',
+        );
+      return this.renewals.processClinic(clinicId);
+    }
+    const id = providerSubscriptionId ?? subscription.providerSubscriptionId;
+    if (
+      !id ||
+      id !== subscription.providerSubscriptionId ||
+      subscription.billingProvider !== BillingProvider.paypal
+    ) {
+      throw new BadRequestException(
+        'No matching PayPal subscription for this clinic',
+      );
+    }
+    const details = await this.paypalProvider.getSubscription(id);
+    if (
+      details.clinicId !== clinicId ||
+      details.providerPlanId !== subscription.providerPlanId
+    ) {
+      throw new BadRequestException(
+        'Provider subscription does not match this clinic and plan',
+      );
+    }
+    // Reuse the verified-provider synchronization path; no client-supplied status or amounts.
+    await this.processPayPalEvent(
+      this.paypalProvider,
+      {
+        event_type: 'BILLING.SUBSCRIPTION.UPDATED',
+        resource: { id },
+      },
+      undefined,
+      details,
+    );
+    return this.membershipService.getCurrent(clinicId);
+  }
+
+  async cancel(clinicId: string) {
+    const subscription =
+      await this.membershipService.ensureSubscription(clinicId);
+    if (subscription.billingMode === 'vault')
+      return this.renewals.cancel(clinicId);
+    if (
+      !subscription.providerSubscriptionId ||
+      subscription.billingProvider !== BillingProvider.paypal
+    ) {
+      throw new BadRequestException('No PayPal subscription to cancel');
+    }
+    const details = await this.paypalProvider.getSubscription(
+      subscription.providerSubscriptionId,
+    );
+    if (details.clinicId !== clinicId)
+      throw new BadRequestException('Subscription ownership mismatch');
+    if (details.providerStatus !== 'CANCELLED') {
+      await this.paypalProvider.cancelSubscription(
+        subscription.providerSubscriptionId,
+      );
+    }
+    return this.membershipService.markProviderSubscription({
+      provider: BillingProvider.paypal,
+      providerSubscriptionId: subscription.providerSubscriptionId,
+      status: SubscriptionStatus.canceled,
+      providerStatus: 'CANCELLED',
+      cancelAtPeriodEnd: false,
+    });
   }
 
   async handlePayPalWebhook(headers: IncomingHttpHeaders, payload: unknown) {
@@ -110,7 +354,14 @@ export class BillingService {
         }),
       ));
 
-    await this.processPayPalEvent(provider, event, eventId);
+    if (
+      eventType.startsWith('PAYMENT.CAPTURE.') ||
+      eventType === 'CHECKOUT.ORDER.APPROVED'
+    ) {
+      await this.renewals.handleProviderEvent(eventType, event.resource ?? {});
+    } else {
+      await this.processPayPalEvent(provider, event, eventId);
+    }
 
     savedEvent.processedAt = new Date();
     await this.webhookEventRepository.save(savedEvent);
@@ -126,7 +377,10 @@ export class BillingService {
   private async processPayPalEvent(
     provider: BillingProviderAdapter,
     event: ProviderWebhookPayload,
-    eventId: string,
+    eventId?: string,
+    verifiedDetails?: Awaited<
+      ReturnType<PayPalBillingProvider['getSubscription']>
+    >,
   ) {
     const providerSubscriptionId = this.extractProviderSubscriptionId(event);
 
@@ -142,9 +396,35 @@ export class BillingService {
         'PAYMENT.SALE.COMPLETED',
       ].includes(event.event_type ?? '')
     ) {
-      const details = await provider.getSubscription(providerSubscriptionId);
+      const details =
+        verifiedDetails ??
+        (await provider.getSubscription(providerSubscriptionId));
 
       if (this.isActivePayPalStatus(details.providerStatus)) {
+        const local = details.clinicId
+          ? await this.membershipService.ensureSubscription(details.clinicId)
+          : null;
+        if (
+          !local ||
+          local.providerSubscriptionId !== providerSubscriptionId ||
+          local.providerPlanId !== details.providerPlanId
+        ) {
+          throw new BadRequestException(
+            'Subscription does not match current clinic checkout',
+          );
+        }
+        if (local.checkoutQuote && !details.currentPeriodStart) {
+          throw new BadRequestException(
+            'Provider has not confirmed the trial start date',
+          );
+        }
+        const trialStartedAt = local.checkoutQuote
+          ? (local.trialStartedAt ?? details.currentPeriodStart)
+          : null;
+        const trialEndsAt = trialStartedAt
+          ? (local.trialEndsAt ??
+            new Date(trialStartedAt.getTime() + 14 * 86400000))
+          : null;
         const activation =
           await this.membershipService.activateProviderSubscription({
             clinicId: details.clinicId ?? undefined,
@@ -156,6 +436,8 @@ export class BillingService {
             currentPeriodStart: details.currentPeriodStart,
             currentPeriodEnd: details.currentPeriodEnd,
             webhookEventId: eventId,
+            trialStartedAt,
+            trialEndsAt,
           });
 
         if (activation.issuedLicenseKey) {
@@ -180,20 +462,7 @@ export class BillingService {
       return;
     }
 
-    if (event.event_type === 'BILLING.SUBSCRIPTION.CREATED') {
-      const details = await provider.getSubscription(providerSubscriptionId);
-
-      if (details.clinicId) {
-        await this.membershipService.beginProviderSubscription({
-          clinicId: details.clinicId ?? undefined,
-          provider: BillingProvider.paypal,
-          providerSubscriptionId,
-          providerPlanId: details.providerPlanId ?? '',
-          providerStatus: details.providerStatus ?? 'CREATED',
-        });
-      }
-      return;
-    }
+    if (event.event_type === 'BILLING.SUBSCRIPTION.CREATED') return;
 
     if (event.event_type === 'BILLING.SUBSCRIPTION.PAYMENT.FAILED') {
       await this.membershipService.markProviderSubscription({

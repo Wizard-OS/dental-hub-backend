@@ -8,6 +8,9 @@ export interface CreateProviderSubscriptionInput {
   clinicId: string;
   planCode: MembershipPlanCode;
   interval: BillingInterval;
+  requestId?: string;
+  startTrial?: boolean;
+  promotionCode?: string | null;
 }
 
 export interface CreatedProviderSubscription {
@@ -19,6 +22,8 @@ export interface CreatedProviderSubscription {
 }
 
 export interface ProviderSubscriptionDetails {
+  trialStartedAt?: Date | null;
+  trialEndsAt?: Date | null;
   providerSubscriptionId: string;
   providerPlanId: string | null;
   providerCustomerId: string | null;

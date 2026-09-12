@@ -1,4 +1,9 @@
-import { BadRequestException, Injectable, Logger } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  Logger,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { IncomingHttpHeaders } from 'http';
 
 import { getEnv, getRequiredEnv } from '../../config/env';
@@ -12,6 +17,16 @@ import {
   ProviderSubscriptionDetails,
   ProviderWebhookVerification,
 } from '../interfaces/billing-provider-adapter.interface';
+
+import { membershipQuote, offerPlanId } from '../membership-offer';
+
+interface PlanCycle {
+  sequence: number;
+  tenure_type: string;
+  total_cycles: number;
+  frequency: { interval_unit: string; interval_count: number };
+  pricing_scheme?: { fixed_price?: { value: string; currency_code: string } };
+}
 
 interface PayPalLink {
   href?: string;
@@ -51,13 +66,22 @@ export class PayPalBillingProvider implements BillingProviderAdapter {
       throw new BadRequestException('Only premium subscriptions are billable');
     }
 
-    const providerPlanId = this.getPlanId(input.interval);
+    const providerPlanId = input.startTrial
+      ? offerPlanId(input.interval, input.promotionCode)
+      : this.getPlanId(input.interval);
+    if (!providerPlanId)
+      throw new ServiceUnavailableException(
+        'Membership offer is not configured',
+      );
+    if (input.startTrial) await this.validateOfferPlan(providerPlanId, input);
+
     const subscription = await this.paypalRequest<PayPalSubscriptionResponse>(
       '/v1/billing/subscriptions',
       {
         method: 'POST',
         headers: {
           Prefer: 'return=representation',
+          ...(input.requestId ? { 'PayPal-Request-Id': input.requestId } : {}),
         },
         body: {
           plan_id: providerPlanId,
@@ -91,6 +115,73 @@ export class PayPalBillingProvider implements BillingProviderAdapter {
       providerStatus: subscription.status ?? 'CREATED',
       approvalUrl,
     };
+  }
+
+  private async validateOfferPlan(
+    planId: string,
+    input: CreateProviderSubscriptionInput,
+  ) {
+    const plan = await this.paypalRequest<{
+      status: string;
+      billing_cycles: PlanCycle[];
+      payment_preferences?: { setup_fee?: { value: string } };
+      taxes?: { percentage: string };
+      quantity_supported?: boolean;
+    }>(`/v1/billing/plans/${encodeURIComponent(planId)}`, { method: 'GET' });
+    const quote = membershipQuote(input.interval, input.promotionCode);
+    const cycles = [...(plan.billing_cycles ?? [])].sort(
+      (a, b) => a.sequence - b.sequence,
+    );
+    const amount = (cycle: PlanCycle) =>
+      Math.round(Number(cycle.pricing_scheme?.fixed_price?.value ?? 0) * 100);
+    const expected = [
+      { unit: 'DAY', count: 14, type: 'TRIAL', total: 1, amount: 0 },
+      ...(quote.promotionCode
+        ? [{ unit: 'YEAR', count: 1, type: 'TRIAL', total: 1, amount: 9000 }]
+        : []),
+      {
+        unit: input.interval === BillingInterval.yearly ? 'YEAR' : 'MONTH',
+        count: 1,
+        type: 'REGULAR',
+        total: 0,
+        amount: quote.renewalAmount,
+      },
+    ];
+    if (
+      plan.status !== 'ACTIVE' ||
+      plan.quantity_supported ||
+      Number(plan.payment_preferences?.setup_fee?.value ?? 0) !== 0 ||
+      Number(plan.taxes?.percentage ?? 0) !== 0 ||
+      cycles.length !== expected.length ||
+      expected.some((e, i) => {
+        const c = cycles[i];
+        return (
+          !c ||
+          c.sequence !== i + 1 ||
+          c.tenure_type !== e.type ||
+          c.total_cycles !== e.total ||
+          c.frequency?.interval_unit !== e.unit ||
+          c.frequency?.interval_count !== e.count ||
+          amount(c) !== e.amount ||
+          (c.pricing_scheme?.fixed_price &&
+            c.pricing_scheme.fixed_price.currency_code !== 'USD')
+        );
+      })
+    ) {
+      throw new ServiceUnavailableException(
+        'PayPal plan does not match the advertised membership offer',
+      );
+    }
+  }
+
+  async cancelSubscription(id: string) {
+    await this.paypalRequest(
+      `/v1/billing/subscriptions/${encodeURIComponent(id)}/cancel`,
+      {
+        method: 'POST',
+        body: { reason: 'Canceled by clinic administrator' },
+      },
+    );
   }
 
   async verifyWebhook(
@@ -155,17 +246,23 @@ export class PayPalBillingProvider implements BillingProviderAdapter {
     return getRequiredEnv('PAYPAL_PREMIUM_YEARLY_PLAN_ID');
   }
 
-  private async paypalRequest<T>(
+  async paypalRequest<T>(
     path: string,
     options: {
-      method: 'GET' | 'POST';
+      method: 'GET' | 'POST' | 'DELETE';
       headers?: Record<string, string>;
       body?: Record<string, unknown>;
     },
   ): Promise<T> {
+    if (!getEnv('PAYPAL_CLIENT_ID') || !getEnv('PAYPAL_CLIENT_SECRET')) {
+      throw new ServiceUnavailableException(
+        'PayPal credentials are not configured',
+      );
+    }
     const accessToken = await this.getAccessToken();
     const response = await fetch(`${this.baseUrl}${path}`, {
       method: options.method,
+      signal: AbortSignal.timeout(15000),
       headers: {
         Authorization: `Bearer ${accessToken}`,
         'Content-Type': 'application/json',
@@ -175,11 +272,13 @@ export class PayPalBillingProvider implements BillingProviderAdapter {
     });
 
     if (!response.ok) {
-      const message = await response.text();
-      this.logger.error(`PayPal API error ${response.status}: ${message}`);
-      throw new BadRequestException('PayPal request failed');
+      this.logger.error(
+        `PayPal API request failed with status ${response.status}`,
+      );
+      throw new PayPalRequestError(response.status);
     }
 
+    if (response.status === 204) return undefined as T;
     return (await response.json()) as T;
   }
 
@@ -191,6 +290,7 @@ export class PayPalBillingProvider implements BillingProviderAdapter {
     );
     const response = await fetch(`${this.baseUrl}/v1/oauth2/token`, {
       method: 'POST',
+      signal: AbortSignal.timeout(15000),
       headers: {
         Authorization: `Basic ${credentials}`,
         'Content-Type': 'application/x-www-form-urlencoded',
@@ -199,8 +299,7 @@ export class PayPalBillingProvider implements BillingProviderAdapter {
     });
 
     if (!response.ok) {
-      const message = await response.text();
-      this.logger.error(`PayPal OAuth error ${response.status}: ${message}`);
+      this.logger.error(`PayPal OAuth failed with status ${response.status}`);
       throw new BadRequestException('PayPal authentication failed');
     }
 
@@ -234,5 +333,11 @@ export class PayPalBillingProvider implements BillingProviderAdapter {
 
     const date = new Date(value);
     return Number.isNaN(date.getTime()) ? null : date;
+  }
+}
+
+export class PayPalRequestError extends BadRequestException {
+  constructor(readonly providerStatus: number) {
+    super('PayPal request failed');
   }
 }

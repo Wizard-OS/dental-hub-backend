@@ -9,6 +9,7 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 
+import type { MembershipQuote } from '../../billing/membership-offer';
 import { Clinic } from '../../clinics/entities/clinic.entity';
 import { ClinicMembership } from '../../clinic-memberships/entities/clinic-membership.entity';
 import { BillingProvider } from '../interfaces/billing-provider.enum';
@@ -69,6 +70,73 @@ export class ClinicSubscription {
 
   @Column('text', { nullable: true })
   providerPlanId: string | null;
+
+  @Column('jsonb', { nullable: true })
+  checkoutQuote: MembershipQuote | null;
+
+  @Column('timestamptz', { nullable: true })
+  trialStartedAt: Date | null;
+
+  @Column('timestamptz', { nullable: true })
+  trialEndsAt: Date | null;
+
+  @Column('text', { default: 'subscription' })
+  billingMode: 'subscription' | 'vault';
+
+  @Column('uuid', { nullable: true })
+  checkoutRequestId: string | null;
+
+  @Column('uuid', { nullable: true })
+  selectedPaymentMethodId: string | null;
+
+  @Column('jsonb', { nullable: true })
+  paymentMethodSummary: {
+    id: string;
+    type: string;
+    brand: string | null;
+    last4: string | null;
+    expiry: string | null;
+    maskedEmail: string | null;
+  } | null;
+
+  @Column('timestamptz', { nullable: true })
+  billingAnchorAt: Date | null;
+
+  @Column('timestamptz', { nullable: true })
+  nextChargeAt: Date | null;
+
+  @Column('int', { default: 0 })
+  paidCycles: number;
+
+  @Column('timestamptz', { nullable: true })
+  recurringConsentAt: Date | null;
+
+  @Column('uuid', { nullable: true })
+  recurringConsentMembershipId: string | null;
+
+  @Column('timestamptz', { nullable: true })
+  reminderDueAt: Date | null;
+
+  @Column('timestamptz', { nullable: true })
+  reminderSentAt: Date | null;
+
+  @Column('timestamptz', { nullable: true })
+  reminderFirstAttemptAt: Date | null;
+
+  @Column('timestamptz', { nullable: true })
+  reminderNextAttemptAt: Date | null;
+
+  @Column('int', { default: 0 })
+  reminderAttempts: number;
+
+  @Column('text', { nullable: true })
+  reminderError: string | null;
+
+  @Column('text', { nullable: true })
+  reminderProviderId: string | null;
+
+  @Column('jsonb', { nullable: true, select: false })
+  reminderMessage: { to: string; subject: string; text: string } | null;
 
   @Column('text', { nullable: true })
   providerStatus: string | null;
