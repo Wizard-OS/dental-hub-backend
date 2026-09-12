@@ -243,6 +243,31 @@
       "key": "paypalProviderStatus",
       "value": "",
       "type": "string"
+    },
+    {
+      "key": "membershipPaymentMethodId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "membershipSetupSessionId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "membershipChargeId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "membershipRequestId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "examsId",
+      "value": "",
+      "type": "string"
     }
   ],
   "item": [
@@ -521,7 +546,7 @@
             "description": "Crear clínica",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Dental Clinic Center\",\n  \"phone\": \"+59824000000\",\n  \"email\": \"contacto@dentalhub.com\",\n  \"address\": \"Av. 18 de Julio 1234\",\n  \"logoUrl\": \"https://example.com/logo.png\",\n  \"timezone\": \"America/Mexico_City\",\n  \"currency\": \"MXN\",\n  \"workingHoursJson\": {\n    \"monday\": [\n      {\n        \"from\": \"09:00\",\n        \"to\": \"18:00\"\n      }\n    ]\n  }\n}",
+              "raw": "{\n  \"name\": \"Dental Clinic Center\",\n  \"phone\": \"+59824000000\",\n  \"email\": \"contacto@dentalhub.com\",\n  \"address\": \"Av. 18 de Julio 1234\",\n  \"logoUrl\": \"https://example.com/logo.png\",\n  \"timezone\": \"America/Mexico_City\",\n  \"countryCode\": \"UY\",\n  \"currency\": \"MXN\",\n  \"workingHoursJson\": {\n    \"monday\": [\n      {\n        \"from\": \"09:00\",\n        \"to\": \"18:00\"\n      }\n    ]\n  }\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -603,7 +628,7 @@
             "description": "Crear paciente",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"clinicId\": \"a1b2c3d4-e5f6-7890-abcd-ef1234567890\",\n  \"email\": \"paciente@email.com\",\n  \"firstName\": \"María\",\n  \"lastName\": \"López\",\n  \"documentId\": \"UY-12345678\",\n  \"birthDate\": \"1990-05-15\",\n  \"gender\": \"Female\",\n  \"address\": \"Av. Principal 123\",\n  \"phone\": \"+5491112345678\",\n  \"emergencyContact\": \"Laura López +59891111111\",\n  \"observations\": \"Prefiere turnos por la mañana\",\n  \"medicalHistory\": \"Hipertensión controlada\",\n  \"dentalHistory\": \"Bruxismo nocturno\"\n}",
+              "raw": "{\n  \"clinicId\": \"a1b2c3d4-e5f6-7890-abcd-ef1234567890\",\n  \"email\": \"paciente@email.com\",\n  \"firstName\": \"María\",\n  \"lastName\": \"López\",\n  \"documentId\": \"UY-12345678\",\n  \"birthDate\": \"1990-05-15\",\n  \"gender\": \"Female\",\n  \"address\": \"Av. Principal 123\",\n  \"profession\": \"Arquitecto\",\n  \"streetAddress\": \"Av. Principal\",\n  \"addressNumber\": \"1234\",\n  \"neighborhood\": \"Pocitos\",\n  \"city\": \"Montevideo\",\n  \"postalCode\": \"11300\",\n  \"phone\": \"+5491112345678\",\n  \"profilePhotoFileId\": \"a1b2c3d4-e5f6-7890-abcd-ef1234567890\",\n  \"profilePhotoUrl\": \"https://example.com/uploads/patient-files/foto.jpg\",\n  \"emergencyContact\": \"Laura López +59891111111\",\n  \"observations\": \"Prefiere turnos por la mañana\",\n  \"medicalHistory\": \"Hipertensión controlada\",\n  \"dentalHistory\": \"Bruxismo nocturno\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -661,9 +686,21 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/appointments/types/all",
+              "raw": "{{baseUrl}}/appointments/types/all?search={{search}}&includeInactive=false",
               "host": ["{{baseUrl}}"],
-              "path": ["appointments", "types", "all"]
+              "path": ["appointments", "types", "all"],
+              "query": [
+                {
+                  "key": "search",
+                  "value": "{{search}}",
+                  "disabled": true
+                },
+                {
+                  "key": "includeInactive",
+                  "value": "false",
+                  "disabled": true
+                }
+              ]
             },
             "description": "Listar tipos de cita"
           }
@@ -687,7 +724,7 @@
             "description": "Crear cita",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"clinicId\": \"a1b2c3d4-e5f6-7890-abcd-ef1234567890\",\n  \"patientId\": \"b2c3d4e5-f6a7-8901-bcde-f12345678901\",\n  \"dentistId\": \"c3d4e5f6-a7b8-9012-cdef-123456789012\",\n  \"professionalMembershipId\": \"{{professionalMembershipId}}\",\n  \"appointmentTypeId\": \"{{appointmentTypeId}}\",\n  \"description\": \"Limpieza dental general\",\n  \"startTime\": \"2026-04-15T09:00:00.000Z\",\n  \"endTime\": \"2026-04-15T10:00:00.000Z\",\n  \"status\": 0,\n  \"reason\": \"Dolor de muela\",\n  \"cancelReason\": \"{{cancelReason}}\",\n  \"createdByMembershipId\": \"{{createdByMembershipId}}\"\n}",
+              "raw": "{\n  \"clinicId\": \"a1b2c3d4-e5f6-7890-abcd-ef1234567890\",\n  \"patientId\": \"b2c3d4e5-f6a7-8901-bcde-f12345678901\",\n  \"dentistId\": \"c3d4e5f6-a7b8-9012-cdef-123456789012\",\n  \"professionalMembershipId\": \"{{professionalMembershipId}}\",\n  \"appointmentTypeId\": \"{{appointmentTypeId}}\",\n  \"description\": \"Limpieza dental general\",\n  \"startTime\": \"2026-04-15T09:00:00.000Z\",\n  \"endTime\": \"2026-04-15T10:00:00.000Z\",\n  \"status\": 0,\n  \"confirmationStatus\": \"pending\",\n  \"confirmationRequestedAt\": \"2026-09-14T10:00:00.000Z\",\n  \"confirmedAt\": \"2026-09-14T12:00:00.000Z\",\n  \"lastRescheduledAt\": \"2026-09-14T12:30:00.000Z\",\n  \"rescheduleCount\": 1,\n  \"reason\": \"Dolor de muela\",\n  \"cancelReason\": \"{{cancelReason}}\",\n  \"createdByMembershipId\": \"{{createdByMembershipId}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -728,7 +765,7 @@
             "description": "Crear tipo de cita",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"clinicId\": \"{{clinicId}}\",\n  \"name\": \"Limpieza\",\n  \"durationMin\": 30,\n  \"defaultPrice\": \"500.00\",\n  \"color\": \"#3498db\",\n  \"isActive\": true\n}",
+              "raw": "{\n  \"clinicId\": \"{{clinicId}}\",\n  \"name\": \"Limpieza\",\n  \"durationMin\": 30,\n  \"defaultPrice\": \"500.00\",\n  \"color\": \"#3498db\",\n  \"currency\": \"UYU\",\n  \"isActive\": true\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -812,7 +849,7 @@
             "description": "Crear nota clínica",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"clinicalRecordId\": \"{{clinicalRecordId}}\",\n  \"content\": \"Se realizó limpieza dental profunda\",\n  \"reason\": \"Dolor al masticar\",\n  \"diagnosis\": \"Caries profunda pieza 36\",\n  \"procedure\": \"Restauración temporal\",\n  \"indications\": \"Control en 7 días\",\n  \"observations\": \"Paciente tolera bien el procedimiento\",\n  \"toothCodes\": [\n    \"36\"\n  ]\n}",
+              "raw": "{\n  \"clinicalRecordId\": \"{{clinicalRecordId}}\",\n  \"content\": \"Se realizó limpieza dental profunda\",\n  \"reason\": \"Dolor al masticar\",\n  \"diagnosis\": \"Caries profunda pieza 36\",\n  \"procedure\": \"Restauración temporal\",\n  \"indications\": \"Control en 7 días\",\n  \"observations\": \"Paciente tolera bien el procedimiento\",\n  \"toothCodes\": [\n    \"36\"\n  ],\n  \"title\": \"Control de ortodoncia\",\n  \"occurredAt\": \"2026-09-08T13:00:00Z\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -853,7 +890,7 @@
             "description": "Crear registro clínico",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"patientId\": \"{{patientId}}\",\n  \"allergies\": \"Penicilina\",\n  \"chronicDiseases\": \"Diabetes tipo 2\",\n  \"medicalHistory\": \"Cirugías previas sin complicaciones\",\n  \"dentalHistory\": \"Tratamiento de conducto en pieza 11\",\n  \"observations\": \"Paciente ansioso en consulta\"\n}",
+              "raw": "{\n  \"patientId\": \"{{patientId}}\",\n  \"allergies\": \"Penicilina\",\n  \"chronicDiseases\": \"Diabetes tipo 2\",\n  \"medicalHistory\": \"Cirugías previas sin complicaciones\",\n  \"dentalHistory\": \"Tratamiento de conducto en pieza 11\",\n  \"observations\": \"Paciente ansioso en consulta\",\n  \"bloodType\": \"A+\",\n  \"healthInsurance\": \"{{healthInsurance}}\",\n  \"currentMedication\": \"{{currentMedication}}\",\n  \"habits\": \"{{habits}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1577,6 +1614,44 @@
           }
         },
         {
+          "name": "Obtener tipo de cita",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-clinic-id",
+                "value": "{{clinicId}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/appointments/types/{{appointmentTypeId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["appointments", "types", "{{appointmentTypeId}}"]
+            },
+            "description": "Obtener tipo de cita"
+          }
+        },
+        {
+          "name": "Colores usados recientemente en tipos de cita de la clínica",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-clinic-id",
+                "value": "{{clinicId}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/appointments/types/recent-colors",
+              "host": ["{{baseUrl}}"],
+              "path": ["appointments", "types", "recent-colors"]
+            },
+            "description": "Colores usados recientemente en tipos de cita de la clínica"
+          }
+        },
+        {
           "name": "Actualizar cita",
           "request": {
             "method": "PATCH",
@@ -1595,7 +1670,7 @@
             "description": "Actualizar cita",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"clinicId\": \"a1b2c3d4-e5f6-7890-abcd-ef1234567890\",\n  \"patientId\": \"b2c3d4e5-f6a7-8901-bcde-f12345678901\",\n  \"dentistId\": \"c3d4e5f6-a7b8-9012-cdef-123456789012\",\n  \"professionalMembershipId\": \"{{professionalMembershipId}}\",\n  \"appointmentTypeId\": \"{{appointmentTypeId}}\",\n  \"description\": \"Limpieza dental general\",\n  \"startTime\": \"2026-04-15T09:00:00.000Z\",\n  \"endTime\": \"2026-04-15T10:00:00.000Z\",\n  \"status\": 0,\n  \"reason\": \"Dolor de muela\",\n  \"cancelReason\": \"{{cancelReason}}\",\n  \"createdByMembershipId\": \"{{createdByMembershipId}}\"\n}",
+              "raw": "{\n  \"clinicId\": \"a1b2c3d4-e5f6-7890-abcd-ef1234567890\",\n  \"patientId\": \"b2c3d4e5-f6a7-8901-bcde-f12345678901\",\n  \"dentistId\": \"c3d4e5f6-a7b8-9012-cdef-123456789012\",\n  \"professionalMembershipId\": \"{{professionalMembershipId}}\",\n  \"appointmentTypeId\": \"{{appointmentTypeId}}\",\n  \"description\": \"Limpieza dental general\",\n  \"startTime\": \"2026-04-15T09:00:00.000Z\",\n  \"endTime\": \"2026-04-15T10:00:00.000Z\",\n  \"status\": 0,\n  \"confirmationStatus\": \"pending\",\n  \"confirmationRequestedAt\": \"2026-09-14T10:00:00.000Z\",\n  \"confirmedAt\": \"2026-09-14T12:00:00.000Z\",\n  \"lastRescheduledAt\": \"2026-09-14T12:30:00.000Z\",\n  \"rescheduleCount\": 1,\n  \"reason\": \"Dolor de muela\",\n  \"cancelReason\": \"{{cancelReason}}\",\n  \"createdByMembershipId\": \"{{createdByMembershipId}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1623,7 +1698,7 @@
             "description": "Actualizar tipo de cita",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"clinicId\": \"{{clinicId}}\",\n  \"name\": \"Limpieza\",\n  \"durationMin\": 30,\n  \"defaultPrice\": \"500.00\",\n  \"color\": \"#3498db\",\n  \"isActive\": true\n}",
+              "raw": "{\n  \"clinicId\": \"{{clinicId}}\",\n  \"name\": \"Limpieza\",\n  \"durationMin\": 30,\n  \"defaultPrice\": \"500.00\",\n  \"color\": \"#3498db\",\n  \"currency\": \"UYU\",\n  \"isActive\": true\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1989,7 +2064,7 @@
             "description": "Actualizar clínica desde backoffice",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Dental Clinic Center\",\n  \"phone\": \"+59824000000\",\n  \"email\": \"contacto@dentalhub.com\",\n  \"address\": \"Av. 18 de Julio 1234\",\n  \"logoUrl\": \"https://example.com/logo.png\",\n  \"timezone\": \"America/Mexico_City\",\n  \"currency\": \"MXN\",\n  \"workingHoursJson\": {\n    \"monday\": [\n      {\n        \"from\": \"09:00\",\n        \"to\": \"18:00\"\n      }\n    ]\n  },\n  \"isActive\": true\n}",
+              "raw": "{\n  \"name\": \"Dental Clinic Center\",\n  \"phone\": \"+59824000000\",\n  \"email\": \"contacto@dentalhub.com\",\n  \"address\": \"Av. 18 de Julio 1234\",\n  \"logoUrl\": \"https://example.com/logo.png\",\n  \"timezone\": \"America/Mexico_City\",\n  \"countryCode\": \"UY\",\n  \"currency\": \"MXN\",\n  \"workingHoursJson\": {\n    \"monday\": [\n      {\n        \"from\": \"09:00\",\n        \"to\": \"18:00\"\n      }\n    ]\n  },\n  \"isActive\": true\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -2088,7 +2163,7 @@
             "description": "Crear checkout de suscripción Premium con PayPal",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"planCode\": \"free\",\n  \"interval\": \"monthly\"\n}",
+              "raw": "{\n  \"paymentMethodId\": \"{{paymentMethodId}}\",\n  \"requestId\": \"{{requestId}}\",\n  \"acceptRecurringBilling\": true,\n  \"planCode\": \"free\",\n  \"interval\": \"monthly\",\n  \"startTrial\": false,\n  \"promotionCode\": \"BIENVENIDA10\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -2267,6 +2342,62 @@
           }
         },
         {
+          "name": "Obtener nota clínica por ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-clinic-id",
+                "value": "{{clinicId}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/clinical-notes/patient/{{patientId}}?limit=[object Object]&offset=[object Object]&from={{from}}&to={{to}}&search={{search}}&clinicalNoteId={{clinicalNoteId}}&authorMembershipId={{authorMembershipId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["clinical-notes", "patient", "{{patientId}}"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "[object Object]",
+                  "disabled": true
+                },
+                {
+                  "key": "offset",
+                  "value": "[object Object]",
+                  "disabled": true
+                },
+                {
+                  "key": "from",
+                  "value": "{{from}}",
+                  "disabled": true
+                },
+                {
+                  "key": "to",
+                  "value": "{{to}}",
+                  "disabled": true
+                },
+                {
+                  "key": "search",
+                  "value": "{{search}}",
+                  "disabled": true
+                },
+                {
+                  "key": "clinicalNoteId",
+                  "value": "{{clinicalNoteId}}",
+                  "disabled": true
+                },
+                {
+                  "key": "authorMembershipId",
+                  "value": "{{authorMembershipId}}",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Obtener nota clínica por ID"
+          }
+        },
+        {
           "name": "Actualizar nota clínica",
           "request": {
             "method": "PATCH",
@@ -2285,7 +2416,7 @@
             "description": "Actualizar nota clínica",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"clinicalRecordId\": \"{{clinicalRecordId}}\",\n  \"content\": \"Se realizó limpieza dental profunda\",\n  \"reason\": \"Dolor al masticar\",\n  \"diagnosis\": \"Caries profunda pieza 36\",\n  \"procedure\": \"Restauración temporal\",\n  \"indications\": \"Control en 7 días\",\n  \"observations\": \"Paciente tolera bien el procedimiento\",\n  \"toothCodes\": [\n    \"36\"\n  ]\n}",
+              "raw": "{\n  \"clinicalRecordId\": \"{{clinicalRecordId}}\",\n  \"content\": \"Se realizó limpieza dental profunda\",\n  \"reason\": \"Dolor al masticar\",\n  \"diagnosis\": \"Caries profunda pieza 36\",\n  \"procedure\": \"Restauración temporal\",\n  \"indications\": \"Control en 7 días\",\n  \"observations\": \"Paciente tolera bien el procedimiento\",\n  \"toothCodes\": [\n    \"36\"\n  ],\n  \"title\": \"Control de ortodoncia\",\n  \"occurredAt\": \"2026-09-08T13:00:00Z\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -2338,6 +2469,25 @@
           }
         },
         {
+          "name": "Obtener registro clínico por ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-clinic-id",
+                "value": "{{clinicId}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/clinical-records/patient/{{patientId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["clinical-records", "patient", "{{patientId}}"]
+            },
+            "description": "Obtener registro clínico por ID"
+          }
+        },
+        {
           "name": "Actualizar registro clínico",
           "request": {
             "method": "PATCH",
@@ -2356,7 +2506,7 @@
             "description": "Actualizar registro clínico",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"patientId\": \"{{patientId}}\",\n  \"allergies\": \"Penicilina\",\n  \"chronicDiseases\": \"Diabetes tipo 2\",\n  \"medicalHistory\": \"Cirugías previas sin complicaciones\",\n  \"dentalHistory\": \"Tratamiento de conducto en pieza 11\",\n  \"observations\": \"Paciente ansioso en consulta\"\n}",
+              "raw": "{\n  \"patientId\": \"{{patientId}}\",\n  \"allergies\": \"Penicilina\",\n  \"chronicDiseases\": \"Diabetes tipo 2\",\n  \"medicalHistory\": \"Cirugías previas sin complicaciones\",\n  \"dentalHistory\": \"Tratamiento de conducto en pieza 11\",\n  \"observations\": \"Paciente ansioso en consulta\",\n  \"bloodType\": \"A+\",\n  \"healthInsurance\": \"{{healthInsurance}}\",\n  \"currentMedication\": \"{{currentMedication}}\",\n  \"habits\": \"{{habits}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -2403,6 +2553,25 @@
           }
         },
         {
+          "name": "Obtener configuración de agenda de la clínica",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-clinic-id",
+                "value": "{{clinicId}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/clinics/{{clinicId}}/appointment-settings",
+              "host": ["{{baseUrl}}"],
+              "path": ["clinics", "{{clinicId}}", "appointment-settings"]
+            },
+            "description": "Obtener configuración de agenda de la clínica"
+          }
+        },
+        {
           "name": "Actualizar clínica",
           "request": {
             "method": "PATCH",
@@ -2421,7 +2590,35 @@
             "description": "Actualizar clínica",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Dental Clinic Center\",\n  \"phone\": \"+59824000000\",\n  \"email\": \"contacto@dentalhub.com\",\n  \"address\": \"Av. 18 de Julio 1234\",\n  \"logoUrl\": \"https://example.com/logo.png\",\n  \"timezone\": \"America/Mexico_City\",\n  \"currency\": \"MXN\",\n  \"workingHoursJson\": {\n    \"monday\": [\n      {\n        \"from\": \"09:00\",\n        \"to\": \"18:00\"\n      }\n    ]\n  }\n}",
+              "raw": "{\n  \"name\": \"Dental Clinic Center\",\n  \"phone\": \"+59824000000\",\n  \"email\": \"contacto@dentalhub.com\",\n  \"address\": \"Av. 18 de Julio 1234\",\n  \"logoUrl\": \"https://example.com/logo.png\",\n  \"timezone\": \"America/Mexico_City\",\n  \"countryCode\": \"UY\",\n  \"currency\": \"MXN\",\n  \"workingHoursJson\": {\n    \"monday\": [\n      {\n        \"from\": \"09:00\",\n        \"to\": \"18:00\"\n      }\n    ]\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Actualizar configuración de agenda de la clínica",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "x-clinic-id",
+                "value": "{{clinicId}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/clinics/{{clinicId}}/appointment-settings",
+              "host": ["{{baseUrl}}"],
+              "path": ["clinics", "{{clinicId}}", "appointment-settings"]
+            },
+            "description": "Actualizar configuración de agenda de la clínica",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"availability\": {\n    \"scope\": \"clinic\",\n    \"weekly\": [\n      {\n        \"dayOfWeek\": 1,\n        \"isOpen\": true,\n        \"startTime\": \"09:00\",\n        \"endTime\": \"18:00\"\n      }\n    ],\n    \"breaks\": [\n      {\n        \"name\": \"Almuerzo\",\n        \"daysOfWeek\": [\n          1,\n          2,\n          3,\n          4,\n          5\n        ],\n        \"startTime\": \"13:00\",\n        \"endTime\": \"14:00\"\n      }\n    ],\n    \"specialDates\": [\n      {\n        \"date\": \"2026-09-25\",\n        \"isClosed\": true,\n        \"reason\": \"Feriado\",\n        \"startTime\": \"10:00\",\n        \"endTime\": \"14:00\"\n      }\n    ]\n  },\n  \"scheduling\": {\n    \"defaultDurationMin\": 30,\n    \"slotIntervalMin\": 15,\n    \"bufferBetweenAppointmentsMin\": 10\n  },\n  \"reminders\": {\n    \"enabled\": true,\n    \"channels\": [\n      \"whatsapp\",\n      \"email\"\n    ],\n    \"noticesBeforeMinutes\": [\n      1440,\n      120\n    ],\n    \"messageTemplate\": \"Hola, {nombre}. Te recordamos tu cita de {tipo} el {fecha} a las {hora}.\"\n  },\n  \"confirmation\": {\n    \"enabled\": true,\n    \"requestBeforeMinutes\": 1440,\n    \"responseDeadlineBeforeMinutes\": 120,\n    \"channel\": \"email\",\n    \"noResponseAction\": \"keep_pending\",\n    \"messageTemplate\": \"Hola, {nombre}. ¿Confirmas tu cita de {tipo} para el {fecha} a las {hora}?\"\n  },\n  \"bookingRules\": {\n    \"patientBookingEnabled\": true,\n    \"minNoticeMinutes\": 120,\n    \"maxAdvanceDays\": 60,\n    \"maxActiveAppointmentsPerPatient\": 3,\n    \"approvalMode\": \"automatic\"\n  },\n  \"changeRules\": {\n    \"cancellation\": {\n      \"enabled\": true,\n      \"minNoticeMinutes\": 1440\n    },\n    \"reschedule\": {\n      \"enabled\": true,\n      \"minNoticeMinutes\": 1440,\n      \"maxChangesPerAppointment\": 2\n    },\n    \"outOfWindowAction\": \"contact_clinic\",\n    \"notifyProfessional\": true\n  }\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -2435,6 +2632,19 @@
     {
       "name": "Common",
       "item": [
+        {
+          "name": "Listar países disponibles para configuración",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/common/countries",
+              "host": ["{{baseUrl}}"],
+              "path": ["common", "countries"]
+            },
+            "description": "Listar países disponibles para configuración"
+          }
+        },
         {
           "name": "Reporte de tratamientos activos",
           "request": {
@@ -2880,6 +3090,48 @@
       "name": "Membership",
       "item": [
         {
+          "name": "Eliminar un método guardado de PayPal",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "x-clinic-id",
+                "value": "{{clinicId}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/membership/payment-methods/{{membershipPaymentMethodId}}",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "membership",
+                "payment-methods",
+                "{{membershipPaymentMethodId}}"
+              ]
+            },
+            "description": "Eliminar un método guardado de PayPal"
+          }
+        },
+        {
+          "name": "Historial de cobros recurrentes de la membresía",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-clinic-id",
+                "value": "{{clinicId}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/membership/charges",
+              "host": ["{{baseUrl}}"],
+              "path": ["membership", "charges"]
+            },
+            "description": "Historial de cobros recurrentes de la membresía"
+          }
+        },
+        {
           "name": "Consultar membresía comercial actual",
           "request": {
             "method": "GET",
@@ -2896,6 +3148,94 @@
               "path": ["membership", "current"]
             },
             "description": "Consultar membresía comercial actual"
+          }
+        },
+        {
+          "name": "Métodos guardados de la membresía y capacidades del proveedor",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-clinic-id",
+                "value": "{{clinicId}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/membership/payment-methods",
+              "host": ["{{baseUrl}}"],
+              "path": ["membership", "payment-methods"]
+            },
+            "description": "Métodos guardados de la membresía y capacidades del proveedor"
+          }
+        },
+        {
+          "name": "Catálogo Premium, precios en centavos y capacidades de pago",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-clinic-id",
+                "value": "{{clinicId}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/membership/plans",
+              "host": ["{{baseUrl}}"],
+              "path": ["membership", "plans"]
+            },
+            "description": "Catálogo Premium, precios en centavos y capacidades de pago"
+          }
+        },
+        {
+          "name": "Promociones disponibles para el intervalo seleccionado",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-clinic-id",
+                "value": "{{clinicId}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/membership/promotions?interval=yearly&promotionCode=BIENVENIDA10",
+              "host": ["{{baseUrl}}"],
+              "path": ["membership", "promotions"],
+              "query": [
+                {
+                  "key": "interval",
+                  "value": "yearly",
+                  "disabled": false
+                },
+                {
+                  "key": "promotionCode",
+                  "value": "BIENVENIDA10",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Promociones disponibles para el intervalo seleccionado"
+          }
+        },
+        {
+          "name": "Estado de configuración de pagos y avisos, sin exponer secretos",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-clinic-id",
+                "value": "{{clinicId}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/membership/readiness",
+              "host": ["{{baseUrl}}"],
+              "path": ["membership", "readiness"]
+            },
+            "description": "Estado de configuración de pagos y avisos, sin exponer secretos"
           }
         },
         {
@@ -2918,6 +3258,266 @@
             "body": {
               "mode": "raw",
               "raw": "{\n  \"planCode\": \"premium\",\n  \"reason\": \"Upgrade manual MVP\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Seleccionar el método de próximos cobros",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "x-clinic-id",
+                "value": "{{clinicId}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/membership/payment-methods/default",
+              "host": ["{{baseUrl}}"],
+              "path": ["membership", "payment-methods", "default"]
+            },
+            "description": "Seleccionar el método de próximos cobros",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"paymentMethodId\": \"{{membershipPaymentMethodId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Cancelar suscripción en PayPal y finalizar acceso Premium inmediatamente",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-clinic-id",
+                "value": "{{clinicId}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/membership/cancel",
+              "host": ["{{baseUrl}}"],
+              "path": ["membership", "cancel"]
+            },
+            "description": "Cancelar suscripción en PayPal y finalizar acceso Premium inmediatamente"
+          }
+        },
+        {
+          "name": "Verificar una orden PayPal de este cobro y recuperar un resultado incierto",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-clinic-id",
+                "value": "{{clinicId}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/membership/charges/{{membershipChargeId}}/reconcile",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "membership",
+                "charges",
+                "{{membershipChargeId}}",
+                "reconcile"
+              ]
+            },
+            "description": "Verificar una orden PayPal de este cobro y recuperar un resultado incierto",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"providerOrderId\": \"{{providerOrderId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Reintentar un cobro fallido sin duplicar su orden",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-clinic-id",
+                "value": "{{clinicId}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/membership/charges/{{membershipChargeId}}/retry",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "membership",
+                "charges",
+                "{{membershipChargeId}}",
+                "retry"
+              ]
+            },
+            "description": "Reintentar un cobro fallido sin duplicar su orden"
+          }
+        },
+        {
+          "name": "Confirmar aprobación consultando la suscripción en PayPal",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-clinic-id",
+                "value": "{{clinicId}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/membership/confirm",
+              "host": ["{{baseUrl}}"],
+              "path": ["membership", "confirm"]
+            },
+            "description": "Confirmar aprobación consultando la suscripción en PayPal",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"providerSubscriptionId\": \"I-ABC123DEF456\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Iniciar tokenización de tarjeta o autorización PayPal, sin datos de tarjeta en el backend",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-clinic-id",
+                "value": "{{clinicId}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/membership/payment-methods/setup",
+              "host": ["{{baseUrl}}"],
+              "path": ["membership", "payment-methods", "setup"]
+            },
+            "description": "Iniciar tokenización de tarjeta o autorización PayPal, sin datos de tarjeta en el backend",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"card\",\n  \"requestId\": \"{{membershipRequestId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Guardar un método tras verificar la aprobación y propiedad en PayPal",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-clinic-id",
+                "value": "{{clinicId}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/membership/payment-methods/setup/{{membershipSetupSessionId}}/confirm",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "membership",
+                "payment-methods",
+                "setup",
+                "{{membershipSetupSessionId}}",
+                "confirm"
+              ]
+            },
+            "description": "Guardar un método tras verificar la aprobación y propiedad en PayPal"
+          }
+        },
+        {
+          "name": "Previsualizar plan, promoción y primer cobro; no inicia la prueba",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-clinic-id",
+                "value": "{{clinicId}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/membership/quote",
+              "host": ["{{baseUrl}}"],
+              "path": ["membership", "quote"]
+            },
+            "description": "Previsualizar plan, promoción y primer cobro; no inicia la prueba",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"interval\": \"yearly\",\n  \"promotionCode\": \"BIENVENIDA10\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Restaurar el estado de la suscripción PayPal vinculada a esta clínica",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-clinic-id",
+                "value": "{{clinicId}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/membership/restore",
+              "host": ["{{baseUrl}}"],
+              "path": ["membership", "restore"]
+            },
+            "description": "Restaurar el estado de la suscripción PayPal vinculada a esta clínica"
+          }
+        },
+        {
+          "name": "Confirmar membresía con un método guardado y consentimiento de renovación",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-clinic-id",
+                "value": "{{clinicId}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/membership/start",
+              "host": ["{{baseUrl}}"],
+              "path": ["membership", "start"]
+            },
+            "description": "Confirmar membresía con un método guardado y consentimiento de renovación",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"interval\": \"yearly\",\n  \"promotionCode\": \"BIENVENIDA10\",\n  \"paymentMethodId\": \"{{membershipPaymentMethodId}}\",\n  \"acceptRecurringBilling\": true,\n  \"requestId\": \"{{membershipRequestId}}\",\n  \"startTrial\": true\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -3298,6 +3898,161 @@
       ]
     },
     {
+      "name": "Patient Exams",
+      "item": [
+        {
+          "name": "Eliminar examen complementario",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "x-clinic-id",
+                "value": "{{clinicId}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/patients/{{patientId}}/exams/{{examsId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["patients", "{{patientId}}", "exams", "{{examsId}}"]
+            },
+            "description": "Eliminar examen complementario"
+          }
+        },
+        {
+          "name": "Listar exámenes complementarios",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-clinic-id",
+                "value": "{{clinicId}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/patients/{{patientId}}/exams?limit=[object Object]&offset=[object Object]&from={{from}}&to={{to}}&search={{search}}&clinicalNoteId={{clinicalNoteId}}&category=radiography",
+              "host": ["{{baseUrl}}"],
+              "path": ["patients", "{{patientId}}", "exams"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "[object Object]",
+                  "disabled": true
+                },
+                {
+                  "key": "offset",
+                  "value": "[object Object]",
+                  "disabled": true
+                },
+                {
+                  "key": "from",
+                  "value": "{{from}}",
+                  "disabled": true
+                },
+                {
+                  "key": "to",
+                  "value": "{{to}}",
+                  "disabled": true
+                },
+                {
+                  "key": "search",
+                  "value": "{{search}}",
+                  "disabled": true
+                },
+                {
+                  "key": "clinicalNoteId",
+                  "value": "{{clinicalNoteId}}",
+                  "disabled": true
+                },
+                {
+                  "key": "category",
+                  "value": "radiography",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Listar exámenes complementarios"
+          }
+        },
+        {
+          "name": "Obtener examen complementario por ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-clinic-id",
+                "value": "{{clinicId}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/patients/{{patientId}}/exams/{{examsId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["patients", "{{patientId}}", "exams", "{{examsId}}"]
+            },
+            "description": "Obtener examen complementario por ID"
+          }
+        },
+        {
+          "name": "Actualizar examen complementario",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "x-clinic-id",
+                "value": "{{clinicId}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/patients/{{patientId}}/exams/{{examsId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["patients", "{{patientId}}", "exams", "{{examsId}}"]
+            },
+            "description": "Actualizar examen complementario",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Mediciones cefalométricas\",\n  \"category\": \"radiography\",\n  \"performedAt\": \"2026-09-02T12:30:00Z\",\n  \"description\": \"Generado desde Postman\",\n  \"clinicalNoteId\": \"{{clinicalNoteId}}\",\n  \"measurements\": [\n    {\n      \"name\": \"SNA\",\n      \"value\": 82,\n      \"unit\": \"degrees\",\n      \"reference\": \"82 ± 2\"\n    }\n  ],\n  \"fileIds\": [\n    \"{{fileId}}\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Crear examen complementario",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-clinic-id",
+                "value": "{{clinicId}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/patients/{{patientId}}/exams",
+              "host": ["{{baseUrl}}"],
+              "path": ["patients", "{{patientId}}", "exams"]
+            },
+            "description": "Crear examen complementario",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Mediciones cefalométricas\",\n  \"category\": \"radiography\",\n  \"performedAt\": \"2026-09-02T12:30:00Z\",\n  \"description\": \"Generado desde Postman\",\n  \"clinicalNoteId\": \"{{clinicalNoteId}}\",\n  \"measurements\": [\n    {\n      \"name\": \"SNA\",\n      \"value\": 82,\n      \"unit\": \"degrees\",\n      \"reference\": \"82 ± 2\"\n    }\n  ],\n  \"fileIds\": [\n    \"{{fileId}}\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
       "name": "Patient Files",
       "item": [
         {
@@ -3410,6 +4165,35 @@
               ]
             }
           }
+        },
+        {
+          "name": "Subir foto de perfil del paciente",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-clinic-id",
+                "value": "{{clinicId}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/patients/{{patientId}}/profile-photo",
+              "host": ["{{baseUrl}}"],
+              "path": ["patients", "{{patientId}}", "profile-photo"]
+            },
+            "description": "Subir foto de perfil del paciente",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": []
+                }
+              ]
+            }
+          }
         }
       ]
     },
@@ -3473,7 +4257,7 @@
             "description": "Actualizar paciente",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"clinicId\": \"a1b2c3d4-e5f6-7890-abcd-ef1234567890\",\n  \"email\": \"paciente@email.com\",\n  \"firstName\": \"María\",\n  \"lastName\": \"López\",\n  \"documentId\": \"UY-12345678\",\n  \"birthDate\": \"1990-05-15\",\n  \"gender\": \"Female\",\n  \"address\": \"Av. Principal 123\",\n  \"phone\": \"+5491112345678\",\n  \"emergencyContact\": \"Laura López +59891111111\",\n  \"observations\": \"Prefiere turnos por la mañana\",\n  \"medicalHistory\": \"Hipertensión controlada\",\n  \"dentalHistory\": \"Bruxismo nocturno\"\n}",
+              "raw": "{\n  \"clinicId\": \"a1b2c3d4-e5f6-7890-abcd-ef1234567890\",\n  \"email\": \"paciente@email.com\",\n  \"firstName\": \"María\",\n  \"lastName\": \"López\",\n  \"documentId\": \"UY-12345678\",\n  \"birthDate\": \"1990-05-15\",\n  \"gender\": \"Female\",\n  \"address\": \"Av. Principal 123\",\n  \"profession\": \"Arquitecto\",\n  \"streetAddress\": \"Av. Principal\",\n  \"addressNumber\": \"1234\",\n  \"neighborhood\": \"Pocitos\",\n  \"city\": \"Montevideo\",\n  \"postalCode\": \"11300\",\n  \"phone\": \"+5491112345678\",\n  \"profilePhotoFileId\": \"a1b2c3d4-e5f6-7890-abcd-ef1234567890\",\n  \"profilePhotoUrl\": \"https://example.com/uploads/patient-files/foto.jpg\",\n  \"emergencyContact\": \"Laura López +59891111111\",\n  \"observations\": \"Prefiere turnos por la mañana\",\n  \"medicalHistory\": \"Hipertensión controlada\",\n  \"dentalHistory\": \"Bruxismo nocturno\"\n}",
               "options": {
                 "raw": {
                   "language": "json"

@@ -1,5 +1,7 @@
 # Feature 12 - Planes SaaS
 
+> Implementación actual (septiembre 2026): consultar [contratos de membresía y checkout](../membership-checkout-contracts.md). El alcance MVP histórico que sigue no describe todos los endpoints actuales.
+
 ## Epica Jira
 
 **DH-SaaS - Preparacion de planes y limites comerciales**

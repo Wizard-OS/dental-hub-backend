@@ -51,6 +51,10 @@ const REQUIRED_VARIABLES = [
   ['patientAssignmentId', ''],
   ['userSessionId', ''],
   ['supportRequestId', ''],
+  ['membershipPaymentMethodId', ''],
+  ['membershipSetupSessionId', ''],
+  ['membershipChargeId', ''],
+  ['membershipRequestId', ''],
   ['billingInterval', 'monthly'],
   ['paypalSubscriptionId', ''],
   ['paypalApprovalUrl', ''],
@@ -505,6 +509,13 @@ function variableForPathParam(paramName, pathName) {
   if (paramName === 'itemId') return 'invoiceItemId';
   if (paramName !== 'id') return paramName;
 
+  if (normalizeOpenApiPath(pathName).startsWith('/membership/')) {
+    if (pathName.includes('/payment-methods/setup/'))
+      return 'membershipSetupSessionId';
+    if (pathName.includes('/payment-methods/'))
+      return 'membershipPaymentMethodId';
+    if (pathName.includes('/charges/')) return 'membershipChargeId';
+  }
   const segments = normalizeOpenApiPath(pathName).split('/').filter(Boolean);
   const idIndex = segments.findIndex((segment) => segment === '{id}');
   const previous = segments[idIndex - 1];
@@ -603,6 +614,16 @@ function buildItem(
   }
 
   const body = requestBodyForOperation(openapi, operation);
+  if (
+    body?.mode === 'raw' &&
+    normalizeOpenApiPath(pathName).startsWith('/membership/')
+  ) {
+    const value = JSON.parse(body.raw);
+    if ('paymentMethodId' in value)
+      value.paymentMethodId = '{{membershipPaymentMethodId}}';
+    if ('requestId' in value) value.requestId = '{{membershipRequestId}}';
+    body.raw = JSON.stringify(value, null, 2);
+  }
   const item = {
     name: requestName(method, pathName, operation, existing?.item),
     request: {
