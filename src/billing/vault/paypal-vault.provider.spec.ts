@@ -1,3 +1,4 @@
+import { PayPalBillingProvider } from '../providers/paypal-billing.provider';
 import { PayPalVaultProvider } from './paypal-vault.provider';
 
 describe('PayPal Vault/Orders wire contracts', () => {
@@ -18,8 +19,10 @@ describe('PayPal Vault/Orders wire contracts', () => {
           ? 'https://example.com/return'
           : 'test'),
     );
-    request = jest.fn(async () => ({ id: 'provider-result' }));
-    provider = new PayPalVaultProvider({ paypalRequest: request } as any);
+    request = jest.fn().mockResolvedValue({ id: 'provider-result' });
+    provider = new PayPalVaultProvider({
+      paypalRequest: request,
+    } as unknown as PayPalBillingProvider);
   });
   afterEach(() =>
     keys.forEach((k, i) => {

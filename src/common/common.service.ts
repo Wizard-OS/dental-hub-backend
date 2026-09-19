@@ -36,55 +36,64 @@ export class CommonService {
   ) {}
 
   async getDashboard(clinicId: string): Promise<DashboardResponse> {
-    const [invoices, payments, appointments, expenses, reminders] =
-      await Promise.all([
-        this.invoiceRepository.find({ where: { clinicId } }),
-        this.paymentRepository
-          .createQueryBuilder('payment')
-          .innerJoin('payment.invoice', 'invoice')
-          .where('invoice.clinicId = :clinicId', { clinicId })
-          .andWhere('payment.voidedAt IS NULL')
-          .getMany(),
-        this.appointmentRepository.find({ where: { clinicId } }),
-        this.expenseRepository.find({ where: { clinicId } }),
-        this.reminderRepository
-          .createQueryBuilder('reminder')
-          .innerJoin('reminder.appointment', 'appointment')
-          .where('appointment.clinicId = :clinicId', { clinicId })
-          .getMany(),
-      ]);
+    const [
+      invoiceSummary,
+      paidSummary,
+      expenseSummary,
+      appointmentsCount,
+      remindersCount,
+      invoiceStatusRows,
+      reminderStatusRows,
+    ] = await Promise.all([
+      this.invoiceRepository
+        .createQueryBuilder('invoice')
+        .select('COALESCE(SUM(invoice.totalAmount), 0)', 'total')
+        .addSelect('COUNT(invoice.id)', 'count')
+        .where('invoice.clinicId = :clinicId', { clinicId })
+        .getRawOne<{ total: string | number | null; count: string | number }>(),
+      this.paymentRepository
+        .createQueryBuilder('payment')
+        .innerJoin('payment.invoice', 'invoice')
+        .select('COALESCE(SUM(payment.amount), 0)', 'total')
+        .where('invoice.clinicId = :clinicId', { clinicId })
+        .andWhere('payment.voidedAt IS NULL')
+        .getRawOne<{ total: string | number | null }>(),
+      this.expenseRepository
+        .createQueryBuilder('expense')
+        .select('COALESCE(SUM(expense.amount), 0)', 'total')
+        .addSelect('COUNT(expense.id)', 'count')
+        .where('expense.clinicId = :clinicId', { clinicId })
+        .getRawOne<{ total: string | number | null; count: string | number }>(),
+      this.appointmentRepository.count({ where: { clinicId } }),
+      this.reminderRepository
+        .createQueryBuilder('reminder')
+        .innerJoin('reminder.appointment', 'appointment')
+        .where('appointment.clinicId = :clinicId', { clinicId })
+        .getCount(),
+      this.invoiceRepository
+        .createQueryBuilder('invoice')
+        .select('invoice.status', 'status')
+        .addSelect('COUNT(invoice.id)', 'count')
+        .where('invoice.clinicId = :clinicId', { clinicId })
+        .groupBy('invoice.status')
+        .getRawMany<{ status: InvoiceStatus; count: string | number }>(),
+      this.reminderRepository
+        .createQueryBuilder('reminder')
+        .innerJoin('reminder.appointment', 'appointment')
+        .select('reminder.status', 'status')
+        .addSelect('COUNT(reminder.id)', 'count')
+        .where('appointment.clinicId = :clinicId', { clinicId })
+        .groupBy('reminder.status')
+        .getRawMany<{ status: ReminderStatus; count: string | number }>(),
+    ]);
 
-    const invoiceTotal = invoices.reduce(
-      (acc, item) => acc + Number(item.totalAmount),
-      0,
-    );
-    const paidTotal = payments.reduce(
-      (acc, item) => acc + Number(item.amount),
-      0,
-    );
-    const expenseTotal = expenses.reduce(
-      (acc, item) => acc + Number(item.amount),
-      0,
-    );
-
-    const invoicesByStatus = {
-      pending: invoices.filter((i) => i.status === InvoiceStatus.PENDING)
-        .length,
-      partiallyPaid: invoices.filter(
-        (i) => i.status === InvoiceStatus.PARTIALLY_PAID,
-      ).length,
-      paid: invoices.filter((i) => i.status === InvoiceStatus.PAID).length,
-      overdue: invoices.filter((i) => i.status === InvoiceStatus.OVERDUE)
-        .length,
-    };
-
-    const remindersByStatus = {
-      scheduled: reminders.filter((r) => r.status === ReminderStatus.SCHEDULED)
-        .length,
-      sent: reminders.filter((r) => r.status === ReminderStatus.SENT).length,
-      failed: reminders.filter((r) => r.status === ReminderStatus.FAILED)
-        .length,
-    };
+    const invoiceTotal = this.rawNumber(invoiceSummary?.total);
+    const paidTotal = this.rawNumber(paidSummary?.total);
+    const expenseTotal = this.rawNumber(expenseSummary?.total);
+    const invoicesCount = this.rawNumber(invoiceSummary?.count);
+    const expensesCount = this.rawNumber(expenseSummary?.count);
+    const invoicesByStatus = this.invoiceStatusBreakdown(invoiceStatusRows);
+    const remindersByStatus = this.reminderStatusBreakdown(reminderStatusRows);
 
     return {
       financial: {
@@ -95,10 +104,10 @@ export class CommonService {
         pendingReceivable: (invoiceTotal - paidTotal).toFixed(2),
       },
       operations: {
-        appointments: appointments.length,
-        reminders: reminders.length,
-        invoices: invoices.length,
-        expenses: expenses.length,
+        appointments: appointmentsCount,
+        reminders: remindersCount,
+        invoices: invoicesCount,
+        expenses: expensesCount,
       },
       breakdown: {
         invoicesByStatus,
@@ -106,6 +115,53 @@ export class CommonService {
       },
       generatedAt: new Date().toISOString(),
     };
+  }
+
+  private rawNumber(value: string | number | null | undefined): number {
+    const parsed = Number(value ?? 0);
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+
+  private invoiceStatusBreakdown(
+    rows: { status: InvoiceStatus; count: string | number }[],
+  ) {
+    const summary = {
+      pending: 0,
+      partiallyPaid: 0,
+      paid: 0,
+      overdue: 0,
+    };
+
+    for (const row of rows) {
+      const count = this.rawNumber(row.count);
+      if (row.status === InvoiceStatus.PENDING) summary.pending = count;
+      if (row.status === InvoiceStatus.PARTIALLY_PAID) {
+        summary.partiallyPaid = count;
+      }
+      if (row.status === InvoiceStatus.PAID) summary.paid = count;
+      if (row.status === InvoiceStatus.OVERDUE) summary.overdue = count;
+    }
+
+    return summary;
+  }
+
+  private reminderStatusBreakdown(
+    rows: { status: ReminderStatus; count: string | number }[],
+  ) {
+    const summary = {
+      scheduled: 0,
+      sent: 0,
+      failed: 0,
+    };
+
+    for (const row of rows) {
+      const count = this.rawNumber(row.count);
+      if (row.status === ReminderStatus.SCHEDULED) summary.scheduled = count;
+      if (row.status === ReminderStatus.SENT) summary.sent = count;
+      if (row.status === ReminderStatus.FAILED) summary.failed = count;
+    }
+
+    return summary;
   }
 
   async getAppointmentsReport(

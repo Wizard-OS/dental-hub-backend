@@ -7,10 +7,20 @@ import { membershipQuote } from './membership-offer';
 
 describe('Membership checkout lifecycle', () => {
   let service: BillingService;
-  let current: any;
-  let membership: any;
-  let provider: any;
-  let details: any;
+  let current: Record<string, unknown>;
+  let membership: {
+    ensureSubscription: jest.Mock;
+    beginProviderSubscription: jest.Mock;
+    getCurrent: jest.Mock;
+    activateProviderSubscription: jest.Mock;
+    markProviderSubscription: jest.Mock;
+  };
+  let provider: {
+    createSubscription: jest.Mock;
+    getSubscription: jest.Mock;
+    cancelSubscription: jest.Mock;
+  };
+  let details: Record<string, unknown>;
   const dto = {
     planCode: MembershipPlanCode.premium,
     interval: BillingInterval.yearly,
@@ -33,48 +43,53 @@ describe('Membership checkout lifecycle', () => {
       currentPeriodEnd: new Date('2026-09-24T00:00:00Z'),
     };
     membership = {
-      ensureSubscription: jest.fn(async () => current),
-      beginProviderSubscription: jest.fn(async (input) =>
-        Object.assign(current, input),
+      ensureSubscription: jest.fn().mockResolvedValue(current),
+      beginProviderSubscription: jest.fn((input: Record<string, unknown>) =>
+        Promise.resolve(Object.assign(current, input)),
       ),
-      getCurrent: jest.fn(async () => ({ status: current.status })),
-      activateProviderSubscription: jest.fn(async () => ({
-        clinicId: 'clinic',
-        issuedLicenseKey: null,
-      })),
+      getCurrent: jest.fn(() => Promise.resolve({ status: current.status })),
+      activateProviderSubscription: jest.fn(() =>
+        Promise.resolve({
+          clinicId: 'clinic',
+          issuedLicenseKey: null,
+        }),
+      ),
       markProviderSubscription: jest.fn(),
     };
     provider = {
-      createSubscription: jest.fn(async () => ({
+      createSubscription: jest.fn().mockResolvedValue({
         provider: BillingProvider.paypal,
         providerSubscriptionId: 'I-123',
         providerPlanId: 'P-1',
         providerStatus: 'APPROVAL_PENDING',
         approvalUrl: 'https://paypal.example/approve',
-      })),
-      getSubscription: jest.fn(async () => details),
+      }),
+      getSubscription: jest.fn(() => Promise.resolve(details)),
       cancelSubscription: jest.fn(),
     };
     const clinics = {
-      manager: { transaction: async (fn) => fn({ query: jest.fn() }) },
+      manager: {
+        transaction: (fn: (manager: { query: jest.Mock }) => unknown) =>
+          Promise.resolve(fn({ query: jest.fn() })),
+      },
     };
     service = new BillingService(
-      {} as any,
-      clinics as any,
-      membership,
-      {} as any,
-      provider,
+      {} as unknown as ConstructorParameters<typeof BillingService>[0],
+      clinics as unknown as ConstructorParameters<typeof BillingService>[1],
+      membership as unknown as ConstructorParameters<typeof BillingService>[2],
+      {} as unknown as ConstructorParameters<typeof BillingService>[3],
+      provider as unknown as ConstructorParameters<typeof BillingService>[4],
       {
-        list: jest.fn(async () => ({
+        list: jest.fn().mockResolvedValue({
           methods: [],
           selectionMode: 'saved_methods',
-        })),
-      } as any,
+        }),
+      } as unknown as ConstructorParameters<typeof BillingService>[5],
       {
         processClinic: jest.fn(),
         cancel: jest.fn(),
         start: jest.fn().mockResolvedValue({ status: 'trialing' }),
-      } as any,
+      } as unknown as ConstructorParameters<typeof BillingService>[6],
     );
   });
   const linked = () =>

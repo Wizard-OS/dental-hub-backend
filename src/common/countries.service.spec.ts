@@ -84,7 +84,7 @@ describe('CountriesService', () => {
   function buildJsonResponse(payload: unknown): Response {
     return {
       ok: true,
-      json: async () => payload,
+      json: () => Promise.resolve(payload),
     } as Response;
   }
 

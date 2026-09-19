@@ -13,12 +13,7 @@ import { CreateClinicDto } from './dto/create-clinic.dto';
 import { UpdateClinicDto } from './dto/update-clinic.dto';
 import {
   AppointmentAvailabilitySettingsDto,
-  AppointmentBookingRulesDto,
   AppointmentBreakDto,
-  AppointmentChangeRulesDto,
-  AppointmentConfirmationSettingsDto,
-  AppointmentReminderSettingsDto,
-  AppointmentSchedulingSettingsDto,
   AppointmentSpecialDateDto,
   AppointmentWorkingDayDto,
   UpdateAppointmentSettingsDto,
@@ -302,7 +297,7 @@ export class ClinicsService {
       ? workingHoursJson
       : {};
     const saved = this.isObject(container.appointmentSettings)
-      ? (container.appointmentSettings as Partial<AppointmentSettings>)
+      ? container.appointmentSettings
       : {};
     const legacyAvailability = this.legacyAvailability(container);
     const defaults = this.defaultAppointmentSettings();

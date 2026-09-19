@@ -5,8 +5,11 @@ import { SubscriptionStatus } from './interfaces/subscription-status.enum';
 
 describe('Provider trial entitlement', () => {
   let service: MembershipService;
-  let subscription: any;
-  let repository: any;
+  let subscription: Record<string, unknown>;
+  let repository: {
+    findOne: jest.Mock;
+    save: jest.Mock;
+  };
   beforeEach(() => {
     subscription = {
       clinicId: 'clinic',
@@ -15,24 +18,27 @@ describe('Provider trial entitlement', () => {
       providerSubscriptionId: 'I-123',
     };
     repository = {
-      findOne: jest.fn(async () => subscription),
-      save: jest.fn(async (value) => value),
+      findOne: jest.fn().mockResolvedValue(subscription),
+      save: jest.fn((value: unknown) => Promise.resolve(value)),
     };
     service = new MembershipService(
-      repository,
-      { save: jest.fn(), create: jest.fn((v) => v) } as any,
-      {} as any,
-      {} as any,
-      {} as any,
+      repository as unknown as ConstructorParameters<
+        typeof MembershipService
+      >[0],
+      {
+        save: jest.fn(),
+        create: jest.fn((v) => v),
+      } as unknown as ConstructorParameters<typeof MembershipService>[1],
+      {} as unknown as ConstructorParameters<typeof MembershipService>[2],
+      {} as unknown as ConstructorParameters<typeof MembershipService>[3],
+      {} as unknown as ConstructorParameters<typeof MembershipService>[4],
     );
-    jest
-      .spyOn(service as any, 'getUsage')
-      .mockResolvedValue({
-        totalUsers: 1,
-        professionalUsers: 1,
-        activePatients: 1,
-        storageBytes: 0,
-      });
+    jest.spyOn(service as any, 'getUsage').mockResolvedValue({
+      totalUsers: 1,
+      professionalUsers: 1,
+      activePatients: 1,
+      storageBytes: 0,
+    });
   });
   it('grants trial Premium only until the confirmed end date', async () => {
     const start = new Date();

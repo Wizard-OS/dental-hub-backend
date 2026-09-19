@@ -186,8 +186,10 @@ export class CountriesService {
     const flag = this.getRecord(record.flag);
     const currencyCodes = this.extractCurrencyCodes(record.currencies);
     const callingCodes = this.extractCallingCodes(record.calling_codes);
-    const countryCode = String(codes.alpha_2 ?? '').toUpperCase();
-    const countryName = String(names.common ?? countryCode);
+    const alpha2 = typeof codes.alpha_2 === 'string' ? codes.alpha_2 : '';
+    const countryCode = alpha2.toUpperCase();
+    const countryName =
+      typeof names.common === 'string' ? names.common : countryCode;
 
     if (!countryCode || !countryName) {
       throw new InternalServerErrorException(

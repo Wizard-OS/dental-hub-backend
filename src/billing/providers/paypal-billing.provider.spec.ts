@@ -48,15 +48,17 @@ describe('PayPal advertised trial validation', () => {
     provider = new PayPalBillingProvider();
     request = jest
       .spyOn(provider as any, 'paypalRequest')
-      .mockImplementation(async (path: any) =>
-        String(path).includes('/plans/')
-          ? plan
-          : {
-              id: 'I-123',
-              links: [
-                { rel: 'approve', href: 'https://paypal.example/approve' },
-              ],
-            },
+      .mockImplementation((path: unknown) =>
+        Promise.resolve(
+          String(path).includes('/plans/')
+            ? plan
+            : {
+                id: 'I-123',
+                links: [
+                  { rel: 'approve', href: 'https://paypal.example/approve' },
+                ],
+              },
+        ),
       );
   });
   afterEach(() =>

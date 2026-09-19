@@ -39,7 +39,10 @@ export class PatientExamsService {
     this.access.assertCanManageClinical(context);
     await this.access.assertPatientAccessible(context, patientId);
     const { fileIds, ...fields } = dto;
-    const files = await this.validateRelations(patientId, dto);
+    const files = await this.validateRelations(patientId, {
+      ...fields,
+      fileIds,
+    });
     return this.exams.save(this.exams.create({ ...fields, patientId, files }));
   }
 

@@ -16,7 +16,7 @@ describe('ClinicsService appointment settings', () => {
   function serviceWithClinic(value = clinic) {
     const clinicRepository = {
       findOne: jest.fn().mockResolvedValue(value),
-      save: jest.fn(async (entity) => entity),
+      save: jest.fn((entity) => Promise.resolve(entity)),
     };
 
     return {
