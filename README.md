@@ -136,12 +136,13 @@ Referencias:
 
 ### 2. Aplicar migraciones
 
-Antes del primer deploy productivo, aplicar los SQL de `src/migrations` en orden cronológico contra la base externa:
+El backend incluye un runner idempotente para aplicar todos los SQL de
+`src/migrations` en orden cronológico contra la base externa. El runner registra
+cada archivo en `schema_migrations`, valida checksums y evita ejecuciones
+simultáneas con un advisory lock.
 
 ```bash
-for file in $(ls src/migrations/*.sql | sort); do
-  psql "$DATABASE_URL" -f "$file"
-done
+pnpm migrate:sql
 ```
 
 Usar una `DATABASE_URL` de Neon/Supabase con SSL cuando corresponda, por ejemplo con `sslmode=verify-full`.
@@ -160,11 +161,20 @@ En Render:
 corepack enable && pnpm install --frozen-lockfile && pnpm build
 ```
 
-6. Start Command:
+6. Pre-Deploy Command:
+
+```bash
+pnpm migrate:sql
+```
+
+7. Start Command:
 
 ```bash
 pnpm start:prod
 ```
+
+Si el proveedor no tiene Pre-Deploy Command, usar `pnpm start:prod:migrate`
+como Start Command.
 
 No es necesario configurar `PORT`; Render lo provee y `src/main.ts` ya usa `process.env.PORT`.
 
