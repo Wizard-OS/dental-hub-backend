@@ -9,10 +9,16 @@ function queryBuilder({
   rawOne,
   rawMany,
   count,
+  rawOneError,
+  rawManyError,
+  countError,
 }: {
   rawOne?: RawOne;
   rawMany?: RawMany;
   count?: number;
+  rawOneError?: unknown;
+  rawManyError?: unknown;
+  countError?: unknown;
 } = {}) {
   return {
     select: jest.fn().mockReturnThis(),
@@ -21,9 +27,18 @@ function queryBuilder({
     andWhere: jest.fn().mockReturnThis(),
     innerJoin: jest.fn().mockReturnThis(),
     groupBy: jest.fn().mockReturnThis(),
-    getRawOne: jest.fn().mockResolvedValue(rawOne),
-    getRawMany: jest.fn().mockResolvedValue(rawMany ?? []),
-    getCount: jest.fn().mockResolvedValue(count ?? 0),
+    getRawOne:
+      rawOneError === undefined
+        ? jest.fn().mockResolvedValue(rawOne)
+        : jest.fn().mockRejectedValue(rawOneError),
+    getRawMany:
+      rawManyError === undefined
+        ? jest.fn().mockResolvedValue(rawMany ?? [])
+        : jest.fn().mockRejectedValue(rawManyError),
+    getCount:
+      countError === undefined
+        ? jest.fn().mockResolvedValue(count ?? 0)
+        : jest.fn().mockRejectedValue(countError),
   };
 }
 
@@ -35,6 +50,13 @@ function createService({
   remindersCount = 0,
   invoiceStatusRows = [],
   reminderStatusRows = [],
+  invoiceSummaryError,
+  paidSummaryError,
+  expenseSummaryError,
+  appointmentsCountError,
+  remindersCountError,
+  invoiceStatusRowsError,
+  reminderStatusRowsError,
 }: {
   invoiceSummary?: RawOne;
   paidSummary?: RawOne;
@@ -43,13 +65,38 @@ function createService({
   remindersCount?: number;
   invoiceStatusRows?: RawMany;
   reminderStatusRows?: RawMany;
+  invoiceSummaryError?: unknown;
+  paidSummaryError?: unknown;
+  expenseSummaryError?: unknown;
+  appointmentsCountError?: unknown;
+  remindersCountError?: unknown;
+  invoiceStatusRowsError?: unknown;
+  reminderStatusRowsError?: unknown;
 } = {}) {
-  const invoiceSummaryQuery = queryBuilder({ rawOne: invoiceSummary });
-  const invoiceStatusQuery = queryBuilder({ rawMany: invoiceStatusRows });
-  const paidQuery = queryBuilder({ rawOne: paidSummary });
-  const expenseQuery = queryBuilder({ rawOne: expenseSummary });
-  const reminderCountQuery = queryBuilder({ count: remindersCount });
-  const reminderStatusQuery = queryBuilder({ rawMany: reminderStatusRows });
+  const invoiceSummaryQuery = queryBuilder({
+    rawOne: invoiceSummary,
+    rawOneError: invoiceSummaryError,
+  });
+  const invoiceStatusQuery = queryBuilder({
+    rawMany: invoiceStatusRows,
+    rawManyError: invoiceStatusRowsError,
+  });
+  const paidQuery = queryBuilder({
+    rawOne: paidSummary,
+    rawOneError: paidSummaryError,
+  });
+  const expenseQuery = queryBuilder({
+    rawOne: expenseSummary,
+    rawOneError: expenseSummaryError,
+  });
+  const reminderCountQuery = queryBuilder({
+    count: remindersCount,
+    countError: remindersCountError,
+  });
+  const reminderStatusQuery = queryBuilder({
+    rawMany: reminderStatusRows,
+    rawManyError: reminderStatusRowsError,
+  });
 
   const invoiceRepository = {
     createQueryBuilder: jest
@@ -61,7 +108,10 @@ function createService({
     createQueryBuilder: jest.fn().mockReturnValue(paidQuery),
   };
   const appointmentRepository = {
-    count: jest.fn().mockResolvedValue(appointmentsCount),
+    count:
+      appointmentsCountError === undefined
+        ? jest.fn().mockResolvedValue(appointmentsCount)
+        : jest.fn().mockRejectedValue(appointmentsCountError),
   };
   const expenseRepository = {
     createQueryBuilder: jest.fn().mockReturnValue(expenseQuery),
@@ -93,6 +143,19 @@ function createService({
     reminderStatusQuery,
     appointmentRepository,
   };
+}
+
+function silenceDashboardWarnings(service: CommonService) {
+  return jest
+    .spyOn(
+      (
+        service as unknown as {
+          logger: { warn: (...args: unknown[]) => void };
+        }
+      ).logger,
+      'warn',
+    )
+    .mockImplementation();
 }
 
 describe('CommonService', () => {
@@ -207,6 +270,65 @@ describe('CommonService', () => {
       expect(paidQuery.andWhere).toHaveBeenCalledWith(
         'payment.voidedAt IS NULL',
       );
+    });
+
+    it('falls back to zero appointments when the appointment metric fails', async () => {
+      const { service } = createService({
+        invoiceSummary: { total: '100.00', count: '1' },
+        paidSummary: { total: '60.00' },
+        expenseSummary: { total: '10.00', count: '1' },
+        appointmentsCount: 7,
+        appointmentsCountError: new Error('appointments unavailable'),
+      });
+      silenceDashboardWarnings(service);
+
+      const dashboard = await service.getDashboard('clinic-1');
+
+      expect(dashboard.operations).toEqual({
+        appointments: 0,
+        reminders: 0,
+        invoices: 1,
+        expenses: 1,
+      });
+    });
+
+    it('falls back to zero reminder status breakdown when that metric fails', async () => {
+      const { service } = createService({
+        invoiceSummary: { total: '100.00', count: '1' },
+        paidSummary: { total: '60.00' },
+        expenseSummary: { total: '10.00', count: '1' },
+        reminderStatusRowsError: new Error('reminder status unavailable'),
+      });
+      silenceDashboardWarnings(service);
+
+      const dashboard = await service.getDashboard('clinic-1');
+
+      expect(dashboard.breakdown.remindersByStatus).toEqual({
+        scheduled: 0,
+        sent: 0,
+        failed: 0,
+      });
+    });
+
+    it('falls back to zero financial values when financial metrics fail', async () => {
+      const { service } = createService({
+        invoiceSummaryError: new Error('invoice summary unavailable'),
+        paidSummaryError: new Error('paid summary unavailable'),
+        expenseSummaryError: new Error('expense summary unavailable'),
+      });
+      silenceDashboardWarnings(service);
+
+      const dashboard = await service.getDashboard('clinic-1');
+
+      expect(dashboard.financial).toEqual({
+        invoiceTotal: '0.00',
+        paidTotal: '0.00',
+        expenseTotal: '0.00',
+        netTotal: '0.00',
+        pendingReceivable: '0.00',
+      });
+      expect(dashboard.operations.invoices).toBe(0);
+      expect(dashboard.operations.expenses).toBe(0);
     });
   });
 });

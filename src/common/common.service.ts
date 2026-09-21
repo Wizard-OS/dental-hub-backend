@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
@@ -15,6 +15,8 @@ import { TreatmentStatus } from '../treatments/interfaces/treatment-status.enum'
 
 @Injectable()
 export class CommonService {
+  private readonly logger = new Logger(CommonService.name);
+
   constructor(
     @InjectRepository(Invoice)
     private readonly invoiceRepository: Repository<Invoice>,
@@ -36,15 +38,7 @@ export class CommonService {
   ) {}
 
   async getDashboard(clinicId: string): Promise<DashboardResponse> {
-    const [
-      invoiceSummary,
-      paidSummary,
-      expenseSummary,
-      appointmentsCount,
-      remindersCount,
-      invoiceStatusRows,
-      reminderStatusRows,
-    ] = await Promise.all([
+    const results = await Promise.allSettled([
       this.invoiceRepository
         .createQueryBuilder('invoice')
         .select('COALESCE(SUM(invoice.totalAmount), 0)', 'total')
@@ -87,6 +81,49 @@ export class CommonService {
         .getRawMany<{ status: ReminderStatus; count: string | number }>(),
     ]);
 
+    const invoiceSummary = this.dashboardMetric(
+      results[0],
+      'invoiceSummary',
+      clinicId,
+      undefined,
+    );
+    const paidSummary = this.dashboardMetric(
+      results[1],
+      'paidSummary',
+      clinicId,
+      undefined,
+    );
+    const expenseSummary = this.dashboardMetric(
+      results[2],
+      'expenseSummary',
+      clinicId,
+      undefined,
+    );
+    const appointmentsCount = this.dashboardMetric(
+      results[3],
+      'appointmentsCount',
+      clinicId,
+      0,
+    );
+    const remindersCount = this.dashboardMetric(
+      results[4],
+      'remindersCount',
+      clinicId,
+      0,
+    );
+    const invoiceStatusRows = this.dashboardMetric(
+      results[5],
+      'invoiceStatusRows',
+      clinicId,
+      [],
+    );
+    const reminderStatusRows = this.dashboardMetric(
+      results[6],
+      'reminderStatusRows',
+      clinicId,
+      [],
+    );
+
     const invoiceTotal = this.rawNumber(invoiceSummary?.total);
     const paidTotal = this.rawNumber(paidSummary?.total);
     const expenseTotal = this.rawNumber(expenseSummary?.total);
@@ -115,6 +152,26 @@ export class CommonService {
       },
       generatedAt: new Date().toISOString(),
     };
+  }
+
+  private dashboardMetric<T>(
+    result: PromiseSettledResult<T>,
+    metricName: string,
+    clinicId: string,
+    fallback: T,
+  ): T {
+    if (result.status === 'fulfilled') {
+      return result.value;
+    }
+
+    const reason =
+      result.reason instanceof Error ? result.reason.stack : result.reason;
+    this.logger.warn(
+      `Dashboard metric "${metricName}" failed for clinic "${clinicId}". Using fallback value.`,
+      reason,
+    );
+
+    return fallback;
   }
 
   private rawNumber(value: string | number | null | undefined): number {

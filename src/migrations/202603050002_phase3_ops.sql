@@ -23,6 +23,10 @@ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'reminder_status_enum') THEN
     CREATE TYPE reminder_status_enum AS ENUM ('scheduled', 'sent', 'failed', 'cancelled');
   END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'reminder_type_enum') THEN
+    CREATE TYPE reminder_type_enum AS ENUM ('email', 'sms', 'push_notification');
+  END IF;
 END $$;
 
 -- 2) message_templates
@@ -80,6 +84,21 @@ CREATE INDEX IF NOT EXISTS idx_expenses_clinic_spent
   ON expenses ("clinicId", "spentAt");
 
 -- 5) reminders upgrades
+CREATE TABLE IF NOT EXISTS reminders (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  "appointmentId" uuid NOT NULL REFERENCES appointments(id) ON DELETE CASCADE,
+  "templateId" uuid REFERENCES message_templates(id) ON DELETE SET NULL,
+  type reminder_type_enum NOT NULL DEFAULT 'email',
+  channel notification_channel_enum NOT NULL DEFAULT 'email',
+  status reminder_status_enum NOT NULL DEFAULT 'scheduled',
+  "scheduledAt" timestamptz NOT NULL DEFAULT now(),
+  "sentAt" timestamptz,
+  error text
+);
+
+CREATE INDEX IF NOT EXISTS idx_reminders_appointment
+  ON reminders ("appointmentId");
+
 ALTER TABLE reminders
   ADD COLUMN IF NOT EXISTS "templateId" uuid REFERENCES message_templates(id) ON DELETE SET NULL,
   ADD COLUMN IF NOT EXISTS status reminder_status_enum NOT NULL DEFAULT 'scheduled',
