@@ -8,12 +8,15 @@ import { ValidRoles } from './interfaces';
 describe('AuthService password reset', () => {
   let service: AuthService;
   let users: Map<string, User>;
+  let specialties: Map<string, { id: string; isActive: boolean }>;
 
   const userId = 'user-1';
   const email = 'doctor@dentalhub.test';
 
   beforeEach(() => {
     users = new Map<string, User>();
+    specialties = new Map<string, { id: string; isActive: boolean }>();
+    specialties.set('specialty-1', { id: 'specialty-1', isActive: true });
     users.set(userId, {
       id: userId,
       email,
@@ -56,6 +59,23 @@ describe('AuthService password reset', () => {
       find: jest.fn(() => []),
     };
 
+    const specialtyRepository = {
+      findOne: jest.fn(
+        ({ where }: { where: { id?: string; isActive?: boolean } }) => {
+          if (!where.id) return null;
+          const specialty = specialties.get(where.id);
+          if (!specialty) return null;
+          if (
+            where.isActive !== undefined &&
+            specialty.isActive !== where.isActive
+          ) {
+            return null;
+          }
+          return specialty;
+        },
+      ),
+    };
+
     const jwtService = {
       sign: jest.fn(() => 'jwt-token'),
     };
@@ -63,6 +83,7 @@ describe('AuthService password reset', () => {
     service = new AuthService(
       userRepository as never,
       clinicMembershipRepository as never,
+      specialtyRepository as never,
       jwtService as never,
     );
   });
@@ -114,6 +135,41 @@ describe('AuthService password reset', () => {
 
     await expect(
       service.verifyOtp({ email, otp: response.devOtp! }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('updates extended profile fields', async () => {
+    await expect(
+      service.updateProfile(users.get(userId)!, {
+        phone: '+598 95 123 456',
+        birthDate: '1988-05-12T00:00:00.000Z',
+        professionalLicenseNumber: 'CJPPU-12345',
+        professionalSpecialtyId: 'specialty-1',
+        rut: '210000000018',
+      }),
+    ).resolves.toMatchObject({
+      phone: '+598 95 123 456',
+      professionalLicenseNumber: 'CJPPU-12345',
+      professionalSpecialtyId: 'specialty-1',
+      rut: '210000000018',
+      token: 'jwt-token',
+    });
+
+    expect(users.get(userId)!.birthDate).toEqual(
+      new Date('1988-05-12T00:00:00.000Z'),
+    );
+  });
+
+  it('rejects inactive or unknown professional specialties', async () => {
+    specialties.set('inactive-specialty', {
+      id: 'inactive-specialty',
+      isActive: false,
+    });
+
+    await expect(
+      service.updateProfile(users.get(userId)!, {
+        professionalSpecialtyId: 'inactive-specialty',
+      }),
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 });

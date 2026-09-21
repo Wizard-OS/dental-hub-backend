@@ -5,6 +5,8 @@ import {
   CreateDateColumn,
   Entity,
   Index,
+  JoinColumn,
+  ManyToOne,
   OneToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
@@ -14,6 +16,7 @@ import { ValidRoles } from '../interfaces';
 import { Appointment } from '../../appointments/entities/appointment.entity';
 import { ClinicalNote } from '../../clinical-notes/entities/clinical-note.entity';
 import { ClinicMembership } from '../../clinic-memberships/entities/clinic-membership.entity';
+import { ProfessionalSpecialty } from '../../professional-specialties/entities/professional-specialty.entity';
 
 @Entity('users')
 @Index(['email'], { unique: true })
@@ -58,6 +61,30 @@ export class User {
     nullable: true,
   })
   profilePhotoUrl?: string;
+
+  @Column('timestamp', {
+    nullable: true,
+  })
+  birthDate?: Date | null;
+
+  @Column('text', {
+    nullable: true,
+  })
+  professionalLicenseNumber?: string | null;
+
+  @Column('text', {
+    nullable: true,
+  })
+  rut?: string | null;
+
+  @Column('uuid', {
+    nullable: true,
+  })
+  professionalSpecialtyId?: string | null;
+
+  @ManyToOne(() => ProfessionalSpecialty, { nullable: true })
+  @JoinColumn({ name: 'professionalSpecialtyId' })
+  professionalSpecialty?: ProfessionalSpecialty | null;
 
   @Column('text', {
     nullable: true,

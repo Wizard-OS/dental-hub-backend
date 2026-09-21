@@ -14,6 +14,7 @@ import { UserRoleGuard } from './guards/user-role.guard';
 import { ClinicRoleGuard } from './guards/clinic-role.guard';
 import { ClinicPermissionGuard } from './guards/clinic-permission.guard';
 import { getRequiredEnv } from '../config/env';
+import { ProfessionalSpecialty } from '../professional-specialties/entities/professional-specialty.entity';
 
 @Global()
 @Module({
@@ -29,7 +30,7 @@ import { getRequiredEnv } from '../config/env';
   imports: [
     ConfigModule,
 
-    TypeOrmModule.forFeature([User, ClinicMembership]),
+    TypeOrmModule.forFeature([User, ClinicMembership, ProfessionalSpecialty]),
 
     PassportModule.register({ defaultStrategy: 'jwt' }),
 

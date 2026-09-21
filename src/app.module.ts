@@ -44,6 +44,7 @@ import { NotificationPreferencesModule } from './notification-preferences/notifi
 import { MembershipModule } from './membership/membership.module';
 import { BillingModule } from './billing/billing.module';
 import { BackofficeModule } from './backoffice/backoffice.module';
+import { ProfessionalSpecialtiesModule } from './professional-specialties/professional-specialties.module';
 import { getBooleanEnv, getEnv, normalizeDatabaseUrl } from './config/env';
 
 function isSeedEndpointEnabled() {
@@ -141,6 +142,7 @@ function isSeedEndpointEnabled() {
     NotificationPreferencesModule,
     UserSessionsModule,
     PaymentMethodsModule,
+    ProfessionalSpecialtiesModule,
     HelpCenterModule,
   ],
   controllers: [AppController],

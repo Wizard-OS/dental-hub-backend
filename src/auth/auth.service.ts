@@ -14,6 +14,7 @@ import { Repository } from 'typeorm';
 import { JwtPayload } from './interfaces';
 import { User } from './entities/user.entity';
 import { ClinicMembership } from '../clinic-memberships/entities/clinic-membership.entity';
+import { ProfessionalSpecialty } from '../professional-specialties/entities/professional-specialty.entity';
 import {
   CreateUserDto,
   LoginUserDto,
@@ -34,6 +35,9 @@ export class AuthService {
 
     @InjectRepository(ClinicMembership)
     private readonly clinicMembershipRepository: Repository<ClinicMembership>,
+
+    @InjectRepository(ProfessionalSpecialty)
+    private readonly specialtyRepository: Repository<ProfessionalSpecialty>,
 
     private readonly jwtService: JwtService,
   ) {}
@@ -72,6 +76,10 @@ export class AuthService {
         isActive: true,
         roles: true,
         phone: true,
+        birthDate: true,
+        professionalLicenseNumber: true,
+        professionalSpecialtyId: true,
+        rut: true,
         profilePhotoUrl: true,
         createdAt: true,
         updatedAt: true,
@@ -173,7 +181,8 @@ export class AuthService {
   }
 
   async updateProfile(user: User, updateProfileDto: UpdateProfileDto) {
-    const { email, ...rest } = updateProfileDto;
+    const { email, birthDate, professionalSpecialtyId, ...rest } =
+      updateProfileDto;
 
     if (email && email !== user.email) {
       const existing = await this.userRepository.findOne({
@@ -184,9 +193,20 @@ export class AuthService {
       }
     }
 
+    if (professionalSpecialtyId) {
+      const specialty = await this.specialtyRepository.findOne({
+        where: { id: professionalSpecialtyId, isActive: true },
+      });
+      if (!specialty) {
+        throw new BadRequestException('Professional specialty is not valid');
+      }
+    }
+
     await this.userRepository.update(user.id, {
       ...rest,
       ...(email ? { email: email.toLowerCase().trim() } : {}),
+      ...(birthDate ? { birthDate: new Date(birthDate) } : {}),
+      ...(professionalSpecialtyId ? { professionalSpecialtyId } : {}),
     });
 
     const updatedUser = await this.userRepository.findOne({
