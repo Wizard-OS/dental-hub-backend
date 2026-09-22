@@ -93,7 +93,11 @@ try {
 
   console.log('SQL migrations complete');
 } catch (error) {
-  console.error(`SQL migration failed: ${error.code ?? error.message}`);
+  console.error(`SQL migration failed: ${error.code ?? 'unknown'}`);
+  if (error.message) console.error(error.message);
+  if (error.detail) console.error(`Detail: ${error.detail}`);
+  if (error.hint) console.error(`Hint: ${error.hint}`);
+  if (error.position) console.error(`Position: ${error.position}`);
   process.exitCode = 1;
 } finally {
   await client
