@@ -122,7 +122,11 @@ export class AppointmentsService {
 
     const appointment = await this.appointmentRepository.findOne({
       where: { id, clinicId: context.clinicId },
-      relations: ['patient', 'appointmentType', 'professionalMembership'],
+      relations: {
+        patient: true,
+        appointmentType: true,
+        professionalMembership: true,
+      },
     });
 
     if (!appointment) {

@@ -170,11 +170,23 @@ export class BackofficeService {
         'subscription',
         'subscription.clinicId = clinic.id',
       )
-      .loadRelationCountAndMap('clinic.membersCount', 'clinic.memberships')
-      .loadRelationCountAndMap('clinic.patientsCount', 'clinic.patients')
-      .orderBy('clinic.createdAt', 'DESC')
-      .skip(offset)
-      .take(limit);
+      .addSelect(
+        (subQuery) =>
+          subQuery
+            .select('COUNT(*)')
+            .from(ClinicMembership, 'countMembership')
+            .where('countMembership.clinicId = clinic.id'),
+        'clinic_membersCount',
+      )
+      .addSelect(
+        (subQuery) =>
+          subQuery
+            .select('COUNT(*)')
+            .from(Patient, 'countPatient')
+            .where('countPatient.clinicId = clinic.id'),
+        'clinic_patientsCount',
+      )
+      .orderBy('clinic.createdAt', 'DESC');
 
     if (search) {
       query.andWhere(
@@ -198,7 +210,24 @@ export class BackofficeService {
       query.andWhere('subscription.planCode = :planCode', { planCode });
     }
 
-    const [clinics, total] = await query.getManyAndCount();
+    const total = await query.getCount();
+    const { entities: clinics, raw } = await query
+      .skip(offset)
+      .take(limit)
+      .getRawAndEntities();
+    const countsByClinicId = new Map(
+      raw.map((row: Record<string, unknown>) => [
+        row.clinic_id,
+        {
+          membersCount: Number(row.clinic_membersCount ?? 0),
+          patientsCount: Number(row.clinic_patientsCount ?? 0),
+        },
+      ]),
+    );
+
+    for (const clinic of clinics) {
+      Object.assign(clinic, countsByClinicId.get(clinic.id));
+    }
 
     return {
       total,

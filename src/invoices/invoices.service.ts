@@ -79,7 +79,11 @@ export class InvoicesService {
   async findAll(clinicId: string) {
     const invoices = await this.invoiceRepository.find({
       where: { clinicId },
-      relations: ['payments', 'items', 'patient'],
+      relations: {
+        payments: true,
+        items: true,
+        patient: true,
+      },
       order: { issuedAt: 'DESC' },
     });
 
@@ -91,7 +95,11 @@ export class InvoicesService {
 
     const invoice = await this.invoiceRepository.findOne({
       where: { id, clinicId },
-      relations: ['payments', 'items', 'patient'],
+      relations: {
+        payments: true,
+        items: true,
+        patient: true,
+      },
     });
 
     if (!invoice) {
@@ -177,7 +185,9 @@ export class InvoicesService {
   async recalculateStatus(invoiceId: string) {
     const invoice = await this.invoiceRepository.findOne({
       where: { id: invoiceId },
-      relations: ['payments'],
+      relations: {
+        payments: true,
+      },
     });
 
     if (!invoice) return;

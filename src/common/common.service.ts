@@ -323,7 +323,11 @@ export class CommonService {
   async getPendingPaymentsReport(clinicId: string) {
     const invoices = await this.invoiceRepository.find({
       where: { clinicId },
-      relations: ['patient', 'payments', 'items'],
+      relations: {
+        patient: true,
+        payments: true,
+        items: true,
+      },
       order: { issuedAt: 'DESC' },
     });
 
