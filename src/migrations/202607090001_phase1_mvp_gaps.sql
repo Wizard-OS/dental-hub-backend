@@ -107,13 +107,13 @@ ALTER TABLE payments
   ALTER COLUMN method TYPE payments_method_enum
   USING (
     CASE
-      WHEN method = 'card' THEN 'manual_card'::payments_method_enum
-      WHEN method = 'cash' THEN 'cash'::payments_method_enum
-      WHEN method = 'transfer' THEN 'transfer'::payments_method_enum
-      WHEN method = 'manual_card' THEN 'manual_card'::payments_method_enum
-      ELSE 'other'::payments_method_enum
+      WHEN method::text = 'card' THEN 'manual_card'
+      WHEN method::text = 'cash' THEN 'cash'
+      WHEN method::text = 'transfer' THEN 'transfer'
+      WHEN method::text = 'manual_card' THEN 'manual_card'
+      ELSE 'other'
     END
-  );
+  )::payments_method_enum;
 
 DO $$
 BEGIN
