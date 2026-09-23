@@ -23,10 +23,15 @@ import { UpdateAppointmentSettingsDto } from './dto/update-appointment-settings.
 import {
   Auth,
   AuthClinic,
+  ClinicPermissions,
   ClinicRoles,
   GetClinicId,
+  GetClinicMembershipId,
+  GetClinicMembershipRole,
+  GetClinicPermissions,
   GetUser,
 } from '../auth/decorators';
+import { ClinicPermission } from '../auth/interfaces';
 import { ClinicMembershipRole } from '../clinic-memberships/interfaces/clinic-membership-role.enum';
 
 @ApiTags('Clinics')
@@ -77,7 +82,7 @@ export class ClinicsController {
 
   @Patch(':id/appointment-settings')
   @AuthClinic()
-  @ClinicRoles(ClinicMembershipRole.owner, ClinicMembershipRole.admin)
+  @ClinicPermissions(ClinicPermission.manageSchedule)
   @ApiSecurity('x-clinic-id')
   @ApiOperation({ summary: 'Actualizar configuración de agenda de la clínica' })
   @ApiParam({ name: 'id', description: 'UUID de la clínica' })
@@ -88,6 +93,68 @@ export class ClinicsController {
     @Body() dto: UpdateAppointmentSettingsDto,
   ) {
     return this.clinicsService.updateAppointmentSettings(clinicId, id, dto);
+  }
+
+  @Get(':id/professionals/:membershipId/appointment-settings')
+  @AuthClinic()
+  @ApiSecurity('x-clinic-id')
+  @ApiOperation({
+    summary: 'Obtener configuración de agenda de un profesional',
+  })
+  @ApiParam({ name: 'id', description: 'UUID de la clínica' })
+  @ApiParam({
+    name: 'membershipId',
+    description: 'UUID de la membresía del profesional',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Configuración de agenda combinada con herencia de clínica',
+  })
+  getProfessionalAppointmentSettings(
+    @GetClinicId() clinicId: string,
+    @GetClinicMembershipId() requesterMembershipId: string,
+    @GetClinicMembershipRole() role: ClinicMembershipRole,
+    @GetClinicPermissions() permissionsJson: Record<string, boolean>,
+    @Param('id') id: string,
+    @Param('membershipId') membershipId: string,
+  ) {
+    return this.clinicsService.getProfessionalAppointmentSettings(
+      { clinicId, membershipId: requesterMembershipId, role, permissionsJson },
+      id,
+      membershipId,
+    );
+  }
+
+  @Patch(':id/professionals/:membershipId/appointment-settings')
+  @AuthClinic()
+  @ApiSecurity('x-clinic-id')
+  @ApiOperation({
+    summary: 'Actualizar configuración de agenda de un profesional',
+  })
+  @ApiParam({ name: 'id', description: 'UUID de la clínica' })
+  @ApiParam({
+    name: 'membershipId',
+    description: 'UUID de la membresía del profesional',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Configuración de agenda del profesional guardada',
+  })
+  updateProfessionalAppointmentSettings(
+    @GetClinicId() clinicId: string,
+    @GetClinicMembershipId() requesterMembershipId: string,
+    @GetClinicMembershipRole() role: ClinicMembershipRole,
+    @GetClinicPermissions() permissionsJson: Record<string, boolean>,
+    @Param('id') id: string,
+    @Param('membershipId') membershipId: string,
+    @Body() dto: UpdateAppointmentSettingsDto,
+  ) {
+    return this.clinicsService.updateProfessionalAppointmentSettings(
+      { clinicId, membershipId: requesterMembershipId, role, permissionsJson },
+      id,
+      membershipId,
+      dto,
+    );
   }
 
   @Patch(':id')

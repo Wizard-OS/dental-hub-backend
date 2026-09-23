@@ -51,6 +51,11 @@ export class ClinicMembership {
   })
   permissionsJson: Record<string, boolean>;
 
+  @Column('jsonb', {
+    nullable: true,
+  })
+  appointmentSettingsJson: Record<string, unknown> | null;
+
   @Column('bool', {
     default: true,
   })

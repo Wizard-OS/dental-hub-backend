@@ -82,9 +82,11 @@ Se mantienen `POST /clinical-notes`, `PATCH /clinical-notes/:id` y `DELETE /clin
 ## Configuración de agenda, recordatorios y reservas
 
 - `GET /clinics/:id/appointment-settings`: devuelve la configuración normalizada para las pantallas de agenda. Si la clínica solo tiene el formato legacy de `workingHoursJson` (`monday`, `tuesday`, etc.), el backend lo convierte a `availability.weekly`.
-- `PATCH /clinics/:id/appointment-settings`: guarda un PATCH parcial. Solo owner/admin. Las secciones omitidas se conservan.
+- `PATCH /clinics/:id/appointment-settings`: guarda un PATCH parcial. Requiere permiso `canManageSchedule`; owner/admin lo tienen por defecto. Las secciones omitidas se conservan.
 - La configuración se persiste en `clinics.workingHoursJson.appointmentSettings` para mantener compatibilidad con el campo existente.
-- `availability.scope`: `clinic` o `professional`. El contrato soporta disponibilidad por profesional a nivel de UI, aunque esta versión guarda la configuración general de la clínica.
+- `availability.scope`: `clinic` o `professional`.
+- `GET /clinics/:id/professionals/:membershipId/appointment-settings`: devuelve `{ settings, overrides, inheritedFromClinic }`, combinando configuración de clínica con overrides del profesional.
+- `PATCH /clinics/:id/professionals/:membershipId/appointment-settings`: guarda overrides parciales en `clinic_memberships.appointmentSettingsJson`. Owner/admin/usuarios con `canManageSchedule` pueden editar cualquier profesional; un profesional puede editar su propia disponibilidad.
 - `availability.weekly`: siete días con `dayOfWeek` 1-7, `isOpen`, `startTime` y `endTime`. Los días abiertos deben tener inicio y fin, y el inicio debe ser anterior al fin.
 - `availability.breaks`: pausas recurrentes con nombre, días y rango horario.
 - `availability.specialDates`: feriados, vacaciones o excepciones por fecha (`YYYY-MM-DD`). Si `isClosed=false`, exige horario.
@@ -93,6 +95,7 @@ Se mantienen `POST /clinical-notes`, `PATCH /clinical-notes/:id` y `DELETE /clin
 - `confirmation`: solicitud de confirmación, canal, momento de envío, plazo de respuesta y acción si no responde (`keep_pending`, `mark_unanswered`, `cancel`). El plazo de respuesta debe quedar más cerca de la cita que el momento de envío.
 - `bookingRules`: reservas de pacientes, anticipación mínima, máximo de días hacia adelante, máximo de citas activas y aprobación `automatic` o `manual`.
 - `changeRules`: reglas de cancelación/reprogramación, cambios máximos por cita, acción fuera de plazo (`contact_clinic`) y notificación al profesional.
+- Esta configuración se expone para que la app móvil calcule y renderice disponibilidad. Por ahora `POST /appointments` y `PATCH /appointments/:id` no bloquean automáticamente citas fuera de horario, pausas ni fechas especiales.
 - `Appointment` ahora incluye `confirmationStatus` (`pending`, `confirmed`, `no_response`, `declined`), `confirmationRequestedAt`, `confirmedAt`, `lastRescheduledAt` y `rescheduleCount` para reflejar los estados de confirmación y reprogramación en la agenda.
 
 ```json
@@ -147,5 +150,7 @@ Se mantienen `POST /clinical-notes`, `PATCH /clinical-notes/:id` y `DELETE /clin
 ## Base de datos y verificación
 
 Aplicar `src/migrations/202609090001_patient_chart_and_appointment_types.sql` antes de desplegar con `DB_SYNCHRONIZE=false`. La migración conserva la fecha histórica de las notas usando `createdAt` y los precios existentes; agrega `currency` con valor inicial `UYU` (ajustar los tipos de clínicas que usen otra moneda), crea la tabla de exámenes y agrega la metadata de confirmación/reprogramación en citas. Es aditiva y admite ejecutarse de nuevo.
+
+Aplicar también `src/migrations/202609230002_professional_appointment_settings.sql` para habilitar overrides de agenda por profesional.
 
 Se verificó la migración dos veces sobre un esquema temporal de PostgreSQL 14 dentro de una transacción terminada con ROLLBACK, incluyendo fechas históricas, precio nulo y eliminación de asociaciones sin borrar archivos. No se aplicó a los datos de la aplicación.

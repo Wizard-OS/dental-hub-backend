@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  ForbiddenException,
   InternalServerErrorException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -23,10 +24,18 @@ import { ClinicMembershipRole } from '../clinic-memberships/interfaces/clinic-me
 import { CountriesService } from '../common/countries.service';
 import { CountryMetadata } from '../common/interfaces/country-metadata.interface';
 import { NotificationChannel } from '../common/interfaces/notification-channel.enum';
+import { ClinicPermission } from '../auth/interfaces';
+import { hasClinicPermission } from '../auth/utils/clinic-permissions';
 
 type AppointmentSettings = Required<UpdateAppointmentSettingsDto>;
 type WorkingHoursContainer = Record<string, unknown> & {
   appointmentSettings?: Partial<AppointmentSettings>;
+};
+type ClinicScheduleContext = {
+  clinicId: string;
+  membershipId: string;
+  role: ClinicMembershipRole;
+  permissionsJson?: Record<string, boolean>;
 };
 
 const dayNames = [
@@ -182,6 +191,67 @@ export class ClinicsService {
 
     await this.clinicRepository.save(clinic);
     return next;
+  }
+
+  async getProfessionalAppointmentSettings(
+    context: ClinicScheduleContext,
+    id: string,
+    membershipId: string,
+  ) {
+    this.ensureClinicScope(context.clinicId, id);
+    this.assertCanViewProfessionalSchedule(context, membershipId);
+
+    const clinic = await this.findOne(id);
+    const professional = await this.findActiveMembership(id, membershipId);
+    const clinicSettings = this.normalizeAppointmentSettings(
+      clinic.workingHoursJson,
+    );
+    const overrides = this.normalizeProfessionalOverrides(
+      professional.appointmentSettingsJson,
+    );
+    const settings = this.mergeProfessionalSettings(clinicSettings, overrides);
+
+    this.validateAppointmentSettings(settings);
+
+    return {
+      settings,
+      overrides,
+      inheritedFromClinic: this.isEmptyPatch(overrides),
+    };
+  }
+
+  async updateProfessionalAppointmentSettings(
+    context: ClinicScheduleContext,
+    id: string,
+    membershipId: string,
+    dto: UpdateAppointmentSettingsDto,
+  ) {
+    this.ensureClinicScope(context.clinicId, id);
+    this.assertCanEditProfessionalSchedule(context, membershipId);
+
+    const clinic = await this.findOne(id);
+    const professional = await this.findActiveMembership(id, membershipId);
+    const clinicSettings = this.normalizeAppointmentSettings(
+      clinic.workingHoursJson,
+    );
+    const currentOverrides = this.normalizeProfessionalOverrides(
+      professional.appointmentSettingsJson,
+    );
+    const overrides = this.mergeProfessionalOverrides(currentOverrides, dto);
+    const settings = this.mergeProfessionalSettings(clinicSettings, overrides);
+
+    this.validateAppointmentSettings(settings);
+
+    professional.appointmentSettingsJson = this.isEmptyPatch(overrides)
+      ? null
+      : (overrides as Record<string, unknown>);
+    await this.clinicMembershipRepository.save(professional);
+
+    return {
+      settings,
+      overrides,
+      inheritedFromClinic: this.isEmptyPatch(overrides),
+    };
   }
 
   async remove(scopedClinicId: string, id: string) {
@@ -394,6 +464,178 @@ export class ClinicsService {
     };
   }
 
+  private mergeProfessionalSettings(
+    clinicSettings: AppointmentSettings,
+    overrides: UpdateAppointmentSettingsDto,
+  ): AppointmentSettings {
+    const availabilityPatch = overrides.availability ?? {};
+    const remindersPatch = overrides.reminders ?? {};
+    const confirmationPatch = overrides.confirmation ?? {};
+
+    return {
+      availability: {
+        ...clinicSettings.availability,
+        ...availabilityPatch,
+        weekly: this.mergeWeeklyOverrides(
+          clinicSettings.availability.weekly,
+          availabilityPatch.weekly,
+        ),
+        breaks:
+          availabilityPatch.breaks !== undefined
+            ? this.sortBreaks(availabilityPatch.breaks)
+            : clinicSettings.availability.breaks,
+        specialDates:
+          availabilityPatch.specialDates !== undefined
+            ? this.sortSpecialDates(availabilityPatch.specialDates)
+            : clinicSettings.availability.specialDates,
+      },
+      scheduling: {
+        ...clinicSettings.scheduling,
+        ...(overrides.scheduling ?? {}),
+      },
+      reminders: {
+        ...clinicSettings.reminders,
+        ...remindersPatch,
+        channels: remindersPatch.channels ?? clinicSettings.reminders.channels,
+        noticesBeforeMinutes: [
+          ...(remindersPatch.noticesBeforeMinutes ??
+            clinicSettings.reminders.noticesBeforeMinutes ??
+            []),
+        ].sort((a, b) => b - a),
+      },
+      confirmation: {
+        ...clinicSettings.confirmation,
+        ...confirmationPatch,
+      },
+      bookingRules: {
+        ...clinicSettings.bookingRules,
+        ...(overrides.bookingRules ?? {}),
+      },
+      changeRules: {
+        ...clinicSettings.changeRules,
+        ...(overrides.changeRules ?? {}),
+        cancellation: {
+          ...clinicSettings.changeRules.cancellation,
+          ...(overrides.changeRules?.cancellation ?? {}),
+        },
+        reschedule: {
+          ...clinicSettings.changeRules.reschedule,
+          ...(overrides.changeRules?.reschedule ?? {}),
+        },
+      },
+    };
+  }
+
+  private mergeProfessionalOverrides(
+    current: UpdateAppointmentSettingsDto,
+    patch: UpdateAppointmentSettingsDto,
+  ): UpdateAppointmentSettingsDto {
+    return this.pruneEmptyPatch({
+      availability:
+        current.availability || patch.availability
+          ? {
+              ...(current.availability ?? {}),
+              ...(patch.availability ?? {}),
+              weekly:
+                patch.availability?.weekly !== undefined
+                  ? this.mergeWeeklyOverrides(
+                      current.availability?.weekly,
+                      patch.availability.weekly,
+                    )
+                  : current.availability?.weekly,
+              breaks:
+                patch.availability?.breaks !== undefined
+                  ? this.sortBreaks(patch.availability.breaks)
+                  : current.availability?.breaks,
+              specialDates:
+                patch.availability?.specialDates !== undefined
+                  ? this.sortSpecialDates(patch.availability.specialDates)
+                  : current.availability?.specialDates,
+            }
+          : undefined,
+      scheduling: {
+        ...(current.scheduling ?? {}),
+        ...(patch.scheduling ?? {}),
+      },
+      reminders:
+        current.reminders || patch.reminders
+          ? {
+              ...(current.reminders ?? {}),
+              ...(patch.reminders ?? {}),
+              channels: patch.reminders?.channels ?? current.reminders?.channels,
+              noticesBeforeMinutes:
+                patch.reminders?.noticesBeforeMinutes !== undefined
+                  ? [...patch.reminders.noticesBeforeMinutes].sort(
+                      (a, b) => b - a,
+                    )
+                  : current.reminders?.noticesBeforeMinutes,
+            }
+          : undefined,
+      confirmation:
+        current.confirmation || patch.confirmation
+          ? {
+              ...(current.confirmation ?? {}),
+              ...(patch.confirmation ?? {}),
+            }
+          : undefined,
+      bookingRules:
+        current.bookingRules || patch.bookingRules
+          ? {
+              ...(current.bookingRules ?? {}),
+              ...(patch.bookingRules ?? {}),
+            }
+          : undefined,
+      changeRules:
+        current.changeRules || patch.changeRules
+          ? {
+              ...(current.changeRules ?? {}),
+              ...(patch.changeRules ?? {}),
+              cancellation:
+                current.changeRules?.cancellation ||
+                patch.changeRules?.cancellation
+                  ? {
+                      ...(current.changeRules?.cancellation ?? {}),
+                      ...(patch.changeRules?.cancellation ?? {}),
+                    }
+                  : undefined,
+              reschedule:
+                current.changeRules?.reschedule || patch.changeRules?.reschedule
+                  ? {
+                      ...(current.changeRules?.reschedule ?? {}),
+                      ...(patch.changeRules?.reschedule ?? {}),
+                    }
+                  : undefined,
+            }
+          : undefined,
+    });
+  }
+
+  private mergeWeeklyOverrides(
+    base: AppointmentWorkingDayDto[] | undefined,
+    patch: AppointmentWorkingDayDto[] | undefined,
+  ): AppointmentWorkingDayDto[] {
+    const byDay = new Map<number, AppointmentWorkingDayDto>();
+    for (const day of base ?? []) {
+      if (byDay.has(day.dayOfWeek)) {
+        throw new BadRequestException('weekly contains duplicated days');
+      }
+      byDay.set(day.dayOfWeek, day);
+    }
+
+    const patchedDays = new Set<number>();
+    for (const day of patch ?? []) {
+      if (patchedDays.has(day.dayOfWeek)) {
+        throw new BadRequestException('weekly contains duplicated days');
+      }
+      patchedDays.add(day.dayOfWeek);
+      byDay.set(day.dayOfWeek, day);
+    }
+
+    return Array.from(byDay.values()).sort(
+      (left, right) => left.dayOfWeek - right.dayOfWeek,
+    );
+  }
+
   private normalizeWeekly(
     weekly: AppointmentWorkingDayDto[] | undefined,
   ): AppointmentWorkingDayDto[] {
@@ -486,6 +728,84 @@ export class ClinicsService {
 
   private isObject(value: unknown): value is Record<string, unknown> {
     return typeof value === 'object' && value !== null && !Array.isArray(value);
+  }
+
+  private normalizeProfessionalOverrides(
+    value: Record<string, unknown> | null | undefined,
+  ): UpdateAppointmentSettingsDto {
+    return this.isObject(value) ? (value as UpdateAppointmentSettingsDto) : {};
+  }
+
+  private pruneEmptyPatch<T extends Record<string, unknown>>(value: T): T {
+    return Object.fromEntries(
+      Object.entries(value)
+        .map(([key, entry]) => [
+          key,
+          this.isObject(entry) ? this.pruneEmptyPatch(entry) : entry,
+        ])
+        .filter(([, entry]) => {
+          if (entry === undefined) return false;
+          if (this.isObject(entry)) return Object.keys(entry).length > 0;
+          return true;
+        }),
+    ) as T;
+  }
+
+  private isEmptyPatch(value: UpdateAppointmentSettingsDto) {
+    return Object.keys(this.pruneEmptyPatch(value as Record<string, unknown>))
+      .length === 0;
+  }
+
+  private async findActiveMembership(clinicId: string, membershipId: string) {
+    if (!isUUID(membershipId)) {
+      throw new BadRequestException('Invalid clinic membership id');
+    }
+
+    const membership = await this.clinicMembershipRepository.findOne({
+      where: { id: membershipId, clinicId, isActive: true },
+    });
+
+    if (!membership) {
+      throw new NotFoundException('Professional membership not found');
+    }
+
+    return membership;
+  }
+
+  private assertCanViewProfessionalSchedule(
+    context: ClinicScheduleContext,
+    membershipId: string,
+  ) {
+    if (
+      context.membershipId === membershipId ||
+      this.canManageSchedule(context)
+    ) {
+      return;
+    }
+
+    throw new ForbiddenException('Cannot view this professional schedule');
+  }
+
+  private assertCanEditProfessionalSchedule(
+    context: ClinicScheduleContext,
+    membershipId: string,
+  ) {
+    if (
+      context.membershipId === membershipId ||
+      this.canManageSchedule(context)
+    ) {
+      return;
+    }
+
+    throw new ForbiddenException('Cannot edit this professional schedule');
+  }
+
+  private canManageSchedule(context: ClinicScheduleContext) {
+    return hasClinicPermission(
+      context.role,
+      context.permissionsJson,
+      ClinicPermission.manageSchedule,
+    );
   }
 
   private handleDBErrors(error: unknown): never {
