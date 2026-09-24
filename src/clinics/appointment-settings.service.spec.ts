@@ -1,6 +1,7 @@
 import { BadRequestException, ForbiddenException } from '@nestjs/common';
 
 import { ClinicsService } from './clinics.service';
+import { AppointmentAvailabilityService } from './appointment-availability.service';
 import { NotificationChannel } from '../common/interfaces/notification-channel.enum';
 import { ClinicMembershipRole } from '../clinic-memberships/interfaces/clinic-membership-role.enum';
 
@@ -10,6 +11,7 @@ describe('ClinicsService appointment settings', () => {
   const clinic = {
     id: '69d0cbe5-f7e6-4928-99a9-cdf15c986b4f',
     isActive: true,
+    timezone: 'America/Montevideo',
     workingHoursJson: {
       monday: [{ from: '08:30', to: '17:30' }],
       friday: [{ from: '09:00', to: '16:00' }],
@@ -52,6 +54,10 @@ describe('ClinicsService appointment settings', () => {
       ),
       save: jest.fn((entity) => Promise.resolve(entity)),
     };
+    const appointmentAvailabilityService = new AppointmentAvailabilityService(
+      clinicRepository as never,
+      clinicMembershipRepository as never,
+    );
 
     return {
       clinicRepository,
@@ -61,7 +67,9 @@ describe('ClinicsService appointment settings', () => {
         clinicMembershipRepository as never,
         {} as never,
         {} as never,
+        appointmentAvailabilityService,
       ),
+      appointmentAvailabilityService,
     };
   }
 
@@ -180,7 +188,12 @@ describe('ClinicsService appointment settings', () => {
         availability: {
           weekly: [
             { dayOfWeek: 1, isOpen: false },
-            { dayOfWeek: 1, isOpen: true, startTime: '09:00', endTime: '12:00' },
+            {
+              dayOfWeek: 1,
+              isOpen: true,
+              startTime: '09:00',
+              endTime: '12:00',
+            },
           ],
         },
       }),
@@ -306,5 +319,156 @@ describe('ClinicsService appointment settings', () => {
         { scheduling: { defaultDurationMin: 45 } },
       ),
     ).rejects.toThrow(ForbiddenException);
+  });
+
+  it('validates appointments against working hours and breaks', async () => {
+    const { appointmentAvailabilityService } = serviceWithClinic({
+      ...clinic,
+      workingHoursJson: {
+        appointmentSettings: {
+          availability: {
+            weekly: [
+              {
+                dayOfWeek: 1,
+                isOpen: true,
+                startTime: '09:00',
+                endTime: '18:00',
+              },
+            ],
+            breaks: [
+              {
+                name: 'Almuerzo',
+                daysOfWeek: [1],
+                startTime: '13:00',
+                endTime: '14:00',
+              },
+            ],
+          },
+        },
+      },
+    });
+    const availability =
+      await appointmentAvailabilityService.resolveProfessionalAvailability(
+        clinic.id,
+        professionalMembershipId,
+      );
+
+    expect(() =>
+      appointmentAvailabilityService.assertAppointmentWithinAvailability(
+        availability,
+        '2026-09-21T12:30:00.000Z',
+        '2026-09-21T13:00:00.000Z',
+      ),
+    ).not.toThrow();
+    expect(() =>
+      appointmentAvailabilityService.assertAppointmentWithinAvailability(
+        availability,
+        '2026-09-21T11:30:00.000Z',
+        '2026-09-21T12:00:00.000Z',
+      ),
+    ).toThrow(BadRequestException);
+    expect(() =>
+      appointmentAvailabilityService.assertAppointmentWithinAvailability(
+        availability,
+        '2026-09-21T16:30:00.000Z',
+        '2026-09-21T17:00:00.000Z',
+      ),
+    ).toThrow(BadRequestException);
+  });
+
+  it('applies special dates as closed or custom open windows', async () => {
+    const { appointmentAvailabilityService } = serviceWithClinic({
+      ...clinic,
+      workingHoursJson: {
+        appointmentSettings: {
+          availability: {
+            weekly: [
+              {
+                dayOfWeek: 2,
+                isOpen: true,
+                startTime: '09:00',
+                endTime: '18:00',
+              },
+              {
+                dayOfWeek: 3,
+                isOpen: true,
+                startTime: '09:00',
+                endTime: '18:00',
+              },
+            ],
+            specialDates: [
+              { date: '2026-09-22', isClosed: true },
+              {
+                date: '2026-09-23',
+                isClosed: false,
+                startTime: '10:00',
+                endTime: '12:00',
+              },
+            ],
+          },
+        },
+      },
+    });
+    const availability =
+      await appointmentAvailabilityService.resolveProfessionalAvailability(
+        clinic.id,
+        professionalMembershipId,
+      );
+
+    expect(() =>
+      appointmentAvailabilityService.assertAppointmentWithinAvailability(
+        availability,
+        '2026-09-22T13:00:00.000Z',
+        '2026-09-22T14:00:00.000Z',
+      ),
+    ).toThrow(BadRequestException);
+    expect(() =>
+      appointmentAvailabilityService.assertAppointmentWithinAvailability(
+        availability,
+        '2026-09-23T13:30:00.000Z',
+        '2026-09-23T14:00:00.000Z',
+      ),
+    ).not.toThrow();
+    expect(() =>
+      appointmentAvailabilityService.assertAppointmentWithinAvailability(
+        availability,
+        '2026-09-23T16:00:00.000Z',
+        '2026-09-23T16:30:00.000Z',
+      ),
+    ).toThrow(BadRequestException);
+  });
+
+  it('interprets appointment days using the clinic timezone', async () => {
+    const { appointmentAvailabilityService } = serviceWithClinic({
+      ...clinic,
+      workingHoursJson: {
+        appointmentSettings: {
+          availability: {
+            weekly: [
+              {
+                dayOfWeek: 1,
+                isOpen: true,
+                startTime: '22:00',
+                endTime: '23:00',
+              },
+              { dayOfWeek: 2, isOpen: false },
+            ],
+          },
+        },
+      },
+    });
+    const availability =
+      await appointmentAvailabilityService.resolveProfessionalAvailability(
+        clinic.id,
+        professionalMembershipId,
+      );
+
+    expect(() =>
+      appointmentAvailabilityService.assertAppointmentWithinAvailability(
+        availability,
+        '2026-09-22T01:15:00.000Z',
+        '2026-09-22T01:45:00.000Z',
+      ),
+    ).not.toThrow();
   });
 });

@@ -23,6 +23,7 @@ import { CreateAppointmentDto } from './dto/create-appointment.dto';
 import { UpdateAppointmentDto } from './dto/update-appointment.dto';
 import { CreateAppointmentTypeDto } from './dto/create-appointment-type.dto';
 import { UpdateAppointmentTypeDto } from './dto/update-appointment-type.dto';
+import { QueryAgendaAppointmentsDto } from './dto/query-agenda-appointments.dto';
 import {
   AuthClinic,
   ClinicRoles,
@@ -146,6 +147,27 @@ export class AppointmentsController {
   ) {
     return this.appointmentService.findAll(
       this.context(clinicId, membershipId, role, permissionsJson),
+    );
+  }
+
+  @Get('agenda')
+  @ApiOperation({
+    summary: 'Listar agenda de un profesional con disponibilidad',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Citas y disponibilidad del profesional para el rango',
+  })
+  findAgenda(
+    @GetClinicId() clinicId: string,
+    @GetClinicMembershipId() membershipId: string,
+    @GetClinicMembershipRole() role: ClinicMembershipRole,
+    @GetClinicPermissions() permissionsJson: Record<string, boolean>,
+    @Query() query: QueryAgendaAppointmentsDto,
+  ) {
+    return this.appointmentService.findAgenda(
+      this.context(clinicId, membershipId, role, permissionsJson),
+      query,
     );
   }
 

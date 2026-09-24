@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   InternalServerErrorException,
   NotFoundException,
@@ -16,8 +17,10 @@ import { CreateAppointmentDto } from './dto/create-appointment.dto';
 import { UpdateAppointmentDto } from './dto/update-appointment.dto';
 import { CreateAppointmentTypeDto } from './dto/create-appointment-type.dto';
 import { UpdateAppointmentTypeDto } from './dto/update-appointment-type.dto';
+import { QueryAgendaAppointmentsDto } from './dto/query-agenda-appointments.dto';
 import { AppointmentStatus } from './interfaces/AppointmentStatus.enum';
 import { AppointmentConfirmationStatus } from './interfaces/appointment-confirmation-status.enum';
+import { AppointmentAvailabilityService } from '../clinics/appointment-availability.service';
 import {
   ClinicAccessContext,
   PatientAccessService,
@@ -39,6 +42,8 @@ export class AppointmentsService {
     private readonly clinicMembershipRepository: Repository<ClinicMembership>,
 
     private readonly patientAccessService: PatientAccessService,
+
+    private readonly appointmentAvailabilityService: AppointmentAvailabilityService,
   ) {}
 
   async create(context: ClinicAccessContext, dto: CreateAppointmentDto) {
@@ -63,11 +68,27 @@ export class AppointmentsService {
       context.clinicId,
     );
 
+    const professionalMembershipId = await this.resolveProfessionalMembershipId(
+      context.clinicId,
+      dto.professionalMembershipId,
+      dto.dentistId,
+    );
+    const availability =
+      await this.appointmentAvailabilityService.resolveProfessionalAvailability(
+        context.clinicId,
+        professionalMembershipId,
+      );
+    this.appointmentAvailabilityService.assertAppointmentWithinAvailability(
+      availability,
+      dto.startTime,
+      dto.endTime,
+    );
+
     await this.assertNoOverlap(
       context.clinicId,
       dto.startTime,
       dto.endTime,
-      dto.professionalMembershipId,
+      professionalMembershipId,
       dto.dentistId,
     );
 
@@ -75,6 +96,7 @@ export class AppointmentsService {
       const appointment = this.appointmentRepository.create({
         ...dto,
         clinicId: context.clinicId,
+        professionalMembershipId,
         status: dto.status ?? AppointmentStatus.SCHEDULED,
         confirmationStatus:
           dto.confirmationStatus ?? AppointmentConfirmationStatus.PENDING,
@@ -115,6 +137,68 @@ export class AppointmentsService {
       }
     }
     return appointments;
+  }
+
+  async findAgenda(
+    context: ClinicAccessContext,
+    queryDto: QueryAgendaAppointmentsDto,
+  ) {
+    const from = new Date(queryDto.from);
+    const to = new Date(queryDto.to);
+    this.validateTimeWindow(from, to);
+
+    if (
+      !this.patientAccessService.canViewAllPatients(context) &&
+      queryDto.professionalMembershipId !== context.membershipId
+    ) {
+      throw new ForbiddenException('Cannot view this professional agenda');
+    }
+
+    await this.assertMembershipInClinic(
+      queryDto.professionalMembershipId,
+      context.clinicId,
+    );
+
+    const availability =
+      await this.appointmentAvailabilityService.resolveProfessionalAvailability(
+        context.clinicId,
+        queryDto.professionalMembershipId,
+      );
+
+    const appointments = await this.appointmentRepository
+      .createQueryBuilder('appointment')
+      .leftJoinAndSelect('appointment.patient', 'patient')
+      .leftJoinAndSelect('appointment.appointmentType', 'appointmentType')
+      .leftJoinAndSelect(
+        'appointment.professionalMembership',
+        'professionalMembership',
+      )
+      .where('appointment.clinicId = :clinicId', {
+        clinicId: context.clinicId,
+      })
+      .andWhere(
+        'appointment.professionalMembershipId = :professionalMembershipId',
+        { professionalMembershipId: queryDto.professionalMembershipId },
+      )
+      .andWhere('appointment.startTime < :to', { to })
+      .andWhere('appointment.endTime > :from', { from })
+      .orderBy('appointment.startTime', 'ASC')
+      .getMany();
+
+    for (const appointment of appointments) {
+      if (appointment.patient) {
+        this.patientAccessService.sanitizePatient(appointment.patient, context);
+      }
+    }
+
+    return {
+      appointments,
+      availability: {
+        timezone: availability.timezone,
+        ...availability.settings.availability,
+        scheduling: availability.settings.scheduling,
+      },
+    };
   }
 
   async findOne(context: ClinicAccessContext, id: string) {
@@ -176,18 +260,35 @@ export class AppointmentsService {
       );
     }
 
+    const nextProfessionalMembershipId =
+      await this.resolveProfessionalMembershipId(
+        context.clinicId,
+        dto.professionalMembershipId ?? appointment.professionalMembershipId,
+        dto.dentistId ?? appointment.dentistId,
+      );
+    const availability =
+      await this.appointmentAvailabilityService.resolveProfessionalAvailability(
+        context.clinicId,
+        nextProfessionalMembershipId,
+      );
+    this.appointmentAvailabilityService.assertAppointmentWithinAvailability(
+      availability,
+      nextStart,
+      nextEnd,
+    );
+
     await this.assertNoOverlap(
       context.clinicId,
       nextStart,
       nextEnd,
-      dto.professionalMembershipId ??
-        appointment.professionalMembershipId ??
-        undefined,
+      nextProfessionalMembershipId,
       dto.dentistId ?? appointment.dentistId,
       id,
     );
 
-    Object.assign(appointment, dto);
+    Object.assign(appointment, dto, {
+      professionalMembershipId: nextProfessionalMembershipId,
+    });
 
     try {
       return await this.appointmentRepository.save(appointment);
@@ -368,6 +469,52 @@ export class AppointmentsService {
         'Appointment type does not belong to the requested clinic',
       );
     }
+  }
+
+  private async resolveProfessionalMembershipId(
+    clinicId: string,
+    professionalMembershipId?: string | null,
+    dentistId?: string | null,
+  ) {
+    if (professionalMembershipId) {
+      const membership = await this.clinicMembershipRepository.findOne({
+        where: { id: professionalMembershipId, clinicId, isActive: true },
+        select: { id: true, userId: true },
+      });
+
+      if (!membership) {
+        throw new BadRequestException(
+          'Professional membership does not belong to the requested clinic',
+        );
+      }
+
+      if (dentistId && membership.userId !== dentistId) {
+        throw new BadRequestException(
+          'dentistId does not match professionalMembershipId',
+        );
+      }
+
+      return membership.id;
+    }
+
+    if (dentistId) {
+      const membership = await this.clinicMembershipRepository.findOne({
+        where: { userId: dentistId, clinicId, isActive: true },
+        select: { id: true },
+      });
+
+      if (!membership) {
+        throw new BadRequestException(
+          'Dentist/user does not have an active membership in the requested clinic',
+        );
+      }
+
+      return membership.id;
+    }
+
+    throw new BadRequestException(
+      'professionalMembershipId or dentistId is required to validate availability',
+    );
   }
 
   private async assertNoOverlap(

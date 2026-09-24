@@ -90,12 +90,13 @@ Se mantienen `POST /clinical-notes`, `PATCH /clinical-notes/:id` y `DELETE /clin
 - `availability.weekly`: siete días con `dayOfWeek` 1-7, `isOpen`, `startTime` y `endTime`. Los días abiertos deben tener inicio y fin, y el inicio debe ser anterior al fin.
 - `availability.breaks`: pausas recurrentes con nombre, días y rango horario.
 - `availability.specialDates`: feriados, vacaciones o excepciones por fecha (`YYYY-MM-DD`). Si `isClosed=false`, exige horario.
+- `GET /appointments/agenda?from=ISO&to=ISO&professionalMembershipId=uuid`: devuelve `{ appointments, availability }` para listar citas junto con la disponibilidad normalizada del profesional. `availability` incluye `timezone`, `weekly`, `breaks`, `specialDates` y `scheduling`.
 - `scheduling.defaultDurationMin`, `slotIntervalMin`, `bufferBetweenAppointmentsMin`: duración predeterminada, intervalos de inicio y tiempo entre citas.
 - `reminders`: habilitación, canales (`whatsapp`, `email`, `sms`, `push_notification`), avisos en minutos antes de la cita y plantilla con variables como `{nombre}`, `{tipo}`, `{fecha}`, `{hora}`.
 - `confirmation`: solicitud de confirmación, canal, momento de envío, plazo de respuesta y acción si no responde (`keep_pending`, `mark_unanswered`, `cancel`). El plazo de respuesta debe quedar más cerca de la cita que el momento de envío.
 - `bookingRules`: reservas de pacientes, anticipación mínima, máximo de días hacia adelante, máximo de citas activas y aprobación `automatic` o `manual`.
 - `changeRules`: reglas de cancelación/reprogramación, cambios máximos por cita, acción fuera de plazo (`contact_clinic`) y notificación al profesional.
-- Esta configuración se expone para que la app móvil calcule y renderice disponibilidad. Por ahora `POST /appointments` y `PATCH /appointments/:id` no bloquean automáticamente citas fuera de horario, pausas ni fechas especiales.
+- `POST /appointments` y `PATCH /appointments/:id` validan contra la disponibilidad del profesional: rechazan citas fuera del horario local de la clínica, sobre pausas, en fechas especiales cerradas o fuera del rango de una fecha especial abierta. Si no se envía `professionalMembershipId`, intentan resolverlo desde `dentistId`; si no es posible, devuelven `400`.
 - `Appointment` ahora incluye `confirmationStatus` (`pending`, `confirmed`, `no_response`, `declined`), `confirmationRequestedAt`, `confirmedAt`, `lastRescheduledAt` y `rescheduleCount` para reflejar los estados de confirmación y reprogramación en la agenda.
 
 ```json
@@ -103,11 +104,21 @@ Se mantienen `POST /clinical-notes`, `PATCH /clinical-notes/:id` y `DELETE /clin
   "availability": {
     "scope": "clinic",
     "weekly": [
-      { "dayOfWeek": 1, "isOpen": true, "startTime": "09:00", "endTime": "18:00" },
+      {
+        "dayOfWeek": 1,
+        "isOpen": true,
+        "startTime": "09:00",
+        "endTime": "18:00"
+      },
       { "dayOfWeek": 6, "isOpen": false }
     ],
     "breaks": [
-      { "name": "Almuerzo", "daysOfWeek": [1, 2, 3, 4, 5], "startTime": "13:00", "endTime": "14:00" }
+      {
+        "name": "Almuerzo",
+        "daysOfWeek": [1, 2, 3, 4, 5],
+        "startTime": "13:00",
+        "endTime": "14:00"
+      }
     ],
     "specialDates": [
       { "date": "2026-12-25", "isClosed": true, "reason": "Feriado" }
@@ -140,7 +151,11 @@ Se mantienen `POST /clinical-notes`, `PATCH /clinical-notes/:id` y `DELETE /clin
   },
   "changeRules": {
     "cancellation": { "enabled": true, "minNoticeMinutes": 1440 },
-    "reschedule": { "enabled": true, "minNoticeMinutes": 720, "maxChangesPerAppointment": 2 },
+    "reschedule": {
+      "enabled": true,
+      "minNoticeMinutes": 720,
+      "maxChangesPerAppointment": 2
+    },
     "outOfWindowAction": "contact_clinic",
     "notifyProfessional": true
   }

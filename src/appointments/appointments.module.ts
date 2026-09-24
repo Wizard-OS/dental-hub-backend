@@ -6,6 +6,7 @@ import { AppointmentType } from './entities/appointment-type.entity';
 import { Patient } from '../patients/entities/patient.entity';
 import { ClinicMembership } from '../clinic-memberships/entities/clinic-membership.entity';
 import { PatientsModule } from '../patients/patients.module';
+import { ClinicsModule } from '../clinics/clinics.module';
 import { AppointmentsService } from './appointments.service';
 import { AppointmentsController } from './appointments.controller';
 
@@ -14,6 +15,7 @@ import { AppointmentsController } from './appointments.controller';
   providers: [AppointmentsService],
   imports: [
     PatientsModule,
+    ClinicsModule,
     TypeOrmModule.forFeature([
       Appointment,
       AppointmentType,

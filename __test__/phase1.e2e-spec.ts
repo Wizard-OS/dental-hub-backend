@@ -29,6 +29,8 @@ describe('Phase 1 Flow (e2e)', () => {
   let paymentId: string;
   let patientFileId: string;
   let patientFilePath: string;
+  let appointmentStartIso: string;
+  let appointmentEndIso: string;
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -226,8 +228,10 @@ describe('Phase 1 Flow (e2e)', () => {
 
     appointmentTypeId = typeResponse.body.id;
 
-    const startAt = new Date(Date.now() + 3600 * 1000);
-    const endAt = new Date(startAt.getTime() + 30 * 60000);
+    const startAt = new Date('2026-09-28T12:30:00.000Z');
+    const endAt = new Date('2026-09-28T13:00:00.000Z');
+    appointmentStartIso = startAt.toISOString();
+    appointmentEndIso = endAt.toISOString();
 
     const appointmentResponse = await request(app.getHttpServer())
       .post('/appointments')
@@ -239,12 +243,53 @@ describe('Phase 1 Flow (e2e)', () => {
         appointmentTypeId,
         professionalMembershipId: membershipId,
         description: 'Control inicial',
-        startTime: startAt.toISOString(),
-        endTime: endAt.toISOString(),
+        startTime: appointmentStartIso,
+        endTime: appointmentEndIso,
       })
       .expect(201);
 
     appointmentId = appointmentResponse.body.id;
+  });
+
+  it('returns professional agenda appointments with availability', async () => {
+    const agendaResponse = await request(app.getHttpServer())
+      .get('/appointments/agenda')
+      .query({
+        from: '2026-09-28T00:00:00.000Z',
+        to: '2026-09-29T00:00:00.000Z',
+        professionalMembershipId: membershipId,
+      })
+      .set('Authorization', `Bearer ${adminToken}`)
+      .set('x-clinic-id', clinicId)
+      .expect(200);
+
+    expect(agendaResponse.body.appointments).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: appointmentId,
+          startTime: appointmentStartIso,
+          endTime: appointmentEndIso,
+        }),
+      ]),
+    );
+    expect(agendaResponse.body.availability).toEqual(
+      expect.objectContaining({
+        timezone: 'America/Montevideo',
+        weekly: expect.arrayContaining([
+          expect.objectContaining({
+            dayOfWeek: 1,
+            isOpen: true,
+            startTime: '09:00',
+            endTime: '18:00',
+          }),
+        ]),
+        scheduling: expect.objectContaining({
+          defaultDurationMin: 30,
+          slotIntervalMin: 15,
+          bufferBetweenAppointmentsMin: 10,
+        }),
+      }),
+    );
   });
 
   it('updates patient profile capture fields partially', async () => {
@@ -410,8 +455,8 @@ describe('Phase 1 Flow (e2e)', () => {
       })
       .expect(201);
 
-    const startAt = new Date(Date.now() + 2 * 3600 * 1000);
-    const endAt = new Date(startAt.getTime() + 30 * 60000);
+    const startAt = new Date('2026-09-28T13:30:00.000Z');
+    const endAt = new Date('2026-09-28T14:00:00.000Z');
 
     const temporaryAppointment = await request(app.getHttpServer())
       .post('/appointments')
@@ -920,17 +965,24 @@ describe('Phase 1 Flow (e2e)', () => {
   });
 
   it('returns minimum phase 1 reports', async () => {
-    const from = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-    const to = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+    const appointmentReportFrom = '2026-09-28T00:00:00.000Z';
+    const appointmentReportTo = '2026-09-29T00:00:00.000Z';
 
     const appointmentsReport = await request(app.getHttpServer())
       .get('/common/reports/appointments')
-      .query({ from, to, professionalMembershipId: membershipId })
+      .query({
+        from: appointmentReportFrom,
+        to: appointmentReportTo,
+        professionalMembershipId: membershipId,
+      })
       .set('Authorization', `Bearer ${adminToken}`)
       .set('x-clinic-id', clinicId)
       .expect(200);
 
     expect(appointmentsReport.body.total).toBeGreaterThanOrEqual(1);
+
+    const from = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    const to = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
 
     const incomeReport = await request(app.getHttpServer())
       .get('/common/reports/income')
