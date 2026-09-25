@@ -453,7 +453,7 @@ export class AppointmentAvailabilityService {
   normalizeProfessionalOverrides(
     value: Record<string, unknown> | null | undefined,
   ): UpdateAppointmentSettingsDto {
-    return this.isObject(value) ? (value as UpdateAppointmentSettingsDto) : {};
+    return this.isObject(value) ? value : {};
   }
 
   isEmptyPatch(value: UpdateAppointmentSettingsDto) {
@@ -472,7 +472,7 @@ export class AppointmentAvailabilityService {
           { dayOfWeek: 2, isOpen: true, startTime: '09:00', endTime: '18:00' },
           { dayOfWeek: 3, isOpen: true, startTime: '09:00', endTime: '18:00' },
           { dayOfWeek: 4, isOpen: true, startTime: '09:00', endTime: '18:00' },
-          { dayOfWeek: 5, isOpen: true, startTime: '09:00', endTime: '16:00' },
+          { dayOfWeek: 5, isOpen: true, startTime: '09:00', endTime: '18:00' },
           { dayOfWeek: 6, isOpen: false },
           { dayOfWeek: 7, isOpen: false },
         ],

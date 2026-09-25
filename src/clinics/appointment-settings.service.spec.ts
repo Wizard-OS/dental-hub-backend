@@ -91,6 +91,22 @@ describe('ClinicsService appointment settings', () => {
     expect(settings.scheduling.slotIntervalMin).toBe(15);
   });
 
+  it('uses 09:00 to 18:00 defaults for weekdays without legacy hours', async () => {
+    const { service } = serviceWithClinic({
+      ...clinic,
+      workingHoursJson: null,
+    });
+
+    const settings = await service.getAppointmentSettings(clinic.id, clinic.id);
+
+    expect(settings.availability.weekly?.[4]).toEqual({
+      dayOfWeek: 5,
+      isOpen: true,
+      startTime: '09:00',
+      endTime: '18:00',
+    });
+  });
+
   it('accepts closed weekend days and zero appointment buffer', async () => {
     const { service } = serviceWithClinic();
 
