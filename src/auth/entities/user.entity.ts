@@ -21,6 +21,8 @@ import { ProfessionalSpecialty } from '../../professional-specialties/entities/p
 @Entity('users')
 @Index(['email'], { unique: true })
 export class User {
+  currentSessionId?: string;
+
   @PrimaryGeneratedColumn('uuid')
   id: string;
 

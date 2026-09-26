@@ -22,7 +22,10 @@ export class UserSessionsController {
   @ApiOperation({ summary: 'Obtener sesiones activas del usuario' })
   @ApiResponse({ status: 200, description: 'Lista de sesiones activas' })
   getActiveSessions(@GetUser() user: User) {
-    return this.userSessionsService.getActiveSessions(user.id);
+    return this.userSessionsService.getActiveSessions(
+      user.id,
+      user.currentSessionId,
+    );
   }
 
   @Delete(':id')
@@ -37,6 +40,9 @@ export class UserSessionsController {
   @ApiOperation({ summary: 'Revocar todas las demás sesiones' })
   @ApiResponse({ status: 200, description: 'Sesiones revocadas' })
   revokeAllOtherSessions(@GetUser() user: User) {
-    return this.userSessionsService.revokeAllOtherSessions(user.id);
+    return this.userSessionsService.revokeAllOtherSessions(
+      user.id,
+      user.currentSessionId,
+    );
   }
 }

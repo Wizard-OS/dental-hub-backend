@@ -55,8 +55,8 @@ export class AuthController {
   @ApiOperation({ summary: 'Registrar nuevo usuario' })
   @ApiResponse({ status: 201, description: 'Usuario creado exitosamente' })
   @ApiResponse({ status: 400, description: 'Datos inválidos' })
-  createUser(@Body() createUserDto: CreateUserDto) {
-    return this.authService.create(createUserDto);
+  createUser(@Body() createUserDto: CreateUserDto, @Req() request: Request) {
+    return this.authService.create(createUserDto, request);
   }
 
   @Post('login')
@@ -66,8 +66,8 @@ export class AuthController {
     description: 'Login exitoso — retorna token JWT',
   })
   @ApiResponse({ status: 401, description: 'Credenciales inválidas' })
-  loginUser(@Body() loginUserDto: LoginUserDto) {
-    return this.authService.login(loginUserDto);
+  loginUser(@Body() loginUserDto: LoginUserDto, @Req() request: Request) {
+    return this.authService.login(loginUserDto, request);
   }
 
   @Post('forgot-password')
@@ -206,8 +206,8 @@ export class AuthController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Cerrar sesión' })
   @ApiResponse({ status: 201, description: 'Sesión cerrada' })
-  logout() {
-    return this.authService.logout();
+  logout(@GetUser() user: User) {
+    return this.authService.logout(user);
   }
 
   @Get('private')

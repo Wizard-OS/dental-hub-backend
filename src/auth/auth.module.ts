@@ -15,6 +15,7 @@ import { ClinicRoleGuard } from './guards/clinic-role.guard';
 import { ClinicPermissionGuard } from './guards/clinic-permission.guard';
 import { getRequiredEnv } from '../config/env';
 import { ProfessionalSpecialty } from '../professional-specialties/entities/professional-specialty.entity';
+import { UserSessionsModule } from '../user-sessions/user-sessions.module';
 
 @Global()
 @Module({
@@ -29,6 +30,7 @@ import { ProfessionalSpecialty } from '../professional-specialties/entities/prof
   ],
   imports: [
     ConfigModule,
+    UserSessionsModule,
 
     TypeOrmModule.forFeature([User, ClinicMembership, ProfessionalSpecialty]),
 

@@ -9,6 +9,11 @@ describe('AuthService password reset', () => {
   let service: AuthService;
   let users: Map<string, User>;
   let specialties: Map<string, { id: string; isActive: boolean }>;
+  let jwtService: { sign: jest.Mock };
+  let userSessionsService: {
+    createSession: jest.Mock;
+    revokeCurrentSession: jest.Mock;
+  };
 
   const userId = 'user-1';
   const email = 'doctor@dentalhub.test';
@@ -76,8 +81,17 @@ describe('AuthService password reset', () => {
       ),
     };
 
-    const jwtService = {
+    jwtService = {
       sign: jest.fn(() => 'jwt-token'),
+    };
+
+    userSessionsService = {
+      createSession: jest.fn((createdUserId: string) => ({
+        id: `session-${createdUserId}`,
+      })),
+      revokeCurrentSession: jest.fn(async () => ({
+        message: 'Logged out successfully',
+      })),
     };
 
     service = new AuthService(
@@ -85,6 +99,7 @@ describe('AuthService password reset', () => {
       clinicMembershipRepository as never,
       specialtyRepository as never,
       jwtService as never,
+      userSessionsService as never,
     );
   });
 
@@ -107,6 +122,10 @@ describe('AuthService password reset', () => {
     await expect(
       service.login({ email, password: 'OldPass1' }),
     ).resolves.toMatchObject({ email, token: 'jwt-token' });
+    expect(jwtService.sign).toHaveBeenLastCalledWith({
+      id: userId,
+      sessionId: `session-${userId}`,
+    });
   });
 
   it('resets password, invalidates OTP, and rejects the old password', async () => {
@@ -147,6 +166,19 @@ describe('AuthService password reset', () => {
         professionalSpecialtyId: 'specialty-1',
         rut: '210000000018',
       }),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
+
+    const authenticatedUser = users.get(userId)!;
+    authenticatedUser.currentSessionId = 'session-current';
+
+    await expect(
+      service.updateProfile(authenticatedUser, {
+        phone: '+598 95 123 456',
+        birthDate: '1988-05-12T00:00:00.000Z',
+        professionalLicenseNumber: 'CJPPU-12345',
+        professionalSpecialtyId: 'specialty-1',
+        rut: '210000000018',
+      }),
     ).resolves.toMatchObject({
       phone: '+598 95 123 456',
       professionalLicenseNumber: 'CJPPU-12345',
@@ -155,7 +187,7 @@ describe('AuthService password reset', () => {
       token: 'jwt-token',
     });
 
-    expect(users.get(userId)!.birthDate).toEqual(
+    expect(authenticatedUser.birthDate).toEqual(
       new Date('1988-05-12T00:00:00.000Z'),
     );
   });
@@ -171,5 +203,18 @@ describe('AuthService password reset', () => {
         professionalSpecialtyId: 'inactive-specialty',
       }),
     ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('logs out by revoking the current session', async () => {
+    const user = users.get(userId)!;
+    user.currentSessionId = 'session-current';
+
+    await expect(service.logout(user)).resolves.toEqual({
+      message: 'Logged out successfully',
+    });
+    expect(userSessionsService.revokeCurrentSession).toHaveBeenCalledWith(
+      userId,
+      'session-current',
+    );
   });
 });

@@ -2,6 +2,7 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  Index,
   JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
@@ -10,6 +11,7 @@ import {
 import { User } from '../../auth/entities/user.entity';
 
 @Entity('user_sessions')
+@Index(['userId', 'isRevoked', 'lastActiveAt'])
 export class UserSession {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -25,6 +27,15 @@ export class UserSession {
   deviceName: string;
 
   @Column('text', { nullable: true })
+  deviceType: string;
+
+  @Column('text', { nullable: true })
+  browserName: string;
+
+  @Column('text', { nullable: true })
+  osName: string;
+
+  @Column('text', { nullable: true })
   ipAddress: string;
 
   @Column('text', { nullable: true })
@@ -35,6 +46,9 @@ export class UserSession {
 
   @Column('bool', { default: false })
   isRevoked: boolean;
+
+  @Column('timestamp', { nullable: true })
+  revokedAt: Date | null;
 
   @CreateDateColumn()
   createdAt: Date;

@@ -9,6 +9,7 @@ import { Repository } from 'typeorm';
 import { JwtPayload } from '../interfaces';
 import { User } from '../entities/user.entity';
 import { getRequiredEnv } from '../../config/env';
+import { UserSessionsService } from '../../user-sessions/user-sessions.service';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
@@ -17,6 +18,8 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     private readonly userRepository: Repository<User>,
 
     configService: ConfigService,
+
+    private readonly userSessionsService: UserSessionsService,
   ) {
     const jwtSecret = getRequiredEnv(
       'JWT_SECRET',
@@ -30,7 +33,11 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate(payload: JwtPayload): Promise<User> {
-    const { id } = payload;
+    const { id, sessionId } = payload;
+
+    if (!sessionId) {
+      throw new UnauthorizedException('Session not valid');
+    }
 
     const user = await this.userRepository.findOneBy({ id });
 
@@ -38,6 +45,11 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 
     if (!user.isActive)
       throw new UnauthorizedException('User is inactive, talk with an admin');
+
+    await this.userSessionsService.assertActiveSession(user.id, sessionId);
+    await this.userSessionsService.updateLastActive(sessionId);
+
+    user.currentSessionId = sessionId;
 
     return user;
   }

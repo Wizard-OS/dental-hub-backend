@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
+import type { Request } from 'express';
 
 import * as bcrypt from 'bcrypt';
 import { randomInt } from 'crypto';
@@ -15,6 +16,8 @@ import { JwtPayload } from './interfaces';
 import { User } from './entities/user.entity';
 import { ClinicMembership } from '../clinic-memberships/entities/clinic-membership.entity';
 import { ProfessionalSpecialty } from '../professional-specialties/entities/professional-specialty.entity';
+import { buildSessionMetadata } from '../user-sessions/device-metadata.util';
+import { UserSessionsService } from '../user-sessions/user-sessions.service';
 import {
   CreateUserDto,
   LoginUserDto,
@@ -40,9 +43,11 @@ export class AuthService {
     private readonly specialtyRepository: Repository<ProfessionalSpecialty>,
 
     private readonly jwtService: JwtService,
+
+    private readonly userSessionsService: UserSessionsService,
   ) {}
 
-  async create(createUserDto: CreateUserDto) {
+  async create(createUserDto: CreateUserDto, request?: Request) {
     try {
       const { password, ...userData } = createUserDto;
 
@@ -54,15 +59,19 @@ export class AuthService {
       await this.userRepository.save(user);
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { password: _, ...userWithoutPassword } = user;
+      const session = await this.userSessionsService.createSession(
+        user.id,
+        request ? buildSessionMetadata(request) : {},
+      );
 
-      return this.buildAuthResponse(userWithoutPassword as User);
+      return this.buildAuthResponse(userWithoutPassword as User, session.id);
       // TODO: Retornar el JWT de acceso
     } catch (error) {
       this.handleDBErrors(error);
     }
   }
 
-  async login(loginUserDto: LoginUserDto) {
+  async login(loginUserDto: LoginUserDto, request?: Request) {
     const { password, email } = loginUserDto;
 
     const user = await this.userRepository.findOne({
@@ -92,11 +101,16 @@ export class AuthService {
     if (!bcrypt.compareSync(password, user.password))
       throw new UnauthorizedException('Credentials are not valid (password)');
 
-    return this.buildAuthResponse(user);
+    const session = await this.userSessionsService.createSession(
+      user.id,
+      request ? buildSessionMetadata(request) : {},
+    );
+
+    return this.buildAuthResponse(user, session.id);
   }
 
   async checkAuthStatus(user: User) {
-    return this.buildAuthResponse(user);
+    return this.buildAuthResponse(user, this.requireCurrentSessionId(user));
   }
 
   async forgotPassword(forgotPasswordDto: ForgotPasswordDto) {
@@ -177,7 +191,10 @@ export class AuthService {
       throw new InternalServerErrorException('User not found');
     }
 
-    return this.buildAuthResponse(updatedUser);
+    return this.buildAuthResponse(
+      updatedUser,
+      this.requireCurrentSessionId(user),
+    );
   }
 
   async updateProfile(user: User, updateProfileDto: UpdateProfileDto) {
@@ -217,7 +234,10 @@ export class AuthService {
       throw new InternalServerErrorException('User not found after update');
     }
 
-    return this.buildAuthResponse(updatedUser);
+    return this.buildAuthResponse(
+      updatedUser,
+      this.requireCurrentSessionId(user),
+    );
   }
 
   async changePassword(user: User, changePasswordDto: ChangePasswordDto) {
@@ -242,7 +262,10 @@ export class AuthService {
 
     return {
       message: 'Password changed successfully',
-      token: this.getJwtToken({ id: user.id }),
+      token: this.getJwtToken({
+        id: user.id,
+        sessionId: this.requireCurrentSessionId(user),
+      }),
     };
   }
 
@@ -255,13 +278,14 @@ export class AuthService {
       throw new InternalServerErrorException('User not found');
     }
 
-    return this.buildAuthResponse(fullUser);
+    return this.buildAuthResponse(fullUser, this.requireCurrentSessionId(user));
   }
 
-  logout() {
-    return {
-      message: 'Logged out successfully',
-    };
+  logout(user: User) {
+    return this.userSessionsService.revokeCurrentSession(
+      user.id,
+      this.requireCurrentSessionId(user),
+    );
   }
 
   private getJwtToken(payload: JwtPayload) {
@@ -300,7 +324,7 @@ export class AuthService {
     return user;
   }
 
-  private async buildAuthResponse(user: User) {
+  private async buildAuthResponse(user: User, sessionId: string) {
     const userWithoutPassword = { ...user } as Omit<User, 'password'> & {
       password?: string;
     };
@@ -309,8 +333,16 @@ export class AuthService {
     return {
       ...userWithoutPassword,
       memberships: await this.getActiveMemberships(user.id),
-      token: this.getJwtToken({ id: user.id }),
+      token: this.getJwtToken({ id: user.id, sessionId }),
     };
+  }
+
+  private requireCurrentSessionId(user: User) {
+    if (!user.currentSessionId) {
+      throw new UnauthorizedException('Session not valid');
+    }
+
+    return user.currentSessionId;
   }
 
   private async getActiveMemberships(userId: string) {
