@@ -288,6 +288,24 @@ export class AuthService {
     );
   }
 
+  async deleteAccount(user: User) {
+    const currentSessionId = this.requireCurrentSessionId(user);
+
+    await this.userRepository.update(user.id, {
+      isActive: false,
+    });
+    await this.userSessionsService.revokeAllOtherSessions(
+      user.id,
+      currentSessionId,
+    );
+    await this.userSessionsService.revokeCurrentSession(
+      user.id,
+      currentSessionId,
+    );
+
+    return { message: 'Account deleted successfully' };
+  }
+
   private getJwtToken(payload: JwtPayload) {
     return this.jwtService.sign(payload);
   }

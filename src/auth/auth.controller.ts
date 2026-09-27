@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   Controller,
+  Delete,
   Get,
   Post,
   Patch,
@@ -208,6 +209,15 @@ export class AuthController {
   @ApiResponse({ status: 201, description: 'Sesión cerrada' })
   logout(@GetUser() user: User) {
     return this.authService.logout(user);
+  }
+
+  @Delete('account')
+  @Auth()
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Eliminar cuenta del usuario autenticado' })
+  @ApiResponse({ status: 200, description: 'Cuenta eliminada' })
+  deleteAccount(@GetUser() user: User) {
+    return this.authService.deleteAccount(user);
   }
 
   @Get('private')
