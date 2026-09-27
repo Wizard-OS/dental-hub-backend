@@ -86,6 +86,11 @@ La API cuenta con documentación interactiva generada con **Swagger (OpenAPI 3.0
 Variables clave:
 
 - `PORT`: puerto HTTP de la API (default `3000`)
+- `CORS_ORIGINS`: origins permitidos separados por coma. En producción, origins no listados son rechazados.
+- `ENABLE_SWAGGER`:
+  - `false` (o no definido en producción): no expone `/api/docs`
+  - `true`: expone Swagger
+- `THROTTLE_TTL_MS` / `THROTTLE_LIMIT`: ventana y límite global de rate limit (defaults `60000` / `120`)
 - `DATABASE_URL`: URL PostgreSQL completa. Si está definida, tiene prioridad sobre `DB_HOST`, `DB_NAME`, `DB_USERNAME` y `DB_PASSWORD`.
 - `DB_HOST`: host PostgreSQL (default `127.0.0.1`)
 - `DB_PORT`: puerto PostgreSQL (default `5432`)
@@ -96,11 +101,12 @@ Variables clave:
   - `false` (o no definido): conexión PostgreSQL sin SSL, útil para Docker local
   - `true`: habilita SSL para Neon, Supabase u otros Postgres administrados
 - `DB_SYNCHRONIZE`:
-  - `true` (o no definido en desarrollo): habilita `synchronize` para desarrollo local
-  - `false`: deshabilita synchronize (recomendado para producción)
+  - `true`: habilita `synchronize` solo cuando `NODE_ENV !== production`
+  - `false` o no definido: deshabilita synchronize
 - `ENABLE_SEED_ENDPOINT`:
-  - `false` (o no definido): deshabilita el endpoint de seed en producción
-  - `true`: habilita `GET /api/seed` incluso con `NODE_ENV=production` (solo para entornos controlados)
+  - `false` (o no definido): no registra el endpoint de seed
+  - `true`: registra `GET /api/seed`, protegido por JWT admin/super-user
+- `ENABLE_DEV_OTP`: si `NODE_ENV=development` y vale `true`, `forgot-password` devuelve `devOtp` para pruebas locales.
 - `REST_COUNTRIES_BASE_URL`: URL base de Rest Countries v5 (default `https://api.restcountries.com/countries/v5`)
 - `REST_COUNTRIES_API_KEY`: API key bearer de Rest Countries. Si no está definida, el backend solo puede servir el fallback local de Uruguay para no romper clínicas existentes.
 
@@ -186,6 +192,8 @@ DATABASE_URL=postgresql://<user>:<password>@<host-neon-o-supabase>:5432/<databas
 DB_SSL=true
 DB_SYNCHRONIZE=false
 ENABLE_SEED_ENDPOINT=false
+ENABLE_SWAGGER=false
+CORS_ORIGINS=https://<tu-frontend>
 JWT_SECRET=<secreto-largo>
 INTEGRATION_TOKEN_ENCRYPTION_KEY=<secreto-largo-o-64-hex>
 REST_COUNTRIES_API_KEY=<api-key-rest-countries>
@@ -206,7 +214,7 @@ Cuando el deploy quede `Live`, probar:
 
 ```text
 https://<tu-servicio>.onrender.com/api
-https://<tu-servicio>.onrender.com/api/docs
+https://<tu-servicio>.onrender.com/api/docs # solo si ENABLE_SWAGGER=true
 ```
 
 ## Scripts
@@ -225,7 +233,7 @@ Endpoint:
 - `GET /api/seed`
 
 Carga datos de prueba (usuarios, clínicas, membresías, pacientes, agenda, facturación, etc.).
-En producción queda deshabilitado por defecto cuando `NODE_ENV=production`; solo se registra si `ENABLE_SEED_ENDPOINT=true`.
+Queda deshabilitado por defecto en todos los entornos; solo se registra si `ENABLE_SEED_ENDPOINT=true` y requiere JWT con rol `admin` o `super-user`.
 
 Usuarios seed para login:
 

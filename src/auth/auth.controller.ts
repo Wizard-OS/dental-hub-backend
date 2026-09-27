@@ -1,5 +1,4 @@
 import {
-  BadRequestException,
   Controller,
   Delete,
   Get,
@@ -7,20 +6,12 @@ import {
   Patch,
   Body,
   Req,
-  UseGuards,
   UploadedFile,
   UseInterceptors,
-  Headers,
 } from '@nestjs/common';
-import { AuthGuard } from '@nestjs/passport';
-import { type IncomingHttpHeaders } from 'http';
 import type { Request } from 'express';
 import type { Express } from 'express';
-import { FileInterceptor } from '@nestjs/platform-express';
-import { diskStorage } from 'multer';
-import { extname } from 'path';
-import * as fs from 'fs';
-import * as path from 'path';
+import { Throttle } from '@nestjs/throttler';
 import {
   ApiTags,
   ApiOperation,
@@ -31,8 +22,9 @@ import {
 } from '@nestjs/swagger';
 
 import { AuthService } from './auth.service';
-import { RawHeaders, GetUser, Auth } from './decorators';
-import { RoleProtected } from './decorators';
+import { GetUser, Auth } from './decorators';
+import { buildRequestBaseUrl } from '../common/http/request-url';
+import { createUploadInterceptor } from '../common/files/upload-interceptors';
 
 import {
   CreateUserDto,
@@ -44,8 +36,6 @@ import {
   ResetPasswordDto,
 } from './dto';
 import { User } from './entities/user.entity';
-import { UserRoleGuard } from './guards/user-role.guard';
-import { ValidRoles } from './interfaces';
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -53,6 +43,7 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('register')
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @ApiOperation({ summary: 'Registrar nuevo usuario' })
   @ApiResponse({ status: 201, description: 'Usuario creado exitosamente' })
   @ApiResponse({ status: 400, description: 'Datos inválidos' })
@@ -61,6 +52,7 @@ export class AuthController {
   }
 
   @Post('login')
+  @Throttle({ default: { limit: 8, ttl: 60_000 } })
   @ApiOperation({ summary: 'Iniciar sesión' })
   @ApiResponse({
     status: 201,
@@ -72,6 +64,7 @@ export class AuthController {
   }
 
   @Post('forgot-password')
+  @Throttle({ default: { limit: 3, ttl: 60_000 } })
   @ApiOperation({ summary: 'Solicitar código OTP para recuperar contraseña' })
   @ApiResponse({
     status: 201,
@@ -82,6 +75,7 @@ export class AuthController {
   }
 
   @Post('verify-otp')
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @ApiOperation({ summary: 'Validar código OTP de recuperación' })
   @ApiResponse({ status: 201, description: 'OTP válido' })
   @ApiResponse({ status: 400, description: 'OTP inválido o expirado' })
@@ -90,6 +84,7 @@ export class AuthController {
   }
 
   @Post('reset-password')
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @ApiOperation({ summary: 'Restablecer contraseña usando OTP' })
   @ApiResponse({ status: 201, description: 'Contraseña restablecida' })
   @ApiResponse({ status: 400, description: 'OTP inválido o expirado' })
@@ -111,6 +106,7 @@ export class AuthController {
   }
 
   @Post('profile-photo')
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @Auth()
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Subir foto de perfil' })
@@ -133,30 +129,15 @@ export class AuthController {
     description: 'Solo se permiten archivos de imagen',
   })
   @UseInterceptors(
-    FileInterceptor('file', {
-      storage: diskStorage({
-        destination: (req, file, cb) => {
-          fs.mkdirSync(path.join(process.cwd(), 'uploads', 'profile-photos'), {
-            recursive: true,
-          });
-          cb(null, path.join(process.cwd(), 'uploads', 'profile-photos'));
-        },
-        filename: (req, file, cb) => {
-          const ext = extname(file.originalname) || '.jpg';
-          const userId = (req as Request & { user?: User }).user?.id ?? 'user';
-          cb(null, `${userId}-${Date.now()}${ext}`);
-        },
-      }),
-      fileFilter: (req, file, cb) => {
-        if (!file.mimetype.startsWith('image/')) {
-          return cb(
-            new BadRequestException('Only image files are allowed'),
-            false,
-          );
-        }
-        cb(null, true);
+    createUploadInterceptor({
+      directory: 'profile-photos',
+      maxSizeMb: 5,
+      imageOnlyMessage: 'Only image files are allowed',
+      filename: (request) => {
+        const userId =
+          (request as Request & { user?: User }).user?.id ?? 'user';
+        return `${userId}-${Date.now()}`;
       },
-      limits: { fileSize: 5 * 1024 * 1024 },
     }),
   )
   uploadProfilePhoto(
@@ -164,7 +145,7 @@ export class AuthController {
     @UploadedFile() file: Express.Multer.File,
     @Req() request: Request,
   ) {
-    const baseUrl = `${request.protocol}://${request.get('host')}`;
+    const baseUrl = buildRequestBaseUrl(request);
     return this.authService.updateProfilePhoto(user, file, baseUrl);
   }
 
@@ -218,49 +199,5 @@ export class AuthController {
   @ApiResponse({ status: 200, description: 'Cuenta eliminada' })
   deleteAccount(@GetUser() user: User) {
     return this.authService.deleteAccount(user);
-  }
-
-  @Get('private')
-  @ApiBearerAuth()
-  @ApiOperation({ summary: '[Test] Ruta privada de prueba' })
-  @UseGuards(AuthGuard())
-  testingPrivateRoute(
-    @Req() request: Request,
-    @GetUser() user: User,
-    @GetUser('email') userEmail: string,
-    @RawHeaders() rawHeaders: string[],
-    @Headers() headers: IncomingHttpHeaders,
-  ) {
-    return {
-      ok: true,
-      message: 'Hola Mundo Private',
-      user,
-      userEmail,
-      rawHeaders,
-      headers,
-    };
-  }
-
-  @Get('private2')
-  @ApiBearerAuth()
-  @ApiOperation({ summary: '[Test] Ruta protegida por rol (superUser/admin)' })
-  @RoleProtected(ValidRoles.superUser, ValidRoles.admin)
-  @UseGuards(AuthGuard(), UserRoleGuard)
-  privateRoute2(@GetUser() user: User) {
-    return {
-      ok: true,
-      user,
-    };
-  }
-
-  @Get('private3')
-  @ApiBearerAuth()
-  @ApiOperation({ summary: '[Test] Ruta protegida por @Auth(admin)' })
-  @Auth(ValidRoles.admin)
-  privateRoute3(@GetUser() user: User) {
-    return {
-      ok: true,
-      user,
-    };
   }
 }

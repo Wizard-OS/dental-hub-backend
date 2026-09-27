@@ -8,9 +8,8 @@ import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import type { Request } from 'express';
 
-import * as bcrypt from 'bcrypt';
-import { randomInt } from 'crypto';
 import { Repository } from 'typeorm';
+import { promises as fs } from 'fs';
 
 import { JwtPayload } from './interfaces';
 import { User } from './entities/user.entity';
@@ -27,11 +26,12 @@ import {
   VerifyOtpDto,
   ResetPasswordDto,
 } from './dto';
+import { validateAndNormalizeUploadedFile } from '../common/files/upload-validation';
+import { PasswordHasherService } from './services/password-hasher.service';
+import { PasswordResetOtpService } from './services/password-reset-otp.service';
 
 @Injectable()
 export class AuthService {
-  private static readonly passwordResetOtpTtlMs = 10 * 60 * 1000;
-
   constructor(
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
@@ -45,6 +45,10 @@ export class AuthService {
     private readonly jwtService: JwtService,
 
     private readonly userSessionsService: UserSessionsService,
+
+    private readonly passwordHasher: PasswordHasherService,
+
+    private readonly passwordResetOtp: PasswordResetOtpService,
   ) {}
 
   async create(createUserDto: CreateUserDto, request?: Request) {
@@ -53,7 +57,7 @@ export class AuthService {
 
       const user = this.userRepository.create({
         ...userData,
-        password: bcrypt.hashSync(password, 10),
+        password: this.passwordHasher.hash(password),
       });
 
       await this.userRepository.save(user);
@@ -95,11 +99,10 @@ export class AuthService {
       },
     });
 
-    if (!user)
-      throw new UnauthorizedException('Credentials are not valid (email)');
+    if (!user) throw new UnauthorizedException('Credentials are not valid');
 
-    if (!bcrypt.compareSync(password, user.password))
-      throw new UnauthorizedException('Credentials are not valid (password)');
+    if (!this.passwordHasher.compare(password, user.password))
+      throw new UnauthorizedException('Credentials are not valid');
 
     const session = await this.userSessionsService.createSession(
       user.id,
@@ -128,17 +131,19 @@ export class AuthService {
       return genericResponse;
     }
 
-    const otp = randomInt(0, 10000).toString().padStart(4, '0');
-    const expiresAt = new Date(Date.now() + AuthService.passwordResetOtpTtlMs);
+    const otp = this.passwordResetOtp.generate();
+    const expiresAt = this.passwordResetOtp.expirationFrom();
 
     await this.userRepository.update(user.id, {
-      passwordResetOtpHash: bcrypt.hashSync(otp, 10),
+      passwordResetOtpHash: this.passwordHasher.hash(otp),
       passwordResetOtpExpiresAt: expiresAt,
       passwordResetOtpUsedAt: null,
+      passwordResetOtpAttemptCount: 0,
+      passwordResetOtpLockedUntil: null,
     });
 
     // TODO: Send the OTP through the configured email provider.
-    if (process.env.NODE_ENV !== 'production') {
+    if (this.passwordResetOtp.shouldExposeDevOtp()) {
       genericResponse.devOtp = otp;
       console.log(`Password reset OTP for ${email}: ${otp}`);
     }
@@ -162,10 +167,12 @@ export class AuthService {
     );
 
     await this.userRepository.update(user.id, {
-      password: bcrypt.hashSync(resetPasswordDto.newPassword, 10),
+      password: this.passwordHasher.hash(resetPasswordDto.newPassword),
       passwordResetOtpHash: null,
       passwordResetOtpExpiresAt: null,
       passwordResetOtpUsedAt: new Date(),
+      passwordResetOtpAttemptCount: 0,
+      passwordResetOtpLockedUntil: null,
     });
 
     return { message: 'Password reset successfully' };
@@ -178,6 +185,13 @@ export class AuthService {
   ) {
     if (!file) {
       throw new BadRequestException('No file uploaded');
+    }
+
+    try {
+      await validateAndNormalizeUploadedFile(file, ['image']);
+    } catch (error) {
+      await fs.unlink(file.path).catch(() => undefined);
+      throw error;
     }
 
     const profilePhotoUrl = `${baseUrl}/uploads/profile-photos/${file.filename}`;
@@ -252,12 +266,14 @@ export class AuthService {
       throw new InternalServerErrorException('User not found');
     }
 
-    if (!bcrypt.compareSync(currentPassword, userWithPassword.password)) {
+    if (
+      !this.passwordHasher.compare(currentPassword, userWithPassword.password)
+    ) {
       throw new UnauthorizedException('Current password is incorrect');
     }
 
     await this.userRepository.update(user.id, {
-      password: bcrypt.hashSync(newPassword, 10),
+      password: this.passwordHasher.hash(newPassword),
     });
 
     return {
@@ -293,6 +309,11 @@ export class AuthService {
 
     await this.userRepository.update(user.id, {
       isActive: false,
+      passwordResetOtpHash: null,
+      passwordResetOtpExpiresAt: null,
+      passwordResetOtpUsedAt: null,
+      passwordResetOtpAttemptCount: 0,
+      passwordResetOtpLockedUntil: null,
     });
     await this.userSessionsService.revokeAllOtherSessions(
       user.id,
@@ -319,6 +340,8 @@ export class AuthService {
         passwordResetOtpHash: true,
         passwordResetOtpExpiresAt: true,
         passwordResetOtpUsedAt: true,
+        passwordResetOtpAttemptCount: true,
+        passwordResetOtpLockedUntil: true,
       },
     });
 
@@ -331,12 +354,32 @@ export class AuthService {
       throw new BadRequestException('Invalid or expired OTP');
     }
 
+    if (
+      user.passwordResetOtpLockedUntil &&
+      user.passwordResetOtpLockedUntil.getTime() > Date.now()
+    ) {
+      throw new BadRequestException('Invalid or expired OTP');
+    }
+
     if (user.passwordResetOtpExpiresAt.getTime() <= Date.now()) {
       throw new BadRequestException('Invalid or expired OTP');
     }
 
-    if (!bcrypt.compareSync(otp, user.passwordResetOtpHash)) {
+    if (!this.passwordHasher.compare(otp, user.passwordResetOtpHash)) {
+      await this.userRepository.update(
+        user.id,
+        this.passwordResetOtp.nextFailedAttemptState(
+          user.passwordResetOtpAttemptCount,
+        ),
+      );
       throw new BadRequestException('Invalid or expired OTP');
+    }
+
+    if (user.passwordResetOtpAttemptCount) {
+      await this.userRepository.update(user.id, {
+        passwordResetOtpAttemptCount: 0,
+        passwordResetOtpLockedUntil: null,
+      });
     }
 
     return user;

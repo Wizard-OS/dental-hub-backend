@@ -11,6 +11,7 @@ import { GoogleDriveStorageProvider } from './providers/google-drive-storage.pro
 import { LocalStorageProvider } from './providers/local-storage.provider';
 import { StorageService } from './storage.service';
 import { TokenEncryptionService } from './token-encryption.service';
+import { StorageProviderRegistry } from './storage-provider-registry.service';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { TokenEncryptionService } from './token-encryption.service';
     StorageService,
     LocalStorageProvider,
     GoogleDriveStorageProvider,
+    StorageProviderRegistry,
     GoogleDriveIntegrationService,
     TokenEncryptionService,
   ],

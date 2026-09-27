@@ -16,6 +16,8 @@ import { ClinicPermissionGuard } from './guards/clinic-permission.guard';
 import { getRequiredEnv } from '../config/env';
 import { ProfessionalSpecialty } from '../professional-specialties/entities/professional-specialty.entity';
 import { UserSessionsModule } from '../user-sessions/user-sessions.module';
+import { PasswordHasherService } from './services/password-hasher.service';
+import { PasswordResetOtpService } from './services/password-reset-otp.service';
 
 @Global()
 @Module({
@@ -27,6 +29,8 @@ import { UserSessionsModule } from '../user-sessions/user-sessions.module';
     UserRoleGuard,
     ClinicRoleGuard,
     ClinicPermissionGuard,
+    PasswordHasherService,
+    PasswordResetOtpService,
   ],
   imports: [
     ConfigModule,

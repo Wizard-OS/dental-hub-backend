@@ -1,4 +1,5 @@
 import { Body, Controller, Headers, Post } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import {
   ApiBearerAuth,
   ApiOperation,
@@ -42,6 +43,7 @@ export class BillingController {
   }
 
   @Post('webhooks/paypal')
+  @Throttle({ default: { limit: 60, ttl: 60_000 } })
   @ApiOperation({ summary: 'Recibir webhooks de PayPal Billing' })
   @ApiResponse({ status: 201, description: 'Webhook recibido' })
   handlePayPalWebhook(

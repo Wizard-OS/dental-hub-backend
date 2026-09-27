@@ -1,5 +1,6 @@
 import { StorageIntegrationStatus } from './interfaces/storage-integration-status.enum';
 import { StorageProviderType } from './interfaces/storage-provider-type.enum';
+import { StorageProviderRegistry } from './storage-provider-registry.service';
 import { StorageService } from './storage.service';
 
 describe('StorageService', () => {
@@ -22,8 +23,10 @@ describe('StorageService', () => {
     const repository = { findOne: jest.fn().mockResolvedValue(null) };
     const service = new StorageService(
       repository as never,
-      localProvider as never,
-      driveProvider as never,
+      new StorageProviderRegistry(
+        localProvider as never,
+        driveProvider as never,
+      ),
     );
     localProvider.upload.mockResolvedValue({ storageProvider: 'local' });
 
@@ -42,8 +45,10 @@ describe('StorageService', () => {
     };
     const service = new StorageService(
       repository as never,
-      localProvider as never,
-      driveProvider as never,
+      new StorageProviderRegistry(
+        localProvider as never,
+        driveProvider as never,
+      ),
     );
     driveProvider.upload.mockResolvedValue({
       storageProvider: StorageProviderType.GOOGLE_DRIVE,

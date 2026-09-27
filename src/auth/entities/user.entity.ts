@@ -106,6 +106,18 @@ export class User {
   })
   passwordResetOtpUsedAt?: Date | null;
 
+  @Column('int', {
+    default: 0,
+    select: false,
+  })
+  passwordResetOtpAttemptCount: number;
+
+  @Column('timestamp', {
+    nullable: true,
+    select: false,
+  })
+  passwordResetOtpLockedUntil?: Date | null;
+
   @OneToMany(() => Appointment, (appointment) => appointment.dentist)
   appointments: Appointment[];
 

@@ -6,20 +6,17 @@ import { ClinicStorageIntegration } from './entities/clinic-storage-integration.
 import { StorageIntegrationStatus } from './interfaces/storage-integration-status.enum';
 import { StorageProviderType } from './interfaces/storage-provider-type.enum';
 import {
-  StorageProvider,
   StorageUploadInput,
   StorageUploadResult,
 } from './interfaces/storage-provider.interface';
-import { GoogleDriveStorageProvider } from './providers/google-drive-storage.provider';
-import { LocalStorageProvider } from './providers/local-storage.provider';
+import { StorageProviderRegistry } from './storage-provider-registry.service';
 
 @Injectable()
 export class StorageService {
   constructor(
     @InjectRepository(ClinicStorageIntegration)
     private readonly integrationRepository: Repository<ClinicStorageIntegration>,
-    private readonly localStorageProvider: LocalStorageProvider,
-    private readonly googleDriveStorageProvider: GoogleDriveStorageProvider,
+    private readonly providerRegistry: StorageProviderRegistry,
   ) {}
 
   async upload(input: StorageUploadInput): Promise<StorageUploadResult> {
@@ -34,7 +31,7 @@ export class StorageService {
       driveFileId?: string | null;
     },
   ): Promise<void> {
-    await this.providerByType(providerType).markUnavailable(file);
+    await this.providerRegistry.get(providerType).markUnavailable(file);
   }
 
   async getActiveProviderType(clinicId: string): Promise<StorageProviderType> {
@@ -52,15 +49,9 @@ export class StorageService {
       : StorageProviderType.LOCAL;
   }
 
-  private async getProvider(clinicId: string): Promise<StorageProvider> {
-    return this.providerByType(await this.getActiveProviderType(clinicId));
-  }
-
-  private providerByType(providerType: StorageProviderType): StorageProvider {
-    if (providerType === StorageProviderType.GOOGLE_DRIVE) {
-      return this.googleDriveStorageProvider;
-    }
-
-    return this.localStorageProvider;
+  private async getProvider(clinicId: string) {
+    return this.providerRegistry.get(
+      await this.getActiveProviderType(clinicId),
+    );
   }
 }

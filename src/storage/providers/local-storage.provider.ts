@@ -22,7 +22,7 @@ export class LocalStorageProvider implements StorageProvider {
       storageProvider: StorageProviderType.LOCAL,
       storedName: input.file.filename,
       path: input.file.path,
-      url: `${input.baseUrl}/uploads/patient-files/${input.file.filename}`,
+      url: `${input.baseUrl}/api/patient-files/${input.fileId}/download`,
       mimeType: input.file.mimetype,
       size: input.file.size,
       driveFileId: null,

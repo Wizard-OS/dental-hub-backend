@@ -1,5 +1,4 @@
 import {
-  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -7,15 +6,13 @@ import {
   Param,
   Post,
   Req,
+  Res,
   UploadedFile,
   UseInterceptors,
 } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
-import { diskStorage } from 'multer';
-import { extname } from 'path';
-import * as fs from 'fs';
-import * as path from 'path';
+import { Throttle } from '@nestjs/throttler';
 import type { Request } from 'express';
+import type { Response } from 'express';
 import type { Express } from 'express';
 import {
   ApiBearerAuth,
@@ -31,6 +28,11 @@ import {
 import { PatientFilesService } from './patient-files.service';
 import { CreatePatientFileDto } from './dto/create-patient-file.dto';
 import {
+  createUploadInterceptor,
+  timestampedUploadName,
+} from '../common/files/upload-interceptors';
+import { buildRequestBaseUrl } from '../common/http/request-url';
+import {
   AuthClinic,
   ClinicRoles,
   GetClinicId,
@@ -40,14 +42,6 @@ import {
 } from '../auth/decorators';
 import { ClinicMembershipRole } from '../clinic-memberships/interfaces/clinic-membership-role.enum';
 import { ClinicAccessContext } from '../patients/services/patient-access.service';
-
-const ALLOWED_MIME_TYPES = new Set([
-  'application/pdf',
-  'text/plain',
-  'application/msword',
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-  'application/octet-stream',
-]);
 
 @ApiTags('Patient Files')
 @ApiBearerAuth()
@@ -66,6 +60,7 @@ export class PatientFilesController {
   constructor(private readonly patientFilesService: PatientFilesService) {}
 
   @Post('patients/:patientId/files')
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
   @ApiOperation({ summary: 'Adjuntar archivo a paciente' })
   @ApiConsumes('multipart/form-data')
   @ApiParam({ name: 'patientId', description: 'UUID del paciente' })
@@ -84,33 +79,11 @@ export class PatientFilesController {
   })
   @ApiResponse({ status: 201, description: 'Archivo adjuntado' })
   @UseInterceptors(
-    FileInterceptor('file', {
-      storage: diskStorage({
-        destination: (req, file, cb) => {
-          const uploadDir = path.join(
-            process.cwd(),
-            'uploads',
-            'patient-files',
-          );
-          fs.mkdirSync(uploadDir, { recursive: true });
-          cb(null, uploadDir);
-        },
-        filename: (req, file, cb) => {
-          const ext = extname(file.originalname) || '';
-          cb(null, `${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`);
-        },
-      }),
-      fileFilter: (req, file, cb) => {
-        if (
-          file.mimetype.startsWith('image/') ||
-          ALLOWED_MIME_TYPES.has(file.mimetype)
-        ) {
-          return cb(null, true);
-        }
-
-        return cb(new BadRequestException('File type is not allowed'), false);
-      },
-      limits: { fileSize: 10 * 1024 * 1024 },
+    createUploadInterceptor({
+      directory: 'patient-files',
+      maxSizeMb: 10,
+      allowDocuments: true,
+      filename: timestampedUploadName,
     }),
   )
   create(
@@ -123,7 +96,7 @@ export class PatientFilesController {
     @Body() dto: CreatePatientFileDto,
     @Req() request: Request,
   ) {
-    const baseUrl = `${request.protocol}://${request.get('host')}`;
+    const baseUrl = buildRequestBaseUrl(request);
     return this.patientFilesService.create(
       this.context(clinicId, membershipId, role, permissionsJson),
       patientId,
@@ -135,6 +108,7 @@ export class PatientFilesController {
   }
 
   @Post('patients/:patientId/profile-photo')
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
   @ApiOperation({ summary: 'Subir foto de perfil del paciente' })
   @ApiConsumes('multipart/form-data')
   @ApiParam({ name: 'patientId', description: 'UUID del paciente' })
@@ -148,33 +122,11 @@ export class PatientFilesController {
   })
   @ApiResponse({ status: 201, description: 'Foto de perfil actualizada' })
   @UseInterceptors(
-    FileInterceptor('file', {
-      storage: diskStorage({
-        destination: (req, file, cb) => {
-          const uploadDir = path.join(
-            process.cwd(),
-            'uploads',
-            'patient-files',
-          );
-          fs.mkdirSync(uploadDir, { recursive: true });
-          cb(null, uploadDir);
-        },
-        filename: (req, file, cb) => {
-          const ext = extname(file.originalname) || '';
-          cb(null, `${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`);
-        },
-      }),
-      fileFilter: (req, file, cb) => {
-        if (file.mimetype.startsWith('image/')) {
-          return cb(null, true);
-        }
-
-        return cb(
-          new BadRequestException('Profile photo must be an image'),
-          false,
-        );
-      },
-      limits: { fileSize: 10 * 1024 * 1024 },
+    createUploadInterceptor({
+      directory: 'patient-files',
+      maxSizeMb: 10,
+      imageOnlyMessage: 'Profile photo must be an image',
+      filename: timestampedUploadName,
     }),
   )
   createProfilePhoto(
@@ -186,7 +138,7 @@ export class PatientFilesController {
     @UploadedFile() file: Express.Multer.File,
     @Req() request: Request,
   ) {
-    const baseUrl = `${request.protocol}://${request.get('host')}`;
+    const baseUrl = buildRequestBaseUrl(request);
     return this.patientFilesService.createProfilePhoto(
       this.context(clinicId, membershipId, role, permissionsJson),
       patientId,
@@ -228,6 +180,31 @@ export class PatientFilesController {
       this.context(clinicId, membershipId, role, permissionsJson),
       id,
     );
+  }
+
+  @Get('patient-files/:id/download')
+  @ApiOperation({ summary: 'Descargar archivo de paciente' })
+  @ApiParam({ name: 'id', description: 'UUID del archivo' })
+  @ApiResponse({ status: 200, description: 'Archivo descargado' })
+  async download(
+    @GetClinicId() clinicId: string,
+    @GetClinicMembershipId() membershipId: string,
+    @GetClinicMembershipRole() role: ClinicMembershipRole,
+    @GetClinicPermissions() permissionsJson: Record<string, boolean>,
+    @Param('id') id: string,
+    @Res() response: Response,
+  ) {
+    const file = await this.patientFilesService.getDownload(
+      this.context(clinicId, membershipId, role, permissionsJson),
+      id,
+    );
+
+    response.setHeader('Content-Type', file.mimeType);
+    response.setHeader(
+      'Content-Disposition',
+      `attachment; filename="${encodeURIComponent(file.originalName)}"`,
+    );
+    return response.sendFile(file.path);
   }
 
   @Delete('patient-files/:id')

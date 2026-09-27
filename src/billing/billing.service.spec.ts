@@ -76,20 +76,22 @@ describe('Membership checkout lifecycle', () => {
     service = new BillingService(
       {} as unknown as ConstructorParameters<typeof BillingService>[0],
       clinics as unknown as ConstructorParameters<typeof BillingService>[1],
-      membership as unknown as ConstructorParameters<typeof BillingService>[2],
+      {} as unknown as ConstructorParameters<typeof BillingService>[2],
       {} as unknown as ConstructorParameters<typeof BillingService>[3],
-      provider as unknown as ConstructorParameters<typeof BillingService>[4],
+      membership as unknown as ConstructorParameters<typeof BillingService>[4],
+      {} as unknown as ConstructorParameters<typeof BillingService>[5],
+      provider as unknown as ConstructorParameters<typeof BillingService>[6],
       {
         list: jest.fn().mockResolvedValue({
           methods: [],
           selectionMode: 'saved_methods',
         }),
-      } as unknown as ConstructorParameters<typeof BillingService>[5],
+      } as unknown as ConstructorParameters<typeof BillingService>[7],
       {
         processClinic: jest.fn(),
         cancel: jest.fn(),
         start: jest.fn().mockResolvedValue({ status: 'trialing' }),
-      } as unknown as ConstructorParameters<typeof BillingService>[6],
+      } as unknown as ConstructorParameters<typeof BillingService>[8],
     );
   });
   const linked = () =>

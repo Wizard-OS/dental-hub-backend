@@ -17,11 +17,11 @@ export class ResetPasswordDto {
   email: string;
 
   @ApiProperty({
-    example: '1234',
-    description: 'Código OTP de 4 dígitos',
+    example: '123456',
+    description: 'Código OTP de 6 dígitos',
   })
   @IsString()
-  @Matches(/^\d{4}$/, { message: 'OTP must be a 4-digit code' })
+  @Matches(/^\d{6}$/, { message: 'OTP must be a 6-digit code' })
   otp: string;
 
   @ApiProperty({

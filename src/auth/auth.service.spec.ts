@@ -4,6 +4,8 @@ import * as bcrypt from 'bcrypt';
 import { AuthService } from './auth.service';
 import { User } from './entities/user.entity';
 import { ValidRoles } from './interfaces';
+import { PasswordHasherService } from './services/password-hasher.service';
+import { PasswordResetOtpService } from './services/password-reset-otp.service';
 
 describe('AuthService password reset', () => {
   let service: AuthService;
@@ -17,8 +19,12 @@ describe('AuthService password reset', () => {
 
   const userId = 'user-1';
   const email = 'doctor@dentalhub.test';
+  const originalNodeEnv = process.env.NODE_ENV;
+  const originalEnableDevOtp = process.env.ENABLE_DEV_OTP;
 
   beforeEach(() => {
+    process.env.NODE_ENV = 'development';
+    process.env.ENABLE_DEV_OTP = 'true';
     users = new Map<string, User>();
     specialties = new Map<string, { id: string; isActive: boolean }>();
     specialties.set('specialty-1', { id: 'specialty-1', isActive: true });
@@ -89,9 +95,9 @@ describe('AuthService password reset', () => {
       createSession: jest.fn((createdUserId: string) => ({
         id: `session-${createdUserId}`,
       })),
-      revokeCurrentSession: jest.fn(async () => ({
+      revokeCurrentSession: jest.fn().mockResolvedValue({
         message: 'Logged out successfully',
-      })),
+      }),
     };
 
     service = new AuthService(
@@ -100,7 +106,16 @@ describe('AuthService password reset', () => {
       specialtyRepository as never,
       jwtService as never,
       userSessionsService as never,
+      new PasswordHasherService(),
+      new PasswordResetOtpService(),
     );
+  });
+
+  afterEach(() => {
+    if (originalNodeEnv === undefined) delete process.env.NODE_ENV;
+    else process.env.NODE_ENV = originalNodeEnv;
+    if (originalEnableDevOtp === undefined) delete process.env.ENABLE_DEV_OTP;
+    else process.env.ENABLE_DEV_OTP = originalEnableDevOtp;
   });
 
   it('returns a generic response when requesting reset for an unknown email', async () => {
@@ -115,7 +130,7 @@ describe('AuthService password reset', () => {
     const response = await service.forgotPassword({ email });
     const otp = response.devOtp;
 
-    expect(otp).toMatch(/^\d{4}$/);
+    expect(otp).toMatch(/^\d{6}$/);
     await expect(service.verifyOtp({ email, otp: otp! })).resolves.toEqual({
       message: 'OTP verified successfully',
     });
@@ -155,6 +170,31 @@ describe('AuthService password reset', () => {
     await expect(
       service.verifyOtp({ email, otp: response.devOtp! }),
     ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('locks OTP verification after repeated invalid attempts', async () => {
+    const response = await service.forgotPassword({ email });
+    const user = users.get(userId)!;
+
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      await expect(
+        service.verifyOtp({ email, otp: '000000' }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    }
+
+    expect(user.passwordResetOtpAttemptCount).toBe(5);
+    expect(user.passwordResetOtpLockedUntil).toBeInstanceOf(Date);
+    await expect(
+      service.verifyOtp({ email, otp: response.devOtp! }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('does not expose dev OTP unless explicitly enabled in local development', async () => {
+    process.env.ENABLE_DEV_OTP = 'false';
+
+    await expect(service.forgotPassword({ email })).resolves.toEqual({
+      message: 'If the email exists, a password reset code has been sent',
+    });
   });
 
   it('updates extended profile fields', async () => {

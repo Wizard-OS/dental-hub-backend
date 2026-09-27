@@ -1,3 +1,6 @@
+overrides:
+  qs: 6.16.0
+
 allowBuilds:
   '@nestjs/core': true
   '@parcel/watcher': true

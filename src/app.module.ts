@@ -1,17 +1,12 @@
 import { PatientExamsModule } from './patient-exams/patient-exams.module';
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { APP_GUARD } from '@nestjs/core';
 import { ServeStaticModule } from '@nestjs/serve-static';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
-import {
-  AcceptLanguageResolver,
-  HeaderResolver,
-  I18nJsonLoader,
-  I18nModule,
-  QueryResolver,
-} from 'nestjs-i18n';
-import * as fs from 'fs';
+import { I18nModule } from 'nestjs-i18n';
 import * as path from 'path';
 
 import { AppService } from './app.service';
@@ -45,75 +40,27 @@ import { MembershipModule } from './membership/membership.module';
 import { BillingModule } from './billing/billing.module';
 import { BackofficeModule } from './backoffice/backoffice.module';
 import { ProfessionalSpecialtiesModule } from './professional-specialties/professional-specialties.module';
-import { getBooleanEnv, getEnv, normalizeDatabaseUrl } from './config/env';
-
-function isSeedEndpointEnabled() {
-  return (
-    getEnv('NODE_ENV') !== 'production' || getBooleanEnv('ENABLE_SEED_ENDPOINT')
-  );
-}
+import {
+  createI18nOptions,
+  createThrottlerOptions,
+  createTypeOrmOptions,
+  isSeedEndpointEnabled,
+} from './config/app-module-options';
 
 @Module({
   imports: [
     ConfigModule.forRoot(),
+    ThrottlerModule.forRoot(createThrottlerOptions()),
     ServeStaticModule.forRoot({
-      rootPath: path.join(process.cwd(), 'uploads'),
-      serveRoot: '/uploads',
+      rootPath: path.join(process.cwd(), 'uploads', 'profile-photos'),
+      serveRoot: '/uploads/profile-photos',
       serveStaticOptions: {
         index: false,
       },
       renderPath: '/_index',
     }),
-    (() => {
-      const distI18nPath = path.join(__dirname, 'i18n');
-      const srcI18nPath = path.join(process.cwd(), 'src/i18n');
-      const i18nPath = fs.existsSync(distI18nPath) ? distI18nPath : srcI18nPath;
-
-      return I18nModule.forRoot({
-        fallbackLanguage: 'en',
-        loader: I18nJsonLoader,
-        loaderOptions: {
-          path: i18nPath,
-          watch: true,
-        },
-        resolvers: [
-          { use: QueryResolver, options: ['lang'] },
-          new HeaderResolver(['x-lang', 'x-custom-lang']),
-          AcceptLanguageResolver,
-        ],
-      });
-    })(),
-    (() => {
-      const rawDatabaseUrl = getEnv('DATABASE_URL');
-      const databaseUrl = rawDatabaseUrl
-        ? normalizeDatabaseUrl(rawDatabaseUrl)
-        : undefined;
-      const ssl = getBooleanEnv('DB_SSL')
-        ? { rejectUnauthorized: false }
-        : undefined;
-      const synchronize =
-        getEnv('DB_SYNCHRONIZE') === undefined
-          ? getEnv('NODE_ENV') !== 'production'
-          : getEnv('DB_SYNCHRONIZE') !== 'false';
-
-      return TypeOrmModule.forRoot({
-        type: 'postgres',
-        ...(databaseUrl
-          ? { url: databaseUrl }
-          : {
-              host: getEnv('DB_HOST') || '127.0.0.1',
-              port: +(getEnv('DB_PORT') || 5432),
-              database: getEnv('DB_NAME') || 'DentalHubDB',
-              username: getEnv('DB_USERNAME') || 'postgres',
-              password: getEnv('DB_PASSWORD') || 'postgres',
-            }),
-        ...(ssl ? { ssl } : {}),
-        autoLoadEntities: true,
-        synchronize,
-        retryAttempts: 10,
-        retryDelay: 3000,
-      });
-    })(),
+    I18nModule.forRoot(createI18nOptions()),
+    TypeOrmModule.forRoot(createTypeOrmOptions()),
 
     PatientExamsModule,
     CommonModule,
@@ -146,6 +93,12 @@ function isSeedEndpointEnabled() {
     HelpCenterModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
+  ],
 })
 export class AppModule {}

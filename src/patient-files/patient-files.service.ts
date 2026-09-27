@@ -12,9 +12,6 @@ import { createHash, randomUUID } from 'crypto';
 import { Readable } from 'stream';
 
 import { Patient } from '../patients/entities/patient.entity';
-import { Treatment } from '../treatments/entities/treatment.entity';
-import { Appointment } from '../appointments/entities/appointment.entity';
-import { ClinicalNote } from '../clinical-notes/entities/clinical-note.entity';
 import { PatientFile } from './entities/patient-file.entity';
 import { CreatePatientFileDto } from './dto/create-patient-file.dto';
 import { PatientFileStorageStatus } from './interfaces/patient-file-storage-status.enum';
@@ -27,6 +24,9 @@ import {
 import { MembershipService } from '../membership/membership.service';
 import { StorageProviderType } from '../storage/interfaces/storage-provider-type.enum';
 import { StorageService } from '../storage/storage.service';
+import { validateAndNormalizeUploadedFile } from '../common/files/upload-validation';
+import { deleteUploadedFile } from '../common/files/upload-cleanup';
+import { PatientFileScopeService } from './services/patient-file-scope.service';
 
 export interface GeneratedPatientFileInput {
   originalName: string;
@@ -49,20 +49,13 @@ export class PatientFilesService {
     @InjectRepository(Patient)
     private readonly patientRepository: Repository<Patient>,
 
-    @InjectRepository(Appointment)
-    private readonly appointmentRepository: Repository<Appointment>,
-
-    @InjectRepository(ClinicalNote)
-    private readonly clinicalNoteRepository: Repository<ClinicalNote>,
-
-    @InjectRepository(Treatment)
-    private readonly treatmentRepository: Repository<Treatment>,
-
     private readonly patientAccessService: PatientAccessService,
 
     private readonly membershipService: MembershipService,
 
     private readonly storageService: StorageService,
+
+    private readonly patientFileScope: PatientFileScopeService,
   ) {}
 
   async create(
@@ -77,9 +70,24 @@ export class PatientFilesService {
       throw new BadRequestException('No file uploaded');
     }
 
+    try {
+      await validateAndNormalizeUploadedFile(file, [
+        'image',
+        'pdf',
+        'text',
+        'word',
+      ]);
+    } catch (error) {
+      await deleteUploadedFile(file.path);
+      throw error;
+    }
+
     this.patientAccessService.assertCanManageClinical(context);
     await this.patientAccessService.assertPatientAccessible(context, patientId);
-    const patient = await this.findPatientInClinic(patientId, context.clinicId);
+    const patient = await this.patientFileScope.findPatientInClinic(
+      patientId,
+      context.clinicId,
+    );
 
     try {
       await this.membershipService.assertCanStoreFile(
@@ -87,33 +95,17 @@ export class PatientFilesService {
         file.size,
       );
     } catch (error) {
-      await fs.unlink(file.path).catch(() => undefined);
+      await deleteUploadedFile(file.path);
       throw error;
     }
 
-    if (dto.appointmentId) {
-      await this.assertAppointmentForPatient(
-        dto.appointmentId,
-        patientId,
-        context.clinicId,
-      );
-    }
-
-    if (dto.clinicalNoteId) {
-      await this.assertClinicalNoteForPatient(
-        dto.clinicalNoteId,
-        patientId,
-        context.clinicId,
-      );
-    }
-
-    if (dto.treatmentId) {
-      await this.assertTreatmentForPatient(
-        dto.treatmentId,
-        patientId,
-        context.clinicId,
-      );
-    }
+    await this.patientFileScope.assertRelationsForPatient({
+      patientId,
+      clinicId: context.clinicId,
+      appointmentId: dto.appointmentId,
+      clinicalNoteId: dto.clinicalNoteId,
+      treatmentId: dto.treatmentId,
+    });
 
     const patientFileId = randomUUID();
     const fileType = dto.type ?? this.inferFileType(file.mimetype);
@@ -137,12 +129,12 @@ export class PatientFilesService {
         },
       });
     } catch (error) {
-      await fs.unlink(file.path).catch(() => undefined);
+      await deleteUploadedFile(file.path);
       throw error;
     }
 
     if (storageResult.storageProvider === StorageProviderType.GOOGLE_DRIVE) {
-      await fs.unlink(file.path).catch(() => undefined);
+      await deleteUploadedFile(file.path);
     }
 
     const patientFile = this.patientFileRepository.create({
@@ -184,14 +176,19 @@ export class PatientFilesService {
       throw new BadRequestException('No file uploaded');
     }
 
-    if (!file.mimetype.startsWith('image/')) {
-      await fs.unlink(file.path).catch(() => undefined);
-      throw new BadRequestException('Profile photo must be an image');
+    try {
+      await validateAndNormalizeUploadedFile(file, ['image']);
+    } catch (error) {
+      await deleteUploadedFile(file.path);
+      throw error;
     }
 
     this.patientAccessService.assertCanManagePatients(context);
     await this.patientAccessService.assertPatientAccessible(context, patientId);
-    const patient = await this.findPatientInClinic(patientId, context.clinicId);
+    const patient = await this.patientFileScope.findPatientInClinic(
+      patientId,
+      context.clinicId,
+    );
 
     try {
       await this.membershipService.assertCanStoreFile(
@@ -199,7 +196,7 @@ export class PatientFilesService {
         file.size,
       );
     } catch (error) {
-      await fs.unlink(file.path).catch(() => undefined);
+      await deleteUploadedFile(file.path);
       throw error;
     }
 
@@ -224,12 +221,12 @@ export class PatientFilesService {
         },
       });
     } catch (error) {
-      await fs.unlink(file.path).catch(() => undefined);
+      await deleteUploadedFile(file.path);
       throw error;
     }
 
     if (storageResult.storageProvider === StorageProviderType.GOOGLE_DRIVE) {
-      await fs.unlink(file.path).catch(() => undefined);
+      await deleteUploadedFile(file.path);
     }
 
     const patientFile = this.patientFileRepository.create({
@@ -278,7 +275,10 @@ export class PatientFilesService {
   ) {
     this.patientAccessService.assertCanManageClinical(context);
     await this.patientAccessService.assertPatientAccessible(context, patientId);
-    const patient = await this.findPatientInClinic(patientId, context.clinicId);
+    const patient = await this.patientFileScope.findPatientInClinic(
+      patientId,
+      context.clinicId,
+    );
 
     try {
       await this.membershipService.assertCanStoreFile(
@@ -286,29 +286,13 @@ export class PatientFilesService {
         input.size,
       );
 
-      if (input.appointmentId) {
-        await this.assertAppointmentForPatient(
-          input.appointmentId,
-          patientId,
-          context.clinicId,
-        );
-      }
-
-      if (input.clinicalNoteId) {
-        await this.assertClinicalNoteForPatient(
-          input.clinicalNoteId,
-          patientId,
-          context.clinicId,
-        );
-      }
-
-      if (input.treatmentId) {
-        await this.assertTreatmentForPatient(
-          input.treatmentId,
-          patientId,
-          context.clinicId,
-        );
-      }
+      await this.patientFileScope.assertRelationsForPatient({
+        patientId,
+        clinicId: context.clinicId,
+        appointmentId: input.appointmentId,
+        clinicalNoteId: input.clinicalNoteId,
+        treatmentId: input.treatmentId,
+      });
 
       const patientFileId = randomUUID();
       const checksum = await this.calculateChecksum(input.path);
@@ -330,7 +314,7 @@ export class PatientFilesService {
       });
 
       if (storageResult.storageProvider === StorageProviderType.GOOGLE_DRIVE) {
-        await fs.unlink(input.path).catch(() => undefined);
+        await deleteUploadedFile(input.path);
       }
 
       const patientFile = this.patientFileRepository.create({
@@ -360,7 +344,7 @@ export class PatientFilesService {
 
       return await this.patientFileRepository.save(patientFile);
     } catch (error) {
-      await fs.unlink(input.path).catch(() => undefined);
+      await deleteUploadedFile(input.path);
       throw error;
     }
   }
@@ -394,6 +378,37 @@ export class PatientFilesService {
     );
 
     return patientFile;
+  }
+
+  async getDownload(context: ClinicAccessContext, id: string) {
+    const patientFile = await this.findOne(context, id);
+
+    if (patientFile.storageProvider !== StorageProviderType.LOCAL) {
+      throw new BadRequestException(
+        'Direct download is only available for local files',
+      );
+    }
+
+    if (patientFile.storageStatus !== PatientFileStorageStatus.AVAILABLE) {
+      throw new BadRequestException('Patient file is not available');
+    }
+
+    const uploadDir = path.resolve(process.cwd(), 'uploads', 'patient-files');
+    const filePath = path.resolve(uploadDir, patientFile.storedName);
+
+    if (!filePath.startsWith(`${uploadDir}${path.sep}`)) {
+      throw new BadRequestException('Invalid stored file path');
+    }
+
+    await fs.access(filePath).catch(() => {
+      throw new NotFoundException(`Patient file ${id} not found`);
+    });
+
+    return {
+      path: filePath,
+      mimeType: patientFile.mimeType,
+      originalName: patientFile.originalName,
+    };
   }
 
   async remove(context: ClinicAccessContext, id: string) {
@@ -449,81 +464,5 @@ export class PatientFilesService {
       buffer: Buffer.alloc(0),
       stream: Readable.from([]),
     };
-  }
-
-  private async findPatientInClinic(
-    patientId: string,
-    clinicId: string,
-  ): Promise<Patient> {
-    const patient = await this.patientRepository.findOne({
-      where: { id: patientId, clinicId },
-      relations: { clinic: true },
-    });
-
-    if (!patient) {
-      throw new NotFoundException(
-        `Patient ${patientId} does not belong to the requested clinic`,
-      );
-    }
-
-    return patient;
-  }
-
-  private async assertAppointmentForPatient(
-    appointmentId: string,
-    patientId: string,
-    clinicId: string,
-  ) {
-    const appointment = await this.appointmentRepository.findOne({
-      where: { id: appointmentId, patientId, clinicId },
-      select: { id: true },
-    });
-
-    if (!appointment) {
-      throw new BadRequestException(
-        'Appointment does not belong to patient and clinic scope',
-      );
-    }
-  }
-
-  private async assertClinicalNoteForPatient(
-    clinicalNoteId: string,
-    patientId: string,
-    clinicId: string,
-  ) {
-    const note = await this.clinicalNoteRepository
-      .createQueryBuilder('note')
-      .innerJoin('note.clinicalRecord', 'record')
-      .innerJoin('record.patient', 'patient')
-      .where('note.id = :clinicalNoteId', { clinicalNoteId })
-      .andWhere('record.patientId = :patientId', { patientId })
-      .andWhere('patient.clinicId = :clinicId', { clinicId })
-      .getOne();
-
-    if (!note) {
-      throw new BadRequestException(
-        'Clinical note does not belong to patient and clinic scope',
-      );
-    }
-  }
-
-  private async assertTreatmentForPatient(
-    treatmentId: string,
-    patientId: string,
-    clinicId: string,
-  ) {
-    const treatment = await this.treatmentRepository
-      .createQueryBuilder('treatment')
-      .innerJoin('treatment.patient', 'patient')
-      .where('treatment.id = :treatmentId', { treatmentId })
-      .andWhere('treatment.patientId = :patientId', { patientId })
-      .andWhere('patient.clinicId = :clinicId', { clinicId })
-      .getOne();
-
-    if (!treatment) {
-      throw new BadRequestException(
-        'Treatment does not belong to patient and clinic scope',
-      );
-    }
   }
 }
