@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
-import { Request } from 'express';
+import type { Request } from 'express';
 
 import { ApiMessageTranslatorService } from '../i18n/api-message-translator.service';
 
