@@ -42,7 +42,7 @@ export class AppointmentAvailabilityService {
     @InjectRepository(ClinicMembership)
     private readonly clinicMembershipRepository: Repository<ClinicMembership>,
 
-    private readonly settingsPolicy = new AppointmentSettingsPolicy(),
+    private readonly settingsPolicy: AppointmentSettingsPolicy = new AppointmentSettingsPolicy(),
   ) {}
 
   async getClinicSettings(scopedClinicId: string, id: string) {
