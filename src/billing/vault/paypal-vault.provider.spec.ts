@@ -1,8 +1,16 @@
 import { PayPalBillingProvider } from '../providers/paypal-billing.provider';
 import { PayPalVaultProvider } from './paypal-vault.provider';
 
+type PayPalRequestOptions = Parameters<
+  PayPalBillingProvider['paypalRequest']
+>[1];
+
+const matchesObject = (sample: object): object =>
+  expect.objectContaining(sample) as object;
+const anyObject = expect.any(Object) as object;
+
 describe('PayPal Vault/Orders wire contracts', () => {
-  let request: jest.Mock;
+  let request: jest.Mock<Promise<unknown>, [string, PayPalRequestOptions]>;
   let provider: PayPalVaultProvider;
   const keys = [
     'PAYPAL_CLIENT_ID',
@@ -19,7 +27,9 @@ describe('PayPal Vault/Orders wire contracts', () => {
           ? 'https://example.com/return'
           : 'test'),
     );
-    request = jest.fn().mockResolvedValue({ id: 'provider-result' });
+    request = jest
+      .fn<Promise<unknown>, [string, PayPalRequestOptions]>()
+      .mockResolvedValue({ id: 'provider-result' });
     provider = new PayPalVaultProvider({
       paypalRequest: request,
     } as unknown as PayPalBillingProvider);
@@ -34,10 +44,10 @@ describe('PayPal Vault/Orders wire contracts', () => {
     await provider.createSetup('clinic', 'card', 'request');
     expect(request).toHaveBeenCalledWith(
       '/v3/vault/setup-tokens',
-      expect.objectContaining({
+      matchesObject({
         body: {
           customer: { merchant_customer_id: 'clinic' },
-          payment_source: { card: { experience_context: expect.any(Object) } },
+          payment_source: { card: { experience_context: anyObject } },
         },
       }),
     );
@@ -49,7 +59,7 @@ describe('PayPal Vault/Orders wire contracts', () => {
     await provider.exchangeSetup('SETUP', 'idempotent');
     expect(request).toHaveBeenCalledWith(
       '/v3/vault/payment-tokens',
-      expect.objectContaining({
+      matchesObject({
         headers: { 'PayPal-Request-Id': 'idempotent' },
         body: {
           payment_source: { token: { id: 'SETUP', type: 'SETUP_TOKEN' } },
@@ -68,19 +78,19 @@ describe('PayPal Vault/Orders wire contracts', () => {
       });
       expect(request).toHaveBeenCalledWith(
         '/v2/checkout/orders',
-        expect.objectContaining({
-          body: expect.objectContaining({
+        matchesObject({
+          body: matchesObject({
             purchase_units: [
-              expect.objectContaining({
+              matchesObject({
                 custom_id: 'charge',
                 invoice_id: 'charge',
                 amount: { currency_code: 'USD', value: '90.00' },
               }),
             ],
             payment_source: {
-              [type]: expect.objectContaining({
+              [type]: matchesObject({
                 vault_id: 'VAULT',
-                stored_credential: expect.objectContaining({
+                stored_credential: matchesObject({
                   payment_initiator: 'MERCHANT',
                 }),
               }),

@@ -218,12 +218,13 @@ export class GoogleDriveIntegrationService {
     let unavailableCount = 0;
 
     while (pageToken) {
-      const response = await drive.changes.list({
-        pageToken,
-        spaces: 'drive',
-        fields:
-          'newStartPageToken,nextPageToken,changes(removed,fileId,file(id,trashed))',
-      });
+      const response: { data: drive_v3.Schema$ChangeList } =
+        await drive.changes.list({
+          pageToken,
+          spaces: 'drive',
+          fields:
+            'newStartPageToken,nextPageToken,changes(removed,fileId,file(id,trashed))',
+        });
 
       for (const change of response.data.changes ?? []) {
         if (!change.fileId) continue;

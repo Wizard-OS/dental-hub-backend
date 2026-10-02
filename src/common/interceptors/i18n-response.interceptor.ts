@@ -11,10 +11,16 @@ import type { Request } from 'express';
 import { ApiMessageTranslatorService } from '../i18n/api-message-translator.service';
 
 @Injectable()
-export class I18nResponseInterceptor implements NestInterceptor {
+export class I18nResponseInterceptor implements NestInterceptor<
+  unknown,
+  unknown
+> {
   constructor(private readonly translator: ApiMessageTranslatorService) {}
 
-  intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
+  intercept(
+    context: ExecutionContext,
+    next: CallHandler<unknown>,
+  ): Observable<unknown> {
     const request = context.switchToHttp().getRequest<Request>();
     const lang = this.resolveLang(request);
 

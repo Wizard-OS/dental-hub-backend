@@ -1,6 +1,5 @@
-import type { Express } from 'express';
-
 import { Patient } from '../../patients/entities/patient.entity';
+import type { UploadedFile } from '../../common/files/uploaded-file.interface';
 import { PatientFileType } from '../../patient-files/interfaces/patient-file-type.enum';
 import { StorageProviderType } from './storage-provider-type.enum';
 
@@ -9,7 +8,7 @@ export interface StorageUploadInput {
   clinicName: string;
   patient: Patient;
   fileId: string;
-  file: Express.Multer.File;
+  file: UploadedFile;
   type: PatientFileType;
   checksum: string;
   baseUrl: string;

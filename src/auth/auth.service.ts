@@ -427,8 +427,19 @@ export class AuthService {
     }));
   }
 
-  private handleDBErrors(error: any): never {
-    if (error.code === '23505') throw new BadRequestException(error.detail);
+  private handleDBErrors(error: unknown): never {
+    if (
+      typeof error === 'object' &&
+      error !== null &&
+      'code' in error &&
+      error.code === '23505'
+    ) {
+      const detail =
+        'detail' in error && typeof error.detail === 'string'
+          ? error.detail
+          : undefined;
+      throw new BadRequestException(detail);
+    }
 
     console.log(error);
 

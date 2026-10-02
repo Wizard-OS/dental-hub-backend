@@ -4,7 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { EntityManager, Repository } from 'typeorm';
 import { isUUID } from 'class-validator';
 
 import { OutboundMessage } from './entities/outbound-message.entity';
@@ -31,7 +31,11 @@ export class OutboundMessagesService {
     private readonly messageTemplateRepository: Repository<MessageTemplate>,
   ) {}
 
-  async create(clinicId: string, dto: CreateOutboundMessageDto) {
+  async create(
+    clinicId: string,
+    dto: CreateOutboundMessageDto,
+    transactionManager?: EntityManager,
+  ) {
     if (dto.clinicId && dto.clinicId !== clinicId) {
       throw new BadRequestException(
         'clinicId does not match x-clinic-id scope',
@@ -39,20 +43,35 @@ export class OutboundMessagesService {
     }
 
     if (dto.patientId)
-      await this.assertPatientInClinic(dto.patientId, clinicId);
+      await this.assertPatientInClinic(
+        dto.patientId,
+        clinicId,
+        transactionManager,
+      );
     if (dto.appointmentId)
-      await this.assertAppointmentInClinic(dto.appointmentId, clinicId);
+      await this.assertAppointmentInClinic(
+        dto.appointmentId,
+        clinicId,
+        transactionManager,
+      );
     if (dto.templateId)
-      await this.assertTemplateInClinic(dto.templateId, clinicId);
+      await this.assertTemplateInClinic(
+        dto.templateId,
+        clinicId,
+        transactionManager,
+      );
 
-    const outboundMessage = this.outboundMessageRepository.create({
+    const repository = transactionManager
+      ? transactionManager.getRepository(OutboundMessage)
+      : this.outboundMessageRepository;
+    const outboundMessage = repository.create({
       ...dto,
       clinicId,
       payloadJson: dto.payloadJson ?? {},
       status: dto.status ?? OutboundMessageStatus.QUEUED,
     });
 
-    return await this.outboundMessageRepository.save(outboundMessage);
+    return await repository.save(outboundMessage);
   }
 
   async findAll(clinicId: string) {
@@ -109,8 +128,15 @@ export class OutboundMessagesService {
     return { message: `Outbound message ${id} cancelled` };
   }
 
-  private async assertPatientInClinic(patientId: string, clinicId: string) {
-    const patient = await this.patientRepository.findOne({
+  private async assertPatientInClinic(
+    patientId: string,
+    clinicId: string,
+    manager?: EntityManager,
+  ) {
+    const repository = manager
+      ? manager.getRepository(Patient)
+      : this.patientRepository;
+    const patient = await repository.findOne({
       where: { id: patientId, clinicId },
       select: { id: true },
     });
@@ -125,8 +151,12 @@ export class OutboundMessagesService {
   private async assertAppointmentInClinic(
     appointmentId: string,
     clinicId: string,
+    manager?: EntityManager,
   ) {
-    const appointment = await this.appointmentRepository.findOne({
+    const repository = manager
+      ? manager.getRepository(Appointment)
+      : this.appointmentRepository;
+    const appointment = await repository.findOne({
       where: { id: appointmentId, clinicId },
       select: { id: true },
     });
@@ -138,8 +168,15 @@ export class OutboundMessagesService {
     }
   }
 
-  private async assertTemplateInClinic(templateId: string, clinicId: string) {
-    const template = await this.messageTemplateRepository.findOne({
+  private async assertTemplateInClinic(
+    templateId: string,
+    clinicId: string,
+    manager?: EntityManager,
+  ) {
+    const repository = manager
+      ? manager.getRepository(MessageTemplate)
+      : this.messageTemplateRepository;
+    const template = await repository.findOne({
       where: { id: templateId, clinicId },
       select: { id: true },
     });

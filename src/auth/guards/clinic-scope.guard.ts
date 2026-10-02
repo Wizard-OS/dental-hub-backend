@@ -9,8 +9,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { isUUID } from 'class-validator';
 
-import { User } from '../entities/user.entity';
 import { ClinicMembership } from '../../clinic-memberships/entities/clinic-membership.entity';
+import type { AuthenticatedRequest } from '../interfaces';
 
 @Injectable()
 export class ClinicScopeGuard implements CanActivate {
@@ -20,8 +20,8 @@ export class ClinicScopeGuard implements CanActivate {
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const req = context.switchToHttp().getRequest();
-    const user = req.user as User | undefined;
+    const req = context.switchToHttp().getRequest<AuthenticatedRequest>();
+    const user = req.user;
 
     if (!user) {
       throw new UnauthorizedException('Authenticated user not found');

@@ -1,4 +1,11 @@
 {
+  "gender": {
+    "Male": "Hombre",
+    "Female": "Mujer",
+    "Non-binary": "No binario",
+    "Other": "Otro",
+    "Prefer not to say": "Prefiere no decir"
+  },
   "scope_mismatch": "clinicId no coincide con el alcance de x-clinic-id",
   "invalid_id": "ID de {resource} inválido",
   "not_found": "{resource} con id {id} no encontrado",

@@ -8,6 +8,7 @@ import {
 
 import { META_CLINIC_ROLES } from '../decorators/clinic-roles.decorator';
 import { ClinicMembershipRole } from '../../clinic-memberships/interfaces/clinic-membership-role.enum';
+import type { AuthenticatedRequest } from '../interfaces';
 
 @Injectable()
 export class ClinicRoleGuard implements CanActivate {
@@ -21,8 +22,8 @@ export class ClinicRoleGuard implements CanActivate {
 
     if (!roles || roles.length === 0) return true;
 
-    const req = context.switchToHttp().getRequest();
-    const role = req.clinicMembershipRole as ClinicMembershipRole | undefined;
+    const req = context.switchToHttp().getRequest<AuthenticatedRequest>();
+    const role = req.clinicMembershipRole;
 
     if (role && roles.includes(role)) return true;
 

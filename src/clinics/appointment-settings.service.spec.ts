@@ -39,20 +39,29 @@ describe('ClinicsService appointment settings', () => {
     const membershipValues = structuredClone(memberships);
     const clinicRepository = {
       findOne: jest.fn().mockResolvedValue(clinicValue),
-      save: jest.fn((entity) => Promise.resolve(entity)),
+      save: jest.fn((entity: Record<string, unknown>) =>
+        Promise.resolve(entity),
+      ),
     };
     const clinicMembershipRepository = {
-      findOne: jest.fn(({ where }) =>
-        Promise.resolve(
-          membershipValues.find(
-            (membership) =>
-              membership.id === where.id &&
-              membership.clinicId === where.clinicId &&
-              membership.isActive === where.isActive,
-          ) ?? null,
-        ),
+      findOne: jest.fn(
+        ({
+          where,
+        }: {
+          where: { id?: string; clinicId?: string; isActive?: boolean };
+        }) =>
+          Promise.resolve(
+            membershipValues.find(
+              (membership) =>
+                membership.id === where.id &&
+                membership.clinicId === where.clinicId &&
+                membership.isActive === where.isActive,
+            ) ?? null,
+          ),
       ),
-      save: jest.fn((entity) => Promise.resolve(entity)),
+      save: jest.fn((entity: Record<string, unknown>) =>
+        Promise.resolve(entity),
+      ),
     };
     const appointmentAvailabilityService = new AppointmentAvailabilityService(
       clinicRepository as never,
@@ -292,13 +301,13 @@ describe('ClinicsService appointment settings', () => {
       endTime: '14:00',
     });
     expect(response.settings.scheduling.bufferBetweenAppointmentsMin).toBe(0);
-    expect(clinicMembershipRepository.save).toHaveBeenCalledWith(
-      expect.objectContaining({
-        appointmentSettingsJson: expect.objectContaining({
-          scheduling: { bufferBetweenAppointmentsMin: 0 },
-        }),
-      }),
-    );
+    const savedMembership =
+      clinicMembershipRepository.save.mock.calls.at(-1)?.[0];
+    expect(savedMembership).toMatchObject({
+      appointmentSettingsJson: {
+        scheduling: { bufferBetweenAppointmentsMin: 0 },
+      },
+    });
   });
 
   it('allows schedule managers to edit another professional settings', async () => {

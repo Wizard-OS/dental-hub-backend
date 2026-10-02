@@ -570,10 +570,47 @@ export class AppointmentsService {
   }
 
   private handleDBErrors(error: unknown): never {
-    if (error instanceof Object && 'code' in error && error.code === '23505') {
-      throw new BadRequestException((error as Record<string, unknown>).detail);
+    const databaseError = this.databaseError(error);
+
+    if (databaseError.code === '23P01') {
+      throw new BadRequestException(
+        'Appointment overlaps with an existing slot',
+      );
+    }
+
+    if (databaseError.code === '23505') {
+      throw new BadRequestException(databaseError.detail);
     }
 
     throw new InternalServerErrorException('Please check server logs');
+  }
+
+  private databaseError(error: unknown): {
+    code?: string;
+    detail?: string;
+  } {
+    if (!error || typeof error !== 'object') return {};
+
+    const candidate = error as {
+      code?: unknown;
+      detail?: unknown;
+      driverError?: { code?: unknown; detail?: unknown };
+    };
+    const driverError = candidate.driverError;
+
+    return {
+      code:
+        typeof candidate.code === 'string'
+          ? candidate.code
+          : typeof driverError?.code === 'string'
+            ? driverError.code
+            : undefined,
+      detail:
+        typeof candidate.detail === 'string'
+          ? candidate.detail
+          : typeof driverError?.detail === 'string'
+            ? driverError.detail
+            : undefined,
+    };
   }
 }

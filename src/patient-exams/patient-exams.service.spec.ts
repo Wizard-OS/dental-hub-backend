@@ -26,8 +26,8 @@ const dto = {
 
 describe('PatientExamsService', () => {
   const exams = {
-    create: jest.fn((x) => x),
-    save: jest.fn((x) => Promise.resolve(x)),
+    create: jest.fn((exam: unknown) => exam),
+    save: jest.fn((exam: unknown) => Promise.resolve(exam)),
     findOne: jest.fn(),
     remove: jest.fn(),
     createQueryBuilder: jest.fn(),

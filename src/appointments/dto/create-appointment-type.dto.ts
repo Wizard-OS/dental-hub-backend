@@ -1,4 +1,5 @@
 import { Transform } from 'class-transformer';
+import type { TransformFnParams } from 'class-transformer';
 import {
   IsBoolean,
   IsInt,
@@ -22,7 +23,12 @@ export class CreateAppointmentTypeDto {
   clinicId?: string;
 
   @ApiProperty({ example: 'Limpieza', description: 'Nombre del tipo de cita' })
-  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
+  @Transform(({ value }: TransformFnParams) => {
+    const transformValue: unknown = value;
+    return typeof transformValue === 'string'
+      ? transformValue.trim()
+      : transformValue;
+  })
   @IsString()
   @Matches(/\S/)
   @MaxLength(120)

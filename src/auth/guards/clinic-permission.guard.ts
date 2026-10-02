@@ -9,7 +9,7 @@ import {
 import { ClinicPermission } from '../interfaces';
 import { hasClinicPermission } from '../utils/clinic-permissions';
 import { META_CLINIC_PERMISSIONS } from '../decorators/clinic-permissions.decorator';
-import { ClinicMembershipRole } from '../../clinic-memberships/interfaces/clinic-membership-role.enum';
+import type { AuthenticatedRequest } from '../interfaces';
 
 @Injectable()
 export class ClinicPermissionGuard implements CanActivate {
@@ -23,10 +23,9 @@ export class ClinicPermissionGuard implements CanActivate {
 
     if (!permissions || permissions.length === 0) return true;
 
-    const req = context.switchToHttp().getRequest();
-    const role = req.clinicMembershipRole as ClinicMembershipRole | undefined;
-    const permissionsJson = req.clinicPermissions as
-      Record<string, boolean> | undefined;
+    const req = context.switchToHttp().getRequest<AuthenticatedRequest>();
+    const role = req.clinicMembershipRole;
+    const permissionsJson = req.clinicPermissions;
 
     const allowed = permissions.every((permission) =>
       hasClinicPermission(role, permissionsJson, permission),

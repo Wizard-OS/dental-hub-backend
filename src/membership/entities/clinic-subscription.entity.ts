@@ -74,6 +74,12 @@ export class ClinicSubscription {
   @Column('jsonb', { nullable: true })
   checkoutQuote: MembershipQuote | null;
 
+  @Column('text', { nullable: true })
+  providerCheckoutRequestId: string | null;
+
+  @Column('text', { nullable: true })
+  providerCheckoutFingerprint: string | null;
+
   @Column('timestamptz', { nullable: true })
   trialStartedAt: Date | null;
 

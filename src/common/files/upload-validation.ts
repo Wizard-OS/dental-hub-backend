@@ -1,7 +1,7 @@
 import { BadRequestException } from '@nestjs/common';
 import { promises as fs } from 'fs';
 import * as path from 'path';
-import type { Express } from 'express';
+import type { UploadedFile } from './uploaded-file.interface';
 
 export type AllowedUploadKind = 'image' | 'pdf' | 'text' | 'word';
 
@@ -16,7 +16,7 @@ const OLE_HEADER = Buffer.from([
 ]);
 
 export async function validateAndNormalizeUploadedFile(
-  file: Express.Multer.File,
+  file: UploadedFile,
   allowedKinds: AllowedUploadKind[],
 ): Promise<DetectedFileType> {
   const detected = await detectFileType(file.path);
@@ -90,10 +90,7 @@ async function detectFileType(
   return null;
 }
 
-async function normalizeStoredFileName(
-  file: Express.Multer.File,
-  extension: string,
-) {
+async function normalizeStoredFileName(file: UploadedFile, extension: string) {
   const currentExtension = path.extname(file.filename).toLowerCase();
   if (currentExtension === extension) return;
 

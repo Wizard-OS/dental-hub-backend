@@ -8,8 +8,8 @@ import {
 } from '@nestjs/common';
 import { Observable } from 'rxjs';
 
-import { User } from '../entities/user.entity';
 import { META_ROLES } from '../decorators/role-protected.decorator';
+import type { AuthenticatedRequest } from '../interfaces';
 
 @Injectable()
 export class UserRoleGuard implements CanActivate {
@@ -26,8 +26,8 @@ export class UserRoleGuard implements CanActivate {
     if (!validRoles) return true;
     if (validRoles.length === 0) return true;
 
-    const req = context.switchToHttp().getRequest();
-    const user = req.user as User;
+    const req = context.switchToHttp().getRequest<AuthenticatedRequest>();
+    const user = req.user;
 
     if (!user) throw new BadRequestException('User not found');
 

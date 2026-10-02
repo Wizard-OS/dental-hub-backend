@@ -5,11 +5,9 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import type { Express } from 'express';
 import { promises as fs } from 'fs';
 import * as path from 'path';
 import { createHash, randomUUID } from 'crypto';
-import { Readable } from 'stream';
 
 import { Patient } from '../patients/entities/patient.entity';
 import { PatientFile } from './entities/patient-file.entity';
@@ -26,6 +24,7 @@ import { StorageProviderType } from '../storage/interfaces/storage-provider-type
 import { StorageService } from '../storage/storage.service';
 import { validateAndNormalizeUploadedFile } from '../common/files/upload-validation';
 import { deleteUploadedFile } from '../common/files/upload-cleanup';
+import type { UploadedFile } from '../common/files/uploaded-file.interface';
 import { PatientFileScopeService } from './services/patient-file-scope.service';
 
 export interface GeneratedPatientFileInput {
@@ -62,7 +61,7 @@ export class PatientFilesService {
     context: ClinicAccessContext,
     patientId: string,
     uploadedByMembershipId: string,
-    file: Express.Multer.File,
+    file: UploadedFile,
     baseUrl: string,
     dto: CreatePatientFileDto,
   ) {
@@ -70,200 +69,114 @@ export class PatientFilesService {
       throw new BadRequestException('No file uploaded');
     }
 
-    try {
-      await validateAndNormalizeUploadedFile(file, [
-        'image',
-        'pdf',
-        'text',
-        'word',
-      ]);
-    } catch (error) {
-      await deleteUploadedFile(file.path);
-      throw error;
-    }
+    return this.withUploadCleanup(
+      () => file.path,
+      async () => {
+        await validateAndNormalizeUploadedFile(file, [
+          'image',
+          'pdf',
+          'text',
+          'word',
+        ]);
+        this.patientAccessService.assertCanManageClinical(context);
+        await this.patientAccessService.assertPatientAccessible(
+          context,
+          patientId,
+        );
+        const patient = await this.patientFileScope.findPatientInClinic(
+          patientId,
+          context.clinicId,
+        );
+        await this.membershipService.assertCanStoreFile(
+          context.clinicId,
+          file.size,
+        );
+        await this.patientFileScope.assertRelationsForPatient({
+          patientId,
+          clinicId: context.clinicId,
+          appointmentId: dto.appointmentId,
+          clinicalNoteId: dto.clinicalNoteId,
+          treatmentId: dto.treatmentId,
+        });
 
-    this.patientAccessService.assertCanManageClinical(context);
-    await this.patientAccessService.assertPatientAccessible(context, patientId);
-    const patient = await this.patientFileScope.findPatientInClinic(
-      patientId,
-      context.clinicId,
+        const fileType = dto.type ?? this.inferFileType(file.mimetype);
+        return this.uploadAndSaveFile({
+          context,
+          patient,
+          patientId,
+          uploadedByMembershipId,
+          file,
+          baseUrl,
+          type: fileType,
+          description: dto.description,
+          appointmentId: dto.appointmentId,
+          clinicalNoteId: dto.clinicalNoteId,
+          treatmentId: dto.treatmentId,
+        });
+      },
     );
-
-    try {
-      await this.membershipService.assertCanStoreFile(
-        context.clinicId,
-        file.size,
-      );
-    } catch (error) {
-      await deleteUploadedFile(file.path);
-      throw error;
-    }
-
-    await this.patientFileScope.assertRelationsForPatient({
-      patientId,
-      clinicId: context.clinicId,
-      appointmentId: dto.appointmentId,
-      clinicalNoteId: dto.clinicalNoteId,
-      treatmentId: dto.treatmentId,
-    });
-
-    const patientFileId = randomUUID();
-    const fileType = dto.type ?? this.inferFileType(file.mimetype);
-    const checksum = await this.calculateChecksum(file.path);
-    let storageResult;
-
-    try {
-      storageResult = await this.storageService.upload({
-        clinicId: context.clinicId,
-        clinicName: patient.clinic.name,
-        patient,
-        fileId: patientFileId,
-        file,
-        type: fileType,
-        checksum,
-        baseUrl,
-        relation: {
-          appointmentId: dto.appointmentId ?? null,
-          clinicalNoteId: dto.clinicalNoteId ?? null,
-          treatmentId: dto.treatmentId ?? null,
-        },
-      });
-    } catch (error) {
-      await deleteUploadedFile(file.path);
-      throw error;
-    }
-
-    if (storageResult.storageProvider === StorageProviderType.GOOGLE_DRIVE) {
-      await deleteUploadedFile(file.path);
-    }
-
-    const patientFile = this.patientFileRepository.create({
-      id: patientFileId,
-      patientId,
-      appointmentId: dto.appointmentId ?? null,
-      clinicalNoteId: dto.clinicalNoteId ?? null,
-      treatmentId: dto.treatmentId ?? null,
-      uploadedByMembershipId,
-      type: fileType,
-      description: dto.description ?? null,
-      originalName: file.originalname,
-      storedName: storageResult.storedName,
-      path: storageResult.path,
-      url: storageResult.url,
-      mimeType: storageResult.mimeType,
-      size: storageResult.size,
-      storageProvider: storageResult.storageProvider,
-      storageStatus: PatientFileStorageStatus.AVAILABLE,
-      syncSource: PatientFileSyncSource.APP,
-      driveFileId: storageResult.driveFileId ?? null,
-      driveFolderId: storageResult.driveFolderId ?? null,
-      checksum,
-      driveModifiedAt: storageResult.driveModifiedAt ?? null,
-      externalMetadataJson: storageResult.externalMetadataJson ?? {},
-    });
-
-    return await this.patientFileRepository.save(patientFile);
   }
 
   async createProfilePhoto(
     context: ClinicAccessContext,
     patientId: string,
     uploadedByMembershipId: string,
-    file: Express.Multer.File,
+    file: UploadedFile,
     baseUrl: string,
   ) {
     if (!file) {
       throw new BadRequestException('No file uploaded');
     }
 
-    try {
-      await validateAndNormalizeUploadedFile(file, ['image']);
-    } catch (error) {
-      await deleteUploadedFile(file.path);
-      throw error;
-    }
+    return this.withUploadCleanup(
+      () => file.path,
+      async () => {
+        await validateAndNormalizeUploadedFile(file, ['image']);
+        this.patientAccessService.assertCanManagePatients(context);
+        await this.patientAccessService.assertPatientAccessible(
+          context,
+          patientId,
+        );
+        const patient = await this.patientFileScope.findPatientInClinic(
+          patientId,
+          context.clinicId,
+        );
+        await this.membershipService.assertCanStoreFile(
+          context.clinicId,
+          file.size,
+        );
+        const savedFile = await this.uploadAndSaveFile({
+          context,
+          patient,
+          patientId,
+          uploadedByMembershipId,
+          file,
+          baseUrl,
+          type: PatientFileType.PROFILE_PHOTO,
+          description: 'Foto de perfil',
+        });
 
-    this.patientAccessService.assertCanManagePatients(context);
-    await this.patientAccessService.assertPatientAccessible(context, patientId);
-    const patient = await this.patientFileScope.findPatientInClinic(
-      patientId,
-      context.clinicId,
-    );
+        const result = await this.patientRepository
+          .update(
+            { id: patientId, clinicId: context.clinicId },
+            {
+              profilePhotoFileId: savedFile.id,
+              profilePhotoUrl: savedFile.url,
+            },
+          )
+          .catch(async (error: unknown) => {
+            await this.compensateStoredFile(savedFile, context.clinicId);
+            throw error;
+          });
 
-    try {
-      await this.membershipService.assertCanStoreFile(
-        context.clinicId,
-        file.size,
-      );
-    } catch (error) {
-      await deleteUploadedFile(file.path);
-      throw error;
-    }
+        if (!result.affected) {
+          await this.compensateStoredFile(savedFile, context.clinicId);
+          throw new NotFoundException(`Patient ${patientId} not found`);
+        }
 
-    const patientFileId = randomUUID();
-    const checksum = await this.calculateChecksum(file.path);
-    let storageResult;
-
-    try {
-      storageResult = await this.storageService.upload({
-        clinicId: context.clinicId,
-        clinicName: patient.clinic.name,
-        patient,
-        fileId: patientFileId,
-        file,
-        type: PatientFileType.PROFILE_PHOTO,
-        checksum,
-        baseUrl,
-        relation: {
-          appointmentId: null,
-          clinicalNoteId: null,
-          treatmentId: null,
-        },
-      });
-    } catch (error) {
-      await deleteUploadedFile(file.path);
-      throw error;
-    }
-
-    if (storageResult.storageProvider === StorageProviderType.GOOGLE_DRIVE) {
-      await deleteUploadedFile(file.path);
-    }
-
-    const patientFile = this.patientFileRepository.create({
-      id: patientFileId,
-      patientId,
-      appointmentId: null,
-      clinicalNoteId: null,
-      treatmentId: null,
-      uploadedByMembershipId,
-      type: PatientFileType.PROFILE_PHOTO,
-      description: 'Foto de perfil',
-      originalName: file.originalname,
-      storedName: storageResult.storedName,
-      path: storageResult.path,
-      url: storageResult.url,
-      mimeType: storageResult.mimeType,
-      size: storageResult.size,
-      storageProvider: storageResult.storageProvider,
-      storageStatus: PatientFileStorageStatus.AVAILABLE,
-      syncSource: PatientFileSyncSource.APP,
-      driveFileId: storageResult.driveFileId ?? null,
-      driveFolderId: storageResult.driveFolderId ?? null,
-      checksum,
-      driveModifiedAt: storageResult.driveModifiedAt ?? null,
-      externalMetadataJson: storageResult.externalMetadataJson ?? {},
-    });
-
-    const savedFile = await this.patientFileRepository.save(patientFile);
-    await this.patientRepository.update(
-      { id: patientId, clinicId: context.clinicId },
-      {
-        profilePhotoFileId: savedFile.id,
-        profilePhotoUrl: savedFile.url,
+        return savedFile;
       },
     );
-
-    return savedFile;
   }
 
   async createGenerated(
@@ -273,80 +186,47 @@ export class PatientFilesService {
     baseUrl: string,
     input: GeneratedPatientFileInput,
   ) {
-    this.patientAccessService.assertCanManageClinical(context);
-    await this.patientAccessService.assertPatientAccessible(context, patientId);
-    const patient = await this.patientFileScope.findPatientInClinic(
-      patientId,
-      context.clinicId,
+    return this.withUploadCleanup(
+      () => input.path,
+      async () => {
+        this.patientAccessService.assertCanManageClinical(context);
+        await this.patientAccessService.assertPatientAccessible(
+          context,
+          patientId,
+        );
+        const patient = await this.patientFileScope.findPatientInClinic(
+          patientId,
+          context.clinicId,
+        );
+        await this.membershipService.assertCanStoreFile(
+          context.clinicId,
+          input.size,
+        );
+
+        await this.patientFileScope.assertRelationsForPatient({
+          patientId,
+          clinicId: context.clinicId,
+          appointmentId: input.appointmentId,
+          clinicalNoteId: input.clinicalNoteId,
+          treatmentId: input.treatmentId,
+        });
+
+        const file = this.toGeneratedUploadFile(input);
+        return this.uploadAndSaveFile({
+          context,
+          patient,
+          patientId,
+          uploadedByMembershipId,
+          file,
+          baseUrl,
+          type: input.type,
+          description: input.description ?? null,
+          appointmentId: input.appointmentId,
+          clinicalNoteId: input.clinicalNoteId,
+          treatmentId: input.treatmentId,
+        });
+      },
     );
-
-    try {
-      await this.membershipService.assertCanStoreFile(
-        context.clinicId,
-        input.size,
-      );
-
-      await this.patientFileScope.assertRelationsForPatient({
-        patientId,
-        clinicId: context.clinicId,
-        appointmentId: input.appointmentId,
-        clinicalNoteId: input.clinicalNoteId,
-        treatmentId: input.treatmentId,
-      });
-
-      const patientFileId = randomUUID();
-      const checksum = await this.calculateChecksum(input.path);
-      const file = this.toGeneratedMulterFile(input);
-      const storageResult = await this.storageService.upload({
-        clinicId: context.clinicId,
-        clinicName: patient.clinic.name,
-        patient,
-        fileId: patientFileId,
-        file,
-        type: input.type,
-        checksum,
-        baseUrl,
-        relation: {
-          appointmentId: input.appointmentId ?? null,
-          clinicalNoteId: input.clinicalNoteId ?? null,
-          treatmentId: input.treatmentId ?? null,
-        },
-      });
-
-      if (storageResult.storageProvider === StorageProviderType.GOOGLE_DRIVE) {
-        await deleteUploadedFile(input.path);
-      }
-
-      const patientFile = this.patientFileRepository.create({
-        id: patientFileId,
-        patientId,
-        appointmentId: input.appointmentId ?? null,
-        clinicalNoteId: input.clinicalNoteId ?? null,
-        treatmentId: input.treatmentId ?? null,
-        uploadedByMembershipId,
-        type: input.type,
-        description: input.description ?? null,
-        originalName: input.originalName,
-        storedName: storageResult.storedName,
-        path: storageResult.path,
-        url: storageResult.url,
-        mimeType: storageResult.mimeType,
-        size: storageResult.size,
-        storageProvider: storageResult.storageProvider,
-        storageStatus: PatientFileStorageStatus.AVAILABLE,
-        syncSource: PatientFileSyncSource.APP,
-        driveFileId: storageResult.driveFileId ?? null,
-        driveFolderId: storageResult.driveFolderId ?? null,
-        checksum,
-        driveModifiedAt: storageResult.driveModifiedAt ?? null,
-        externalMetadataJson: storageResult.externalMetadataJson ?? {},
-      });
-
-      return await this.patientFileRepository.save(patientFile);
-    } catch (error) {
-      await deleteUploadedFile(input.path);
-      throw error;
-    }
   }
 
   async findAllByPatient(context: ClinicAccessContext, patientId: string) {
@@ -414,26 +294,147 @@ export class PatientFilesService {
   async remove(context: ClinicAccessContext, id: string) {
     this.patientAccessService.assertCanManageClinical(context);
     const patientFile = await this.findOne(context, id);
+
+    patientFile.storageStatus = PatientFileStorageStatus.UNAVAILABLE;
+    if (patientFile.storageProvider === StorageProviderType.GOOGLE_DRIVE) {
+      patientFile.syncSource = PatientFileSyncSource.DRIVE_UPDATE;
+    }
+    await this.patientFileRepository.manager.transaction(async (manager) => {
+      await manager.getRepository(PatientFile).save(patientFile);
+      await manager
+        .getRepository(Patient)
+        .update(
+          { id: patientFile.patientId, profilePhotoFileId: patientFile.id },
+          { profilePhotoFileId: null, profilePhotoUrl: null },
+        );
+    });
+
     await this.storageService.markUnavailable(patientFile.storageProvider, {
       clinicId: context.clinicId,
       storedName: patientFile.storedName,
       driveFileId: patientFile.driveFileId,
     });
 
-    if (patientFile.storageProvider === StorageProviderType.GOOGLE_DRIVE) {
-      patientFile.storageStatus = PatientFileStorageStatus.UNAVAILABLE;
-      patientFile.syncSource = PatientFileSyncSource.DRIVE_UPDATE;
-      await this.patientFileRepository.save(patientFile);
-    } else {
+    if (patientFile.storageProvider === StorageProviderType.LOCAL) {
       await this.patientFileRepository.softRemove(patientFile);
     }
 
-    await this.patientRepository.update(
-      { id: patientFile.patientId, profilePhotoFileId: patientFile.id },
-      { profilePhotoFileId: null, profilePhotoUrl: null },
-    );
-
     return { message: `Patient file ${id} deleted` };
+  }
+
+  private async uploadAndSaveFile(input: {
+    context: ClinicAccessContext;
+    patient: Patient;
+    patientId: string;
+    uploadedByMembershipId: string;
+    file: UploadedFile;
+    baseUrl: string;
+    type: PatientFileType;
+    description?: string | null;
+    appointmentId?: string | null;
+    clinicalNoteId?: string | null;
+    treatmentId?: string | null;
+  }) {
+    const id = randomUUID();
+    const checksum = await this.calculateChecksum(input.file.path);
+    const storageResult = await this.storageService.upload({
+      clinicId: input.context.clinicId,
+      clinicName: input.patient.clinic.name,
+      patient: input.patient,
+      fileId: id,
+      file: input.file,
+      type: input.type,
+      checksum,
+      baseUrl: input.baseUrl,
+      relation: {
+        appointmentId: input.appointmentId ?? null,
+        clinicalNoteId: input.clinicalNoteId ?? null,
+        treatmentId: input.treatmentId ?? null,
+      },
+    });
+
+    try {
+      const patientFile = this.patientFileRepository.create({
+        id,
+        patientId: input.patientId,
+        appointmentId: input.appointmentId ?? null,
+        clinicalNoteId: input.clinicalNoteId ?? null,
+        treatmentId: input.treatmentId ?? null,
+        uploadedByMembershipId: input.uploadedByMembershipId,
+        type: input.type,
+        description: input.description ?? null,
+        originalName: input.file.originalname,
+        storedName: storageResult.storedName,
+        path: storageResult.path,
+        url: storageResult.url,
+        mimeType: storageResult.mimeType,
+        size: storageResult.size,
+        storageProvider: storageResult.storageProvider,
+        storageStatus: PatientFileStorageStatus.AVAILABLE,
+        syncSource: PatientFileSyncSource.APP,
+        driveFileId: storageResult.driveFileId ?? null,
+        driveFolderId: storageResult.driveFolderId ?? null,
+        checksum,
+        driveModifiedAt: storageResult.driveModifiedAt ?? null,
+        externalMetadataJson: storageResult.externalMetadataJson ?? {},
+      });
+      const saved = await this.patientFileRepository.save(patientFile);
+
+      if (storageResult.storageProvider === StorageProviderType.GOOGLE_DRIVE) {
+        await deleteUploadedFile(input.file.path);
+      }
+
+      return saved;
+    } catch (error) {
+      try {
+        await this.storageService.markUnavailable(
+          storageResult.storageProvider,
+          {
+            clinicId: input.context.clinicId,
+            storedName: storageResult.storedName,
+            driveFileId: storageResult.driveFileId,
+          },
+        );
+      } catch (compensationError) {
+        throw new AggregateError(
+          [error, compensationError],
+          'Patient file metadata persistence and storage compensation both failed',
+          { cause: compensationError },
+        );
+      }
+      throw error;
+    }
+  }
+
+  private async compensateStoredFile(
+    patientFile: PatientFile,
+    clinicId: string,
+  ) {
+    patientFile.storageStatus = PatientFileStorageStatus.UNAVAILABLE;
+    if (patientFile.storageProvider === StorageProviderType.GOOGLE_DRIVE) {
+      patientFile.syncSource = PatientFileSyncSource.DRIVE_UPDATE;
+    }
+    await this.patientFileRepository.save(patientFile);
+    await this.storageService.markUnavailable(patientFile.storageProvider, {
+      clinicId,
+      storedName: patientFile.storedName,
+      driveFileId: patientFile.driveFileId,
+    });
+    if (patientFile.storageProvider === StorageProviderType.LOCAL) {
+      await this.patientFileRepository.softRemove(patientFile);
+    }
+  }
+
+  private async withUploadCleanup<T>(
+    getFilePath: () => string,
+    action: () => Promise<T>,
+  ): Promise<T> {
+    try {
+      return await action();
+    } catch (error) {
+      await deleteUploadedFile(getFilePath());
+      throw error;
+    }
   }
 
   private inferFileType(mimeType: string): PatientFileType {
@@ -449,20 +450,16 @@ export class PatientFilesService {
     return hash.digest('hex');
   }
 
-  private toGeneratedMulterFile(
+  private toGeneratedUploadFile(
     input: GeneratedPatientFileInput,
-  ): Express.Multer.File {
+  ): UploadedFile {
     return {
-      fieldname: 'file',
       originalname: input.originalName,
-      encoding: '7bit',
       mimetype: input.mimeType,
       size: input.size,
       destination: path.dirname(input.path),
       filename: path.basename(input.path),
       path: input.path,
-      buffer: Buffer.alloc(0),
-      stream: Readable.from([]),
     };
   }
 }

@@ -164,7 +164,7 @@ export class CommonService {
       return result.value;
     }
 
-    const reason =
+    const reason: unknown =
       result.reason instanceof Error ? result.reason.stack : result.reason;
     this.logger.warn(
       `Dashboard metric "${metricName}" failed for clinic "${clinicId}". Using fallback value.`,

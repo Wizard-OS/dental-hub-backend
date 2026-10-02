@@ -14,10 +14,20 @@ import { ClinicSubscription } from '../membership/entities/clinic-subscription.e
 import { MembershipModule } from '../membership/membership.module';
 import { BackofficeController } from './backoffice.controller';
 import { BackofficeService } from './backoffice.service';
+import { BackofficeOverviewService } from './backoffice-overview.service';
+import { BackofficeClinicsService } from './backoffice-clinics.service';
+import { BackofficeUsersService } from './backoffice-users.service';
+import { BackofficeSupportRequestsService } from './backoffice-support-requests.service';
 
 @Module({
   controllers: [BackofficeController],
-  providers: [BackofficeService],
+  providers: [
+    BackofficeService,
+    BackofficeOverviewService,
+    BackofficeClinicsService,
+    BackofficeUsersService,
+    BackofficeSupportRequestsService,
+  ],
   imports: [
     MembershipModule,
     TypeOrmModule.forFeature([

@@ -25,8 +25,8 @@ describe('AppointmentsService availability validation', () => {
     };
     const appointmentRepository = {
       createQueryBuilder: jest.fn().mockReturnValue(overlapQuery),
-      create: jest.fn((entity) => entity),
-      save: jest.fn((entity) =>
+      create: jest.fn((entity: Record<string, unknown>) => entity),
+      save: jest.fn((entity: Record<string, unknown>) =>
         Promise.resolve({
           id: 'appointment-id',
           ...entity,
@@ -45,21 +45,27 @@ describe('AppointmentsService availability validation', () => {
       }),
     };
     const clinicMembershipRepository = {
-      findOne: jest.fn(({ where }) => {
-        if (
-          where.id === membershipId ||
-          (where.userId === dentistId && where.clinicId === clinicId)
-        ) {
-          return Promise.resolve({
-            id: membershipId,
-            clinicId,
-            userId: dentistId,
-            isActive: true,
-            appointmentSettingsJson: null,
-          });
-        }
-        return Promise.resolve(null);
-      }),
+      findOne: jest.fn(
+        ({
+          where,
+        }: {
+          where: { id?: string; userId?: string; clinicId?: string };
+        }) => {
+          if (
+            where.id === membershipId ||
+            (where.userId === dentistId && where.clinicId === clinicId)
+          ) {
+            return Promise.resolve({
+              id: membershipId,
+              clinicId,
+              userId: dentistId,
+              isActive: true,
+              appointmentSettingsJson: null,
+            });
+          }
+          return Promise.resolve(null);
+        },
+      ),
     };
     const availabilityService = new AppointmentAvailabilityService(
       clinicRepository as never,
@@ -121,6 +127,33 @@ describe('AppointmentsService availability validation', () => {
         status: AppointmentStatus.SCHEDULED,
       }),
     );
+  });
+
+  it('maps a database exclusion violation to the existing overlap response', async () => {
+    const { service, appointmentRepository } = serviceWithAvailability({
+      appointmentSettings: {
+        availability: {
+          weekly: [
+            {
+              dayOfWeek: 1,
+              isOpen: true,
+              startTime: '09:00',
+              endTime: '18:00',
+            },
+          ],
+        },
+      },
+    });
+    appointmentRepository.save.mockRejectedValue({
+      driverError: { code: '23P01' },
+    });
+
+    await expect(
+      service.create(
+        context,
+        baseDto('2026-09-21T12:30:00.000Z', '2026-09-21T13:00:00.000Z'),
+      ),
+    ).rejects.toThrow('Appointment overlaps with an existing slot');
   });
 
   it('rejects appointments outside working hours', async () => {

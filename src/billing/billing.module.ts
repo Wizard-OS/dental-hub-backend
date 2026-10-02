@@ -18,9 +18,14 @@ import { MembershipModule } from '../membership/membership.module';
 import { OutboundMessagesModule } from '../outbound-messages/outbound-messages.module';
 import { Payment } from '../payments/entities/payment.entity';
 import { BillingHistoryController } from './billing-history.controller';
+import { BillingHistoryService } from './billing-history.service';
 import { MembershipCheckoutController } from './membership-checkout.controller';
 import { BillingController } from './billing.controller';
 import { BillingService } from './billing.service';
+import { BillingCheckoutService } from './billing-checkout.service';
+import { BillingSubscriptionService } from './billing-subscription.service';
+import { BillingWebhookService } from './billing-webhook.service';
+import { BillingSubscriptionReconciliationService } from './billing-subscription-reconciliation.service';
 import { BillingWebhookEvent } from './entities/billing-webhook-event.entity';
 import { PayPalBillingProvider } from './providers/paypal-billing.provider';
 
@@ -33,6 +38,11 @@ import { PayPalBillingProvider } from './providers/paypal-billing.provider';
   ],
   providers: [
     BillingService,
+    BillingCheckoutService,
+    BillingSubscriptionService,
+    BillingWebhookService,
+    BillingSubscriptionReconciliationService,
+    BillingHistoryService,
     PayPalBillingProvider,
     PayPalVaultProvider,
     MembershipPaymentMethodsService,

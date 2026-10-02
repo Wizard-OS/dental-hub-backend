@@ -1,22 +1,41 @@
-import { BillingService } from './billing.service';
+import { BillingCheckoutService } from './billing-checkout.service';
+import { BillingSubscriptionService } from './billing-subscription.service';
+import { BillingSubscriptionReconciliationService } from './billing-subscription-reconciliation.service';
 import { BillingInterval } from './interfaces/billing-interval.enum';
 import { MembershipPlanCode } from '../membership/interfaces/membership-plan-code.enum';
 import { BillingProvider } from '../membership/interfaces/billing-provider.enum';
 import { SubscriptionStatus } from '../membership/interfaces/subscription-status.enum';
 import { membershipQuote } from './membership-offer';
+import { MembershipService } from '../membership/membership.service';
+import type {
+  CreateProviderSubscriptionInput,
+  CreatedProviderSubscription,
+} from './interfaces/billing-provider-adapter.interface';
+
+type BeginProviderSubscriptionInput = Parameters<
+  MembershipService['beginProviderSubscription']
+>[0];
 
 describe('Membership checkout lifecycle', () => {
-  let service: BillingService;
+  let service: BillingCheckoutService;
+  let subscriptionService: BillingSubscriptionService;
   let current: Record<string, unknown>;
   let membership: {
     ensureSubscription: jest.Mock;
-    beginProviderSubscription: jest.Mock;
+    reserveProviderCheckout: jest.Mock;
+    beginProviderSubscription: jest.Mock<
+      Promise<unknown>,
+      [BeginProviderSubscriptionInput]
+    >;
     getCurrent: jest.Mock;
     activateProviderSubscription: jest.Mock;
     markProviderSubscription: jest.Mock;
   };
   let provider: {
-    createSubscription: jest.Mock;
+    createSubscription: jest.Mock<
+      Promise<CreatedProviderSubscription>,
+      [CreateProviderSubscriptionInput]
+    >;
     getSubscription: jest.Mock;
     cancelSubscription: jest.Mock;
   };
@@ -44,7 +63,24 @@ describe('Membership checkout lifecycle', () => {
     };
     membership = {
       ensureSubscription: jest.fn().mockResolvedValue(current),
-      beginProviderSubscription: jest.fn((input: Record<string, unknown>) =>
+      reserveProviderCheckout: jest.fn((input: Record<string, unknown>) => {
+        if (current.providerSubscriptionId) {
+          return Promise.reject(new Error('A checkout is already pending'));
+        }
+        if (input.trialRequested && current.trialStartedAt) {
+          return Promise.reject(
+            new Error('The clinic has already used its trial'),
+          );
+        }
+        return Promise.resolve({
+          requestId: 'stable-provider-request',
+          quote: input.checkoutQuote,
+        });
+      }),
+      beginProviderSubscription: jest.fn<
+        Promise<unknown>,
+        [BeginProviderSubscriptionInput]
+      >((input: BeginProviderSubscriptionInput) =>
         Promise.resolve(Object.assign(current, input)),
       ),
       getCurrent: jest.fn(() => Promise.resolve({ status: current.status })),
@@ -57,41 +93,46 @@ describe('Membership checkout lifecycle', () => {
       markProviderSubscription: jest.fn(),
     };
     provider = {
-      createSubscription: jest.fn().mockResolvedValue({
-        provider: BillingProvider.paypal,
-        providerSubscriptionId: 'I-123',
-        providerPlanId: 'P-1',
-        providerStatus: 'APPROVAL_PENDING',
-        approvalUrl: 'https://paypal.example/approve',
-      }),
+      createSubscription: jest
+        .fn<
+          Promise<CreatedProviderSubscription>,
+          [CreateProviderSubscriptionInput]
+        >()
+        .mockResolvedValue({
+          provider: BillingProvider.paypal,
+          providerSubscriptionId: 'I-123',
+          providerPlanId: 'P-1',
+          providerStatus: 'APPROVAL_PENDING',
+          approvalUrl: 'https://paypal.example/approve',
+        }),
       getSubscription: jest.fn(() => Promise.resolve(details)),
       cancelSubscription: jest.fn(),
     };
-    const clinics = {
-      manager: {
-        transaction: (fn: (manager: { query: jest.Mock }) => unknown) =>
-          Promise.resolve(fn({ query: jest.fn() })),
-      },
+    const savedMethods = {
+      list: jest.fn().mockResolvedValue({
+        methods: [],
+        selectionMode: 'saved_methods',
+      }),
     };
-    service = new BillingService(
-      {} as unknown as ConstructorParameters<typeof BillingService>[0],
-      clinics as unknown as ConstructorParameters<typeof BillingService>[1],
-      {} as unknown as ConstructorParameters<typeof BillingService>[2],
-      {} as unknown as ConstructorParameters<typeof BillingService>[3],
-      membership as unknown as ConstructorParameters<typeof BillingService>[4],
-      {} as unknown as ConstructorParameters<typeof BillingService>[5],
-      provider as unknown as ConstructorParameters<typeof BillingService>[6],
-      {
-        list: jest.fn().mockResolvedValue({
-          methods: [],
-          selectionMode: 'saved_methods',
-        }),
-      } as unknown as ConstructorParameters<typeof BillingService>[7],
-      {
-        processClinic: jest.fn(),
-        cancel: jest.fn(),
-        start: jest.fn().mockResolvedValue({ status: 'trialing' }),
-      } as unknown as ConstructorParameters<typeof BillingService>[8],
+    const renewals = {
+      processClinic: jest.fn(),
+      cancel: jest.fn(),
+      start: jest.fn().mockResolvedValue({ status: 'trialing' }),
+    };
+    const reconciliation = new BillingSubscriptionReconciliationService(
+      membership as never,
+    );
+    service = new BillingCheckoutService(
+      membership as never,
+      provider as never,
+      savedMethods as never,
+      renewals as never,
+    );
+    subscriptionService = new BillingSubscriptionService(
+      membership as never,
+      provider as never,
+      renewals as never,
+      reconciliation,
     );
   });
   const linked = () =>
@@ -107,10 +148,10 @@ describe('Membership checkout lifecycle', () => {
       status: 'approval_required',
       quote: { firstCharge: 9000 },
     });
-    expect(membership.beginProviderSubscription).toHaveBeenCalledWith(
-      expect.objectContaining({
-        checkoutQuote: expect.objectContaining({ totalToday: 0 }),
-      }),
+    const beginInput = membership.beginProviderSubscription.mock.calls[0]?.[0];
+    expect(beginInput?.checkoutQuote?.totalToday).toBe(0);
+    expect(provider.createSubscription).toHaveBeenCalledWith(
+      expect.objectContaining({ requestId: 'stable-provider-request' }),
     );
     expect(membership.activateProviderSubscription).not.toHaveBeenCalled();
   });
@@ -133,9 +174,31 @@ describe('Membership checkout lifecycle', () => {
     await expect(service.createCheckout('clinic', dto)).rejects.toThrow();
     expect(membership.beginProviderSubscription).not.toHaveBeenCalled();
   });
+
+  it('retries a failed provider call with the same idempotency key', async () => {
+    provider.createSubscription.mockRejectedValueOnce(new Error('timeout'));
+    await expect(service.createCheckout('clinic', dto)).rejects.toThrow(
+      'timeout',
+    );
+
+    provider.createSubscription.mockResolvedValueOnce({
+      provider: BillingProvider.paypal,
+      providerSubscriptionId: 'I-123',
+      providerPlanId: 'P-1',
+      providerStatus: 'APPROVAL_PENDING',
+      approvalUrl: 'https://paypal.example/approve',
+    });
+    await service.createCheckout('clinic', dto);
+
+    const firstRequestId =
+      provider.createSubscription.mock.calls[0]?.[0].requestId;
+    const retryRequestId =
+      provider.createSubscription.mock.calls[1]?.[0].requestId;
+    expect(retryRequestId).toBe(firstRequestId);
+  });
   it('confirms provider ownership and persists the original 14 day dates', async () => {
     linked();
-    await service.confirm('clinic', 'I-123');
+    await subscriptionService.confirm('clinic', 'I-123');
     expect(membership.activateProviderSubscription).toHaveBeenCalledWith(
       expect.objectContaining({
         trialStartedAt: new Date('2026-09-10T00:00:00Z'),
@@ -145,9 +208,11 @@ describe('Membership checkout lifecycle', () => {
   });
   it('restores only the linked subscription and never trusts an arbitrary id', async () => {
     linked();
-    await expect(service.confirm('clinic', 'I-OTHER')).rejects.toThrow();
+    await expect(
+      subscriptionService.confirm('clinic', 'I-OTHER'),
+    ).rejects.toThrow();
     expect(provider.getSubscription).not.toHaveBeenCalled();
-    await service.confirm('clinic');
+    await subscriptionService.confirm('clinic');
     expect(provider.getSubscription).toHaveBeenCalledWith('I-123');
   });
   it.each(['clinicId', 'providerPlanId'])(
@@ -155,13 +220,13 @@ describe('Membership checkout lifecycle', () => {
     (field) => {
       linked();
       details[field] = 'another';
-      return expect(service.confirm('clinic')).rejects.toThrow();
+      return expect(subscriptionService.confirm('clinic')).rejects.toThrow();
     },
   );
   it('does not activate approval-pending subscriptions', async () => {
     linked();
     details.providerStatus = 'APPROVAL_PENDING';
-    await service.confirm('clinic');
+    await subscriptionService.confirm('clinic');
     expect(membership.activateProviderSubscription).not.toHaveBeenCalled();
     expect(membership.markProviderSubscription).toHaveBeenCalledWith(
       expect.objectContaining({ status: SubscriptionStatus.incomplete }),
@@ -170,9 +235,9 @@ describe('Membership checkout lifecycle', () => {
   it('cancels in the provider before changing local state', async () => {
     linked();
     provider.cancelSubscription.mockRejectedValueOnce(new Error('unavailable'));
-    await expect(service.cancel('clinic')).rejects.toThrow();
+    await expect(subscriptionService.cancel('clinic')).rejects.toThrow();
     expect(membership.markProviderSubscription).not.toHaveBeenCalled();
-    await service.cancel('clinic');
+    await subscriptionService.cancel('clinic');
     expect(membership.markProviderSubscription).toHaveBeenCalledWith(
       expect.objectContaining({ status: SubscriptionStatus.canceled }),
     );

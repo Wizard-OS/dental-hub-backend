@@ -32,8 +32,11 @@ export class I18nHttpExceptionFilter implements ExceptionFilter {
     const payload = exceptionResponse as Record<string, unknown>;
 
     if (Array.isArray(payload.message)) {
-      payload.message = payload.message.map((m) =>
-        typeof m === 'string' ? this.translator.translate(m, lang) : m,
+      const messages: unknown[] = payload.message;
+      payload.message = messages.map((message: unknown) =>
+        typeof message === 'string'
+          ? this.translator.translate(message, lang)
+          : message,
       );
     } else if (typeof payload.message === 'string') {
       payload.message = this.translator.translate(payload.message, lang);

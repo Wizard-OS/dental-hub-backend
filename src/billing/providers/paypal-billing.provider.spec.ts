@@ -3,9 +3,25 @@ import { BillingInterval } from '../interfaces/billing-interval.enum';
 import { MembershipPlanCode } from '../../membership/interfaces/membership-plan-code.enum';
 
 describe('PayPal advertised trial validation', () => {
+  type PayPalPlanCycle = {
+    sequence: number;
+    tenure_type: string;
+    total_cycles: number;
+    frequency: { interval_unit: string; interval_count: number };
+    pricing_scheme: {
+      fixed_price: { value: string; currency_code: string };
+    };
+  };
+  type PayPalPlan = {
+    status: string;
+    billing_cycles: PayPalPlanCycle[];
+    payment_preferences?: { setup_fee: { value: string } };
+    taxes?: { percentage: string };
+  };
+
   let provider: PayPalBillingProvider;
-  let request: jest.SpyInstance;
-  let plan: any;
+  let request: jest.SpiedFunction<PayPalBillingProvider['paypalRequest']>;
+  let plan: PayPalPlan;
   const cycle = (
     sequence: number,
     type: string,
@@ -13,7 +29,7 @@ describe('PayPal advertised trial validation', () => {
     count: number,
     total: number,
     price: string,
-  ) => ({
+  ): PayPalPlanCycle => ({
     sequence,
     tenure_type: type,
     total_cycles: total,
@@ -47,7 +63,7 @@ describe('PayPal advertised trial validation', () => {
     };
     provider = new PayPalBillingProvider();
     request = jest
-      .spyOn(provider as any, 'paypalRequest')
+      .spyOn(provider, 'paypalRequest')
       .mockImplementation((path: unknown) =>
         Promise.resolve(
           String(path).includes('/plans/')
@@ -72,11 +88,11 @@ describe('PayPal advertised trial validation', () => {
     await expect(provider.createSubscription(input)).resolves.toMatchObject({
       providerSubscriptionId: 'I-123',
     });
-    expect(request).toHaveBeenLastCalledWith(
-      '/v1/billing/subscriptions',
-      expect.objectContaining({
-        headers: expect.objectContaining({ 'PayPal-Request-Id': 'request-1' }),
-      }),
+    const subscriptionRequest = request.mock.calls.find(
+      ([path]) => path === '/v1/billing/subscriptions',
+    );
+    expect(subscriptionRequest?.[1].headers?.['PayPal-Request-Id']).toBe(
+      'request-1',
     );
   });
   it.each([

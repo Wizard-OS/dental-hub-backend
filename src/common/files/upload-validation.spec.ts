@@ -1,10 +1,10 @@
 import { promises as fs } from 'fs';
 import * as os from 'os';
 import * as path from 'path';
-import type { Express } from 'express';
 import { BadRequestException } from '@nestjs/common';
 
 import { validateAndNormalizeUploadedFile } from './upload-validation';
+import type { UploadedFile } from './uploaded-file.interface';
 
 describe('validateAndNormalizeUploadedFile', () => {
   let tmpDir: string;
@@ -61,21 +61,17 @@ describe('validateAndNormalizeUploadedFile', () => {
     filename: string,
     content: Buffer,
     mimetype = 'application/octet-stream',
-  ): Promise<Express.Multer.File> {
+  ): Promise<UploadedFile> {
     const filePath = path.join(tmpDir, filename);
     await fs.writeFile(filePath, content);
 
     return {
-      fieldname: 'file',
       originalname: filename,
-      encoding: '7bit',
       mimetype,
       size: content.length,
       destination: tmpDir,
       filename,
       path: filePath,
-      buffer: Buffer.alloc(0),
-      stream: undefined as never,
     };
   }
 });

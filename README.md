@@ -4,7 +4,7 @@ API backend para gestión clínica dental (estilo consultorio) con arquitectura 
 
 ## Requisitos
 
-- Node.js 20+
+- Node.js 22.22.3 or later (below 25)
 - pnpm
 - Docker Desktop
 

@@ -2,7 +2,7 @@ import { MembershipEmailProvider } from './membership-email.provider';
 
 describe('Membership email delivery adapter', () => {
   let previous: (string | undefined)[];
-  let fetchMock: jest.SpyInstance;
+  let fetchMock: jest.SpiedFunction<typeof fetch>;
   const provider = new MembershipEmailProvider();
   beforeEach(() => {
     previous = [process.env.RESEND_API_KEY, process.env.MEMBERSHIP_EMAIL_FROM];
@@ -28,11 +28,10 @@ describe('Membership email delivery adapter', () => {
         text: 'Reminder',
       }),
     ).resolves.toBe('email-id');
-    expect(fetchMock).toHaveBeenCalledWith(
-      'https://api.resend.com/emails',
-      expect.objectContaining({
-        headers: expect.objectContaining({ 'Idempotency-Key': 'reminder-1' }),
-      }),
+    const [requestedUrl, requestInit] = fetchMock.mock.calls[0];
+    expect(requestedUrl).toBe('https://api.resend.com/emails');
+    expect(new Headers(requestInit?.headers).get('Idempotency-Key')).toBe(
+      'reminder-1',
     );
   });
   it('fails for provider errors without claiming the message was sent', async () => {
