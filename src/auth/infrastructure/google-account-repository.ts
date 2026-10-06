@@ -1,11 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { GoogleAccountRepository } from '../application/google-authentication';
-import {
-  GoogleAuthenticationError,
-  GoogleIdentity,
-} from '../domain/google-identity';
+import type { FindOptionsWhere, UpdateResult } from 'typeorm';
+import type {
+  GoogleAccount,
+  GoogleAccountRepository,
+} from '../application/google-authentication';
+import { GoogleAuthenticationError } from '../domain/google-identity';
+import type { GoogleIdentity } from '../domain/google-identity';
 import { User } from '../entities/user.entity';
 import { PasswordHasherService } from '../services/password-hasher.service';
 
@@ -15,12 +17,11 @@ export class TypeOrmGoogleAccountRepository implements GoogleAccountRepository {
     @InjectRepository(User) private readonly users: Repository<User>,
     private readonly passwords: PasswordHasherService,
   ) {}
-  private lookup(where: {
-    id?: string;
-    email?: string;
-    googleSubject?: string;
-  }) {
-    return this.users.findOne({
+
+  private async lookup(
+    where: FindOptionsWhere<User>,
+  ): Promise<GoogleAccount | null> {
+    const user = await this.users.findOne({
       where,
       select: {
         id: true,
@@ -30,20 +31,34 @@ export class TypeOrmGoogleAccountRepository implements GoogleAccountRepository {
         googleSubject: true,
       },
     });
+    if (!user) return null;
+
+    return {
+      id: user.id,
+      email: user.email,
+      isActive: user.isActive,
+      googleSubject: user.googleSubject,
+      passwordHash: user.password ?? null,
+    };
   }
-  bySubject(subject: string) {
+
+  bySubject(subject: string): Promise<GoogleAccount | null> {
     return this.lookup({ googleSubject: subject });
   }
-  byEmail(email: string) {
+
+  byEmail(email: string): Promise<GoogleAccount | null> {
     return this.lookup({ email });
   }
-  byId(id: string) {
+
+  byId(id: string): Promise<GoogleAccount | null> {
     return this.lookup({ id });
   }
-  matchesPassword(password: string, hash: string) {
-    return this.passwords.compare(password, hash);
+
+  matchesPassword(password: string, passwordHash: string): boolean {
+    return this.passwords.compare(password, passwordHash);
   }
-  async create(identity: GoogleIdentity) {
+
+  async create(identity: GoogleIdentity): Promise<string> {
     try {
       const user = await this.users.save(
         this.users.create({
@@ -61,11 +76,12 @@ export class TypeOrmGoogleAccountRepository implements GoogleAccountRepository {
       this.handleConflict(error);
     }
   }
-  async link(id: string, identity: GoogleIdentity) {
-    let affected: number | undefined;
+
+  async link(id: string, identity: GoogleIdentity): Promise<void> {
+    let result: UpdateResult;
     try {
       // Conditional update prevents concurrent requests replacing a linked identity.
-      const result = await this.users
+      result = await this.users
         .createQueryBuilder()
         .update(User)
         .set({ googleSubject: identity.subject, googleEmail: identity.email })
@@ -74,27 +90,29 @@ export class TypeOrmGoogleAccountRepository implements GoogleAccountRepository {
           subject: identity.subject,
         })
         .execute();
-      affected = result.affected;
     } catch (error) {
       this.handleConflict(error);
     }
-    if (affected !== 1)
+    if (result.affected !== 1) {
       throw new GoogleAuthenticationError(
         'GOOGLE_IDENTITY_CONFLICT',
         'This account is already linked to another Google identity.',
       );
+    }
   }
+
   private handleConflict(error: unknown): never {
     if (
       typeof error === 'object' &&
       error !== null &&
       'code' in error &&
       error.code === '23505'
-    )
+    ) {
       throw new GoogleAuthenticationError(
         'GOOGLE_IDENTITY_CONFLICT',
         'This Google identity or email is already registered. Please sign in again.',
       );
+    }
     throw error;
   }
 }

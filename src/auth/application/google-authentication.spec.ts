@@ -37,7 +37,7 @@ describe('GoogleAuthentication', () => {
       id: 'existing',
       email: identity.email,
       googleSubject: identity.subject,
-      password: null,
+      passwordHash: null,
       isActive: true,
     });
     await expect(google.login('id-token')).resolves.toBe('existing');
@@ -48,7 +48,7 @@ describe('GoogleAuthentication', () => {
       id: 'password-user',
       email: identity.email,
       googleSubject: null,
-      password: 'hash',
+      passwordHash: 'hash',
       isActive: true,
     });
     await expect(google.login('id-token')).rejects.toMatchObject({
@@ -66,7 +66,7 @@ describe('GoogleAuthentication', () => {
       id: 'existing',
       email: identity.email,
       googleSubject: null,
-      password: 'hash',
+      passwordHash: 'hash',
       isActive: true,
     });
     accounts.matchesPassword.mockReturnValue(false);
@@ -80,14 +80,14 @@ describe('GoogleAuthentication', () => {
       id: 'existing',
       email: identity.email,
       googleSubject: null,
-      password: 'hash',
+      passwordHash: 'hash',
       isActive: true,
     });
     accounts.bySubject.mockResolvedValue({
       id: 'other',
       email: identity.email,
       googleSubject: identity.subject,
-      password: null,
+      passwordHash: null,
       isActive: true,
     });
     await expect(
@@ -100,7 +100,7 @@ describe('GoogleAuthentication', () => {
       id: 'existing',
       email: 'other@example.test',
       googleSubject: null,
-      password: 'hash',
+      passwordHash: 'hash',
       isActive: true,
     });
     await expect(
@@ -110,7 +110,7 @@ describe('GoogleAuthentication', () => {
       id: 'existing',
       email: identity.email,
       googleSubject: identity.subject,
-      password: null,
+      passwordHash: null,
       isActive: false,
     });
     await expect(google.login('id-token')).rejects.toMatchObject({
