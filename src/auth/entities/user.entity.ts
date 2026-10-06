@@ -31,10 +31,15 @@ export class User {
   })
   email: string;
 
-  @Column('text', {
-    select: false,
-  })
-  password: string;
+  @Column('text', { select: false, nullable: true })
+  password: string | null;
+
+  @Index({ unique: true })
+  @Column('text', { nullable: true })
+  googleSubject: string | null;
+
+  @Column('text', { nullable: true })
+  googleEmail: string | null;
 
   @Column('text')
   firstName: string;

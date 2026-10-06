@@ -1,3 +1,4 @@
+import type { Relation } from 'typeorm';
 import {
   Column,
   CreateDateColumn,
@@ -8,6 +9,7 @@ import {
   PrimaryGeneratedColumn,
 } from 'typeorm';
 
+import { UserStorageIntegration } from '../../storage/entities/user-storage-integration.entity';
 import { Patient } from '../../patients/entities/patient.entity';
 import { Treatment } from '../../treatments/entities/treatment.entity';
 import { Appointment } from '../../appointments/entities/appointment.entity';
@@ -57,6 +59,19 @@ export class PatientFile {
 
   @Column('uuid', { nullable: true })
   uploadedByMembershipId: string | null;
+
+  @Column('uuid', { nullable: true })
+  uploadedByUserId: string | null;
+
+  @ManyToOne(() => UserStorageIntegration, {
+    nullable: true,
+    onDelete: 'RESTRICT',
+  })
+  @JoinColumn({ name: 'storageIntegrationId' })
+  storageIntegration: Relation<UserStorageIntegration> | null;
+
+  @Column('uuid', { nullable: true })
+  storageIntegrationId: string | null;
 
   @Column({
     type: 'enum',

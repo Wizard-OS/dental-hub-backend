@@ -1,3 +1,7 @@
+import { GoogleAuthentication } from './application/google-authentication';
+import { GoogleTokenVerifier } from './infrastructure/google-identity-verifier';
+import { TypeOrmGoogleAccountRepository } from './infrastructure/google-account-repository';
+import { GoogleAuthController } from './presentation/google-auth.controller';
 import { Global, Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -21,9 +25,19 @@ import { PasswordResetOtpService } from './services/password-reset-otp.service';
 
 @Global()
 @Module({
-  controllers: [AuthController],
+  controllers: [AuthController, GoogleAuthController],
   providers: [
     AuthService,
+    GoogleTokenVerifier,
+    TypeOrmGoogleAccountRepository,
+    {
+      provide: GoogleAuthentication,
+      useFactory: (
+        verifier: GoogleTokenVerifier,
+        accounts: TypeOrmGoogleAccountRepository,
+      ) => new GoogleAuthentication(verifier, accounts),
+      inject: [GoogleTokenVerifier, TypeOrmGoogleAccountRepository],
+    },
     JwtStrategy,
     ClinicScopeGuard,
     UserRoleGuard,
@@ -57,6 +71,7 @@ import { PasswordResetOtpService } from './services/password-reset-otp.service';
     }),
   ],
   exports: [
+    GoogleTokenVerifier,
     TypeOrmModule,
     JwtStrategy,
     PassportModule,

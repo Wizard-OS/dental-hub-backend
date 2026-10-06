@@ -94,7 +94,16 @@ export class GoogleDriveStorageProvider implements StorageProvider {
       expiry_date: integration.tokenExpiresAt?.getTime(),
     });
 
-    await Promise.resolve();
+    await client.getAccessToken();
+    if (client.credentials.access_token) {
+      integration.encryptedAccessToken = this.tokenEncryption.encrypt(
+        client.credentials.access_token,
+      );
+      integration.tokenExpiresAt = client.credentials.expiry_date
+        ? new Date(client.credentials.expiry_date)
+        : null;
+      await this.integrationRepository.save(integration);
+    }
     return google.drive({ version: 'v3', auth: client });
   }
 
@@ -225,7 +234,7 @@ export class GoogleDriveStorageProvider implements StorageProvider {
     name: string,
     parentId?: string,
   ): Promise<string> {
-    const parentQuery = parentId ? ` and '${parentId}' in parents` : '';
+    const parentQuery = parentId ? `'${parentId}' in parents` : '';
     const existing = await drive.files.list({
       q: [
         `name = '${this.escapeQueryValue(name)}'`,

@@ -1,3 +1,5 @@
+import { UserStorageIntegration } from '../storage/entities/user-storage-integration.entity';
+import { StorageIntegrationStatus } from '../storage/interfaces/storage-integration-status.enum';
 import {
   BadRequestException,
   Injectable,
@@ -83,6 +85,7 @@ export class AuthService {
       select: {
         id: true,
         email: true,
+        googleEmail: true,
         password: true,
         firstName: true,
         lastName: true,
@@ -99,9 +102,10 @@ export class AuthService {
       },
     });
 
-    if (!user) throw new UnauthorizedException('Credentials are not valid');
+    if (!user || !user.isActive)
+      throw new UnauthorizedException('Credentials are not valid');
 
-    if (!this.passwordHasher.compare(password, user.password))
+    if (!user.password || !this.passwordHasher.compare(password, user.password))
       throw new UnauthorizedException('Credentials are not valid');
 
     const session = await this.userSessionsService.createSession(
@@ -109,6 +113,19 @@ export class AuthService {
       request ? buildSessionMetadata(request) : {},
     );
 
+    return this.buildAuthResponse(user, session.id);
+  }
+
+  async createGoogleSession(userId: string, request: Request) {
+    const user = await this.userRepository.findOneBy({
+      id: userId,
+      isActive: true,
+    });
+    if (!user) throw new UnauthorizedException('Account is inactive');
+    const session = await this.userSessionsService.createSession(
+      user.id,
+      buildSessionMetadata(request),
+    );
     return this.buildAuthResponse(user, session.id);
   }
 
@@ -267,6 +284,7 @@ export class AuthService {
     }
 
     if (
+      !userWithPassword.password ||
       !this.passwordHasher.compare(currentPassword, userWithPassword.password)
     ) {
       throw new UnauthorizedException('Current password is incorrect');
@@ -306,6 +324,18 @@ export class AuthService {
 
   async deleteAccount(user: User) {
     const currentSessionId = this.requireCurrentSessionId(user);
+
+    await this.userRepository.manager
+      .getRepository(UserStorageIntegration)
+      .update(
+        { userId: user.id },
+        {
+          status: StorageIntegrationStatus.DISCONNECTED,
+          encryptedAccessToken: null,
+          encryptedRefreshToken: null,
+          tokenExpiresAt: null,
+        },
+      );
 
     await this.userRepository.update(user.id, {
       isActive: false,
@@ -386,13 +416,17 @@ export class AuthService {
   }
 
   private async buildAuthResponse(user: User, sessionId: string) {
-    const userWithoutPassword = { ...user } as Omit<User, 'password'> & {
-      password?: string;
-    };
+    const userWithoutPassword = { ...user } as Partial<User>;
     delete userWithoutPassword.password;
+    delete userWithoutPassword.googleSubject;
+    const credentials = await this.userRepository.findOne({
+      where: { id: user.id },
+      select: { id: true, password: true },
+    });
 
     return {
       ...userWithoutPassword,
+      hasPassword: Boolean(credentials?.password),
       memberships: await this.getActiveMemberships(user.id),
       token: this.getJwtToken({ id: user.id, sessionId }),
     };

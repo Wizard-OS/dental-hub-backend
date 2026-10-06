@@ -1,3 +1,4 @@
+import { pipeline } from 'stream/promises';
 import {
   Body,
   Controller,
@@ -204,6 +205,8 @@ export class PatientFilesController {
       'Content-Disposition',
       `attachment; filename="${encodeURIComponent(file.originalName)}"`,
     );
+    response.setHeader('Cache-Control', 'private, no-store');
+    if (file.stream) return pipeline(file.stream, response);
     return response.sendFile(file.path);
   }
 

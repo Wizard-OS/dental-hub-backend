@@ -4,6 +4,7 @@ import { PatientFileType } from '../../patient-files/interfaces/patient-file-typ
 import { StorageProviderType } from './storage-provider-type.enum';
 
 export interface StorageUploadInput {
+  uploadedByMembershipId: string;
   clinicId: string;
   clinicName: string;
   patient: Patient;
@@ -20,6 +21,8 @@ export interface StorageUploadInput {
 }
 
 export interface StorageUploadResult {
+  storageIntegrationId?: string | null;
+  uploadedByUserId?: string | null;
   storageProvider: StorageProviderType;
   storedName: string;
   path: string;

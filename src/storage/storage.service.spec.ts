@@ -1,70 +1,56 @@
-import { StorageIntegrationStatus } from './interfaces/storage-integration-status.enum';
-import { StorageProviderType } from './interfaces/storage-provider-type.enum';
-import { StorageProviderRegistry } from './storage-provider-registry.service';
 import { StorageService } from './storage.service';
+import { StorageProviderType } from './interfaces/storage-provider-type.enum';
 
-describe('StorageService', () => {
-  const localProvider = {
-    type: StorageProviderType.LOCAL,
-    upload: jest.fn(),
-    markUnavailable: jest.fn(),
-  };
-  const driveProvider = {
-    type: StorageProviderType.GOOGLE_DRIVE,
-    upload: jest.fn(),
-    markUnavailable: jest.fn(),
-  };
-
-  beforeEach(() => {
-    jest.clearAllMocks();
-  });
-
-  it('uses local storage when Google Drive is not connected', async () => {
-    const repository = { findOne: jest.fn().mockResolvedValue(null) };
-    const service = new StorageService(
-      repository as never,
-      new StorageProviderRegistry(
-        localProvider as never,
-        driveProvider as never,
-      ),
-    );
-    localProvider.upload.mockResolvedValue({ storageProvider: 'local' });
-
-    await expect(
-      service.upload({ clinicId: 'clinic-id' } as never),
-    ).resolves.toEqual({ storageProvider: 'local' });
-    expect(localProvider.upload).toHaveBeenCalledTimes(1);
-    expect(driveProvider.upload).not.toHaveBeenCalled();
-  });
-
-  it('uses Google Drive storage when the clinic integration is connected', async () => {
-    const repository = {
-      findOne: jest.fn().mockResolvedValue({
-        status: StorageIntegrationStatus.CONNECTED,
-      }),
+describe('StorageService personal ownership', () => {
+  it('does not fall back to local storage when the uploader is disconnected', async () => {
+    const personal = {
+      upload: jest.fn().mockRejectedValue(new Error('Connect your Drive')),
+    };
+    const registry = { get: jest.fn() };
+    const memberships = {
+      findOneBy: jest.fn().mockResolvedValue({ userId: 'user-a' }),
     };
     const service = new StorageService(
-      repository as never,
-      new StorageProviderRegistry(
-        localProvider as never,
-        driveProvider as never,
-      ),
+      memberships as never,
+      registry as never,
+      personal as never,
     );
-    driveProvider.upload.mockResolvedValue({
-      storageProvider: StorageProviderType.GOOGLE_DRIVE,
-    });
-
     await expect(
-      service.upload({ clinicId: 'clinic-id' } as never),
-    ).resolves.toEqual({ storageProvider: StorageProviderType.GOOGLE_DRIVE });
-    expect(driveProvider.upload).toHaveBeenCalledTimes(1);
-    expect(repository.findOne).toHaveBeenCalledWith({
-      where: {
-        clinicId: 'clinic-id',
-        provider: StorageProviderType.GOOGLE_DRIVE,
-        status: StorageIntegrationStatus.CONNECTED,
-      },
-      select: { id: true },
-    });
+      service.upload({
+        clinicId: 'clinic',
+        uploadedByMembershipId: 'membership-a',
+      } as never),
+    ).rejects.toThrow('Connect your Drive');
+    expect(registry.get).not.toHaveBeenCalled();
+  });
+  it('routes each uploader to their own Drive', async () => {
+    const personal = {
+      upload: jest.fn().mockResolvedValue({
+        storageProvider: StorageProviderType.GOOGLE_DRIVE,
+      }),
+    };
+    const memberships = {
+      findOneBy: jest
+        .fn()
+        .mockResolvedValueOnce({ userId: 'user-a' })
+        .mockResolvedValueOnce({ userId: 'user-b' }),
+    };
+    const service = new StorageService(
+      memberships as never,
+      {} as never,
+      personal as never,
+    );
+    const first = {
+      clinicId: 'clinic',
+      uploadedByMembershipId: 'membership-a',
+    };
+    const second = {
+      clinicId: 'clinic',
+      uploadedByMembershipId: 'membership-b',
+    };
+    await service.upload(first as never);
+    await service.upload(second as never);
+    expect(personal.upload).toHaveBeenNthCalledWith(1, first, 'user-a');
+    expect(personal.upload).toHaveBeenNthCalledWith(2, second, 'user-b');
   });
 });

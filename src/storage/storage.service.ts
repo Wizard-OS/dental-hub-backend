@@ -1,9 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import { ConflictException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-
-import { ClinicStorageIntegration } from './entities/clinic-storage-integration.entity';
-import { StorageIntegrationStatus } from './interfaces/storage-integration-status.enum';
+import { ClinicMembership } from '../clinic-memberships/entities/clinic-membership.entity';
+import { PatientFile } from '../patient-files/entities/patient-file.entity';
+import { PersonalDriveStorage } from './infrastructure/personal-drive-storage';
 import { StorageProviderType } from './interfaces/storage-provider-type.enum';
 import {
   StorageUploadInput,
@@ -14,44 +14,41 @@ import { StorageProviderRegistry } from './storage-provider-registry.service';
 @Injectable()
 export class StorageService {
   constructor(
-    @InjectRepository(ClinicStorageIntegration)
-    private readonly integrationRepository: Repository<ClinicStorageIntegration>,
+    @InjectRepository(ClinicMembership)
+    private readonly memberships: Repository<ClinicMembership>,
     private readonly providerRegistry: StorageProviderRegistry,
+    private readonly personalDrive: PersonalDriveStorage,
   ) {}
-
   async upload(input: StorageUploadInput): Promise<StorageUploadResult> {
-    return await (await this.getProvider(input.clinicId)).upload(input);
+    const uploader = await this.memberships.findOneBy({
+      id: input.uploadedByMembershipId,
+      clinicId: input.clinicId,
+      isActive: true,
+    });
+    if (!uploader)
+      throw new ConflictException({
+        code: 'UPLOAD_IDENTITY_REQUIRED',
+        message: 'The uploader membership is unavailable.',
+      });
+    return this.personalDrive.upload(input, uploader.userId);
   }
-
   async markUnavailable(
     providerType: StorageProviderType,
     file: {
       clinicId: string;
       storedName: string;
       driveFileId?: string | null;
+      storageIntegrationId?: string | null;
     },
   ): Promise<void> {
+    if (file.storageIntegrationId && file.driveFileId)
+      return this.personalDrive.trash(
+        file.storageIntegrationId,
+        file.driveFileId,
+      );
     await this.providerRegistry.get(providerType).markUnavailable(file);
   }
-
-  async getActiveProviderType(clinicId: string): Promise<StorageProviderType> {
-    const integration = await this.integrationRepository.findOne({
-      where: {
-        clinicId,
-        provider: StorageProviderType.GOOGLE_DRIVE,
-        status: StorageIntegrationStatus.CONNECTED,
-      },
-      select: { id: true },
-    });
-
-    return integration
-      ? StorageProviderType.GOOGLE_DRIVE
-      : StorageProviderType.LOCAL;
-  }
-
-  private async getProvider(clinicId: string) {
-    return this.providerRegistry.get(
-      await this.getActiveProviderType(clinicId),
-    );
+  downloadDrive(file: PatientFile, clinicId: string) {
+    return this.personalDrive.download(file, clinicId);
   }
 }

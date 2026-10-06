@@ -263,14 +263,20 @@ export class PatientFilesService {
   async getDownload(context: ClinicAccessContext, id: string) {
     const patientFile = await this.findOne(context, id);
 
-    if (patientFile.storageProvider !== StorageProviderType.LOCAL) {
-      throw new BadRequestException(
-        'Direct download is only available for local files',
-      );
-    }
-
     if (patientFile.storageStatus !== PatientFileStorageStatus.AVAILABLE) {
       throw new BadRequestException('Patient file is not available');
+    }
+
+    if (patientFile.storageProvider === StorageProviderType.GOOGLE_DRIVE) {
+      return {
+        stream: await this.storageService.downloadDrive(
+          patientFile,
+          context.clinicId,
+        ),
+        path: undefined,
+        mimeType: patientFile.mimeType,
+        originalName: patientFile.originalName,
+      };
     }
 
     const uploadDir = path.resolve(process.cwd(), 'uploads', 'patient-files');
@@ -286,6 +292,7 @@ export class PatientFilesService {
 
     return {
       path: filePath,
+      stream: undefined,
       mimeType: patientFile.mimeType,
       originalName: patientFile.originalName,
     };
@@ -294,6 +301,13 @@ export class PatientFilesService {
   async remove(context: ClinicAccessContext, id: string) {
     this.patientAccessService.assertCanManageClinical(context);
     const patientFile = await this.findOne(context, id);
+
+    await this.storageService.markUnavailable(patientFile.storageProvider, {
+      clinicId: context.clinicId,
+      storedName: patientFile.storedName,
+      driveFileId: patientFile.driveFileId,
+      storageIntegrationId: patientFile.storageIntegrationId,
+    });
 
     patientFile.storageStatus = PatientFileStorageStatus.UNAVAILABLE;
     if (patientFile.storageProvider === StorageProviderType.GOOGLE_DRIVE) {
@@ -307,12 +321,6 @@ export class PatientFilesService {
           { id: patientFile.patientId, profilePhotoFileId: patientFile.id },
           { profilePhotoFileId: null, profilePhotoUrl: null },
         );
-    });
-
-    await this.storageService.markUnavailable(patientFile.storageProvider, {
-      clinicId: context.clinicId,
-      storedName: patientFile.storedName,
-      driveFileId: patientFile.driveFileId,
     });
 
     if (patientFile.storageProvider === StorageProviderType.LOCAL) {
@@ -338,6 +346,7 @@ export class PatientFilesService {
     const id = randomUUID();
     const checksum = await this.calculateChecksum(input.file.path);
     const storageResult = await this.storageService.upload({
+      uploadedByMembershipId: input.uploadedByMembershipId,
       clinicId: input.context.clinicId,
       clinicName: input.patient.clinic.name,
       patient: input.patient,
@@ -361,6 +370,8 @@ export class PatientFilesService {
         clinicalNoteId: input.clinicalNoteId ?? null,
         treatmentId: input.treatmentId ?? null,
         uploadedByMembershipId: input.uploadedByMembershipId,
+        uploadedByUserId: storageResult.uploadedByUserId ?? null,
+        storageIntegrationId: storageResult.storageIntegrationId ?? null,
         type: input.type,
         description: input.description ?? null,
         originalName: input.file.originalname,
@@ -393,6 +404,7 @@ export class PatientFilesService {
             clinicId: input.context.clinicId,
             storedName: storageResult.storedName,
             driveFileId: storageResult.driveFileId,
+            storageIntegrationId: storageResult.storageIntegrationId,
           },
         );
       } catch (compensationError) {
@@ -419,6 +431,7 @@ export class PatientFilesService {
       clinicId,
       storedName: patientFile.storedName,
       driveFileId: patientFile.driveFileId,
+      storageIntegrationId: patientFile.storageIntegrationId,
     });
     if (patientFile.storageProvider === StorageProviderType.LOCAL) {
       await this.patientFileRepository.softRemove(patientFile);
