@@ -7,15 +7,16 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { IsNull, Repository } from 'typeorm';
 import { google, drive_v3 } from 'googleapis';
 import { OAuth2Client } from 'google-auth-library';
-import { createReadStream, promises as fs } from 'fs';
-import { createHash } from 'crypto';
+import { createReadStream, createWriteStream, promises as fs } from 'fs';
+import { createHash, randomBytes, timingSafeEqual } from 'crypto';
 import { pipeline } from 'stream/promises';
-import { Readable } from 'stream';
+import { Readable, Transform } from 'stream';
 import * as path from 'path';
 import * as os from 'os';
-import { User } from '../../auth/entities/user.entity';
-import { GoogleTokenVerifier } from '../../auth/infrastructure/google-identity-verifier';
+import { GoogleTokenVerifier } from './google-identity-verifier';
 import { PatientFile } from '../../patient-files/entities/patient-file.entity';
+import { validateAndNormalizeUploadedFile } from '../../common/files/upload-validation';
+import type { UploadedFile } from '../../common/files/uploaded-file.interface';
 import { Patient } from '../../patients/entities/patient.entity';
 import {
   ClinicAccessContext,
@@ -25,8 +26,10 @@ import { ClinicMembershipRole } from '../../clinic-memberships/interfaces/clinic
 import { PatientFileType } from '../../patient-files/interfaces/patient-file-type.enum';
 import { PatientFileStorageStatus } from '../../patient-files/interfaces/patient-file-storage-status.enum';
 import { PatientFileSyncSource } from '../../patient-files/interfaces/patient-file-sync-source.enum';
+import { appendPatientFileSyncAudit } from '../../patient-files/utils/patient-file-sync-audit.util';
 import { StorageProviderType } from '../interfaces/storage-provider-type.enum';
 import { StorageIntegrationStatus } from '../interfaces/storage-integration-status.enum';
+import { PatientFileDriveImport } from '../interfaces/patient-file-drive-import.interface';
 import {
   StorageUploadInput,
   StorageUploadResult,
@@ -36,6 +39,7 @@ import { DriveMigrationItem } from '../entities/drive-migration-item.entity';
 import { ClinicStorageIntegration } from '../entities/clinic-storage-integration.entity';
 import { GoogleDriveStorageProvider } from '../providers/google-drive-storage.provider';
 import { TokenEncryptionService } from '../token-encryption.service';
+import { getEnv } from '../../config/env';
 import { PersonalDrivePort } from '../application/personal-drive';
 import {
   DriveAuthorization,
@@ -48,16 +52,21 @@ import {
   buildDriveFileName,
   buildPatientFolderName,
   folderForPatientFileType,
+  patientFileTypeFromDriveFolder,
+  shortId,
 } from '../utils/drive-naming.util';
 
 @Injectable()
 export class PersonalDriveStorage implements PersonalDrivePort {
+  private readonly integrationSyncLocks = new Map<string, Promise<void>>();
+
   constructor(
     @InjectRepository(UserStorageIntegration)
     private readonly integrations: Repository<UserStorageIntegration>,
-    @InjectRepository(User) private readonly users: Repository<User>,
     @InjectRepository(PatientFile)
     private readonly files: Repository<PatientFile>,
+    @InjectRepository(Patient)
+    private readonly patients: Repository<Patient>,
     @InjectRepository(DriveMigrationItem)
     private readonly migrations: Repository<DriveMigrationItem>,
     @InjectRepository(ClinicStorageIntegration)
@@ -67,13 +76,6 @@ export class PersonalDriveStorage implements PersonalDrivePort {
     private readonly legacyDrive: GoogleDriveStorageProvider,
     private readonly access: PatientAccessService,
   ) {}
-
-  async subjectForUser(userId: string) {
-    return (
-      (await this.users.findOneBy({ id: userId, isActive: true }))
-        ?.googleSubject ?? null
-    );
-  }
 
   private oauth() {
     if (
@@ -175,7 +177,13 @@ export class PersonalDriveStorage implements PersonalDrivePort {
       connectedAt: new Date().toISOString(),
       scope: authorization.scope,
     };
+    const startToken = await drive.changes.getStartPageToken({
+      fields: 'startPageToken',
+    });
+    integration.driveStartPageToken =
+      startToken.data.startPageToken ?? integration.driveStartPageToken;
     await this.integrations.save(integration);
+    await this.ensureChangeWatch(integration, drive).catch(() => undefined);
     return this.status(userId);
   }
 
@@ -192,7 +200,30 @@ export class PersonalDriveStorage implements PersonalDrivePort {
     };
   }
 
-  async disconnect(userId: string) {
+  async disconnect(userId: string, confirmFilesBackedUp = false) {
+    const integration = await this.credentialsByUser(userId);
+    if (!integration) return;
+
+    const attachedFiles = await this.files.count({
+      where: { storageIntegrationId: integration.id },
+    });
+    if (attachedFiles > 0 && !confirmFilesBackedUp)
+      throw this.error(
+        'DRIVE_FILES_BACKUP_CONFIRMATION_REQUIRED',
+        `This Drive account owns ${attachedFiles} patient file(s). Back them up or transfer them before disconnecting, then confirm to continue.`,
+      );
+
+    if (integration.driveWatchChannelId && integration.driveWatchResourceId) {
+      const drive = await this.drive(integration).catch(() => null);
+      await drive?.channels
+        .stop({
+          requestBody: {
+            id: integration.driveWatchChannelId,
+            resourceId: integration.driveWatchResourceId,
+          },
+        })
+        .catch(() => undefined);
+    }
     await this.integrations.update(
       { userId },
       {
@@ -200,8 +231,240 @@ export class PersonalDriveStorage implements PersonalDrivePort {
         encryptedAccessToken: null,
         encryptedRefreshToken: null,
         tokenExpiresAt: null,
+        driveWatchChannelId: null,
+        driveWatchResourceId: null,
+        driveWatchTokenHash: null,
+        driveWatchExpiresAt: null,
       },
     );
+  }
+
+  async updateMetadata(
+    file: PatientFile,
+    input: {
+      name?: string;
+      description?: string | null;
+      type?: PatientFileType;
+      clinicId: string;
+      clinicName: string;
+      patient: Patient;
+    },
+  ): Promise<StorageUploadResult> {
+    if (!file.driveFileId || !file.storageIntegrationId)
+      throw new NotFoundException('Patient file is not stored in Drive.');
+    const integration = await this.requireIntegration(
+      file.storageIntegrationId,
+    );
+    const drive = await this.drive(integration);
+    const current = await drive.files.get({
+      fileId: file.driveFileId,
+      fields:
+        'id,name,mimeType,size,md5Checksum,modifiedTime,headRevisionId,parents,description,appProperties',
+    });
+    const currentModifiedAt = current.data.modifiedTime
+      ? new Date(current.data.modifiedTime)
+      : null;
+    if (
+      !currentModifiedAt ||
+      !file.driveModifiedAt ||
+      currentModifiedAt.getTime() !== file.driveModifiedAt.getTime()
+    ) {
+      const externalMetadataJson = appendPatientFileSyncAudit(
+        {
+          ...file.externalMetadataJson,
+          syncConflict: {
+            observedDriveModifiedAt: currentModifiedAt?.toISOString() ?? null,
+            pendingAppMetadata: {
+              ...(input.name !== undefined ? { name: input.name } : {}),
+              ...(input.description !== undefined
+                ? { description: input.description }
+                : {}),
+              ...(input.type !== undefined ? { type: input.type } : {}),
+            },
+          },
+        },
+        {
+          event: 'sync_conflict_detected',
+          source: 'app',
+          details: {
+            observedDriveModifiedAt: currentModifiedAt?.toISOString() ?? null,
+            expectedDriveModifiedAt:
+              file.driveModifiedAt?.toISOString() ?? null,
+          },
+        },
+      );
+      await this.files.save(
+        this.files.create({
+          ...file,
+          syncReviewRequired: true,
+          syncReviewReason: 'concurrent_drive_change',
+          externalMetadataJson,
+        }),
+      );
+      throw this.error(
+        'DRIVE_SYNC_CONFLICT',
+        'This file changed in Google Drive. Review the Drive version before applying app changes.',
+      );
+    }
+
+    const nextType = input.type ?? file.type;
+    const nextCategory = folderForPatientFileType(nextType);
+    const clinicFolder = await this.legacyDrive.findOrCreateFolder(
+      drive,
+      buildClinicRootFolderName(input.clinicId, input.clinicName),
+      integration.rootFolderId!,
+    );
+    const patientsFolder = await this.legacyDrive.findOrCreateFolder(
+      drive,
+      'patients',
+      clinicFolder,
+    );
+    const patientFolder = await this.legacyDrive.findOrCreateFolder(
+      drive,
+      buildPatientFolderName(input.patient.id),
+      patientsFolder,
+    );
+    const nextFolder = await this.legacyDrive.findOrCreateFolder(
+      drive,
+      nextCategory,
+      patientFolder,
+    );
+    const parentIds = current.data.parents ?? [];
+    const response = await drive.files.update({
+      fileId: file.driveFileId,
+      addParents: parentIds.includes(nextFolder) ? undefined : nextFolder,
+      removeParents:
+        parentIds.filter((parent) => parent !== nextFolder).join(',') ||
+        undefined,
+      requestBody: {
+        name: input.name ?? current.data.name ?? file.storedName,
+        description:
+          input.description === undefined
+            ? (current.data.description ?? undefined)
+            : (input.description ?? ''),
+        appProperties: {
+          ...(current.data.appProperties ?? {}),
+          fileId: file.id,
+          patientId: input.patient.id,
+          tenantId: input.clinicId,
+          uploaderUserId: file.uploadedByUserId ?? integration.userId,
+          category: nextCategory,
+        },
+      },
+      fields:
+        'id,name,mimeType,size,md5Checksum,modifiedTime,parents,description,appProperties',
+    });
+    const metadata = response.data;
+    return {
+      storageProvider: StorageProviderType.GOOGLE_DRIVE,
+      storageIntegrationId: integration.id,
+      uploadedByUserId: file.uploadedByUserId ?? integration.userId,
+      storedName: metadata.name ?? file.storedName,
+      path: `google-drive://${file.driveFileId}`,
+      url: file.url,
+      mimeType: metadata.mimeType ?? file.mimeType,
+      size: Number(metadata.size ?? file.size),
+      driveFileId: file.driveFileId,
+      driveFolderId: nextFolder,
+      driveModifiedAt: metadata.modifiedTime
+        ? new Date(metadata.modifiedTime)
+        : null,
+      externalMetadataJson: {
+        ...file.externalMetadataJson,
+        md5Checksum: metadata.md5Checksum ?? null,
+        headRevisionId: metadata.headRevisionId ?? null,
+      },
+    };
+  }
+
+  async restore(file: PatientFile): Promise<StorageUploadResult> {
+    if (!file.driveFileId || !file.storageIntegrationId)
+      throw new NotFoundException('Patient file is not stored in Drive.');
+    const integration = await this.requireIntegration(
+      file.storageIntegrationId,
+    );
+    const drive = await this.drive(integration);
+    let metadata = (
+      await drive.files.update({
+        fileId: file.driveFileId,
+        requestBody: { trashed: false },
+        fields:
+          'id,name,mimeType,size,md5Checksum,modifiedTime,headRevisionId,parents,description,appProperties',
+      })
+    ).data;
+    if (file.driveFolderId && !metadata.parents?.includes(file.driveFolderId)) {
+      metadata = (
+        await drive.files.update({
+          fileId: file.driveFileId,
+          addParents: file.driveFolderId,
+          removeParents:
+            metadata.parents
+              ?.filter((parent) => parent !== file.driveFolderId)
+              .join(',') || undefined,
+          fields:
+            'id,name,mimeType,size,md5Checksum,modifiedTime,headRevisionId,parents,description,appProperties',
+        })
+      ).data;
+    }
+    return {
+      storageProvider: StorageProviderType.GOOGLE_DRIVE,
+      storageIntegrationId: integration.id,
+      uploadedByUserId: file.uploadedByUserId ?? integration.userId,
+      storedName: metadata.name ?? file.storedName,
+      path: `google-drive://${file.driveFileId}`,
+      url: file.url,
+      mimeType: metadata.mimeType ?? file.mimeType,
+      size: Number(metadata.size ?? file.size),
+      driveFileId: file.driveFileId,
+      driveFolderId: metadata.parents?.[0] ?? file.driveFolderId ?? undefined,
+      driveModifiedAt: metadata.modifiedTime
+        ? new Date(metadata.modifiedTime)
+        : null,
+      externalMetadataJson: {
+        ...file.externalMetadataJson,
+        md5Checksum: metadata.md5Checksum ?? null,
+        headRevisionId: metadata.headRevisionId ?? null,
+      },
+    };
+  }
+
+  async listRevisions(file: PatientFile) {
+    if (!file.driveFileId || !file.storageIntegrationId)
+      throw new NotFoundException('Patient file is not stored in Drive.');
+    const integration = await this.requireIntegration(
+      file.storageIntegrationId,
+    );
+    const drive = await this.drive(integration);
+    const response = await drive.revisions.list({
+      fileId: file.driveFileId,
+      fields: 'revisions(id,modifiedTime,keepForever,size)',
+    });
+    return (response.data.revisions ?? []).flatMap((revision) =>
+      revision.id
+        ? [
+            {
+              id: revision.id,
+              modifiedTime: revision.modifiedTime ?? null,
+              keepForever: revision.keepForever ?? false,
+              size: revision.size ? Number(revision.size) : null,
+            },
+          ]
+        : [],
+    );
+  }
+
+  async downloadRevision(file: PatientFile, revisionId: string) {
+    if (!file.driveFileId || !file.storageIntegrationId)
+      throw new NotFoundException('Patient file is not stored in Drive.');
+    const integration = await this.requireIntegration(
+      file.storageIntegrationId,
+    );
+    const drive = await this.drive(integration);
+    const response = await drive.revisions.get(
+      { fileId: file.driveFileId, revisionId, alt: 'media' },
+      { responseType: 'stream' },
+    );
+    return response.data;
   }
 
   async upload(
@@ -234,7 +497,8 @@ export class PersonalDriveStorage implements PersonalDrivePort {
       // Recovery after a successful upload followed by a DB/process failure.
       const existing = await drive.files.list({
         q: `trashed = false and '${folder}' in parents and appProperties has { key='fileId' and value='${input.fileId}' }`,
-        fields: 'files(id,name,size,md5Checksum,mimeType,modifiedTime)',
+        fields:
+          'files(id,name,size,md5Checksum,mimeType,modifiedTime,headRevisionId)',
         pageSize: 2,
       });
       if ((existing.data.files?.length ?? 0) > 1)
@@ -252,6 +516,7 @@ export class PersonalDriveStorage implements PersonalDrivePort {
                 input.file.originalname,
                 input.fileId,
               ),
+              description: input.description ?? undefined,
               parents: [folder],
               appProperties: {
                 fileId: input.fileId,
@@ -265,7 +530,8 @@ export class PersonalDriveStorage implements PersonalDrivePort {
               mimeType: input.file.mimetype,
               body: createReadStream(input.file.path),
             },
-            fields: 'id,name,size,md5Checksum,mimeType,modifiedTime',
+            fields:
+              'id,name,size,md5Checksum,mimeType,modifiedTime,headRevisionId',
           })
         ).data;
       const content = await fs.readFile(input.file.path);
@@ -292,8 +558,241 @@ export class PersonalDriveStorage implements PersonalDrivePort {
         driveModifiedAt: metadata.modifiedTime
           ? new Date(metadata.modifiedTime)
           : null,
-        externalMetadataJson: { md5Checksum: metadata.md5Checksum },
+        externalMetadataJson: {
+          md5Checksum: metadata.md5Checksum,
+          headRevisionId: metadata.headRevisionId ?? null,
+          originalName: input.file.originalname,
+        },
       };
+    });
+  }
+
+  async importFromDrive(
+    input: PatientFileDriveImport,
+    userId: string,
+  ): Promise<StorageUploadResult> {
+    const integration = await this.requireUserIntegration(userId);
+    const patient = await this.patients.findOne({
+      where: { id: input.patientId, clinicId: input.clinicId },
+      relations: { clinic: true },
+    });
+    if (!patient) throw new NotFoundException('Patient not found');
+
+    const drive = await this.drive(integration);
+    const source = await drive.files.get({
+      fileId: input.sourceDriveFileId,
+      fields:
+        'id,name,mimeType,size,trashed,parents,description,modifiedTime,md5Checksum,headRevisionId,appProperties',
+    });
+    const alreadyImported = await this.files.findOne({
+      where: {
+        storageIntegrationId: integration.id,
+        driveFileId: input.sourceDriveFileId,
+      },
+      select: { id: true },
+    });
+    if (alreadyImported)
+      throw this.error(
+        'DRIVE_FILE_ALREADY_IMPORTED',
+        'This Drive file is already attached to a patient record.',
+      );
+    const allowedMimeTypes = new Set([
+      'application/msword',
+      'application/pdf',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'image/gif',
+      'image/jpeg',
+      'image/png',
+      'image/webp',
+      'text/plain',
+    ]);
+    if (
+      !source.data.id ||
+      source.data.trashed ||
+      !source.data.mimeType ||
+      !allowedMimeTypes.has(source.data.mimeType) ||
+      Number(source.data.size ?? 0) > 10 * 1024 * 1024
+    ) {
+      throw this.error(
+        'DRIVE_IMPORT_FILE_UNSUPPORTED',
+        'Select an untrashed image or document smaller than 10 MB.',
+      );
+    }
+
+    const temporaryDirectory = await fs.mkdtemp(
+      path.join(os.tmpdir(), 'dentalhub-drive-import-'),
+    );
+    const originalName = source.data.name || input.patientFileId;
+    const safeName = path.basename(originalName).replace(/[\\/\0]/g, '_');
+    const temporaryPath = path.join(temporaryDirectory, safeName);
+    try {
+      const media = await drive.files.get(
+        { fileId: input.sourceDriveFileId, alt: 'media' },
+        { responseType: 'stream' },
+      );
+      let bytesRead = 0;
+      const contentHash = createHash('md5');
+      const enforceSizeLimit = new Transform({
+        transform(chunk: Buffer, _encoding, callback) {
+          bytesRead += chunk.length;
+          contentHash.update(chunk);
+          if (bytesRead > 10 * 1024 * 1024) {
+            callback(new Error('Drive import exceeded the file size limit'));
+            return;
+          }
+          callback(null, chunk);
+        },
+      });
+      await pipeline(
+        media.data,
+        enforceSizeLimit,
+        createWriteStream(temporaryPath, { flags: 'wx' }),
+      ).catch(() => {
+        throw this.error(
+          'DRIVE_IMPORT_DOWNLOAD_FAILED',
+          'The selected Drive file could not be imported.',
+        );
+      });
+
+      if (
+        (source.data.size && Number(source.data.size) !== bytesRead) ||
+        (source.data.md5Checksum &&
+          contentHash.digest('hex') !== source.data.md5Checksum)
+      )
+        throw this.error(
+          'DRIVE_IMPORT_VERIFICATION_FAILED',
+          'The selected Drive file changed or failed integrity verification. Try importing it again.',
+        );
+
+      const file: UploadedFile = {
+        originalname: originalName,
+        mimetype: source.data.mimeType,
+        size: bytesRead,
+        destination: temporaryDirectory,
+        filename: path.basename(temporaryPath),
+        path: temporaryPath,
+      };
+      await validateAndNormalizeUploadedFile(file, [
+        'image',
+        'pdf',
+        'text',
+        'word',
+      ]);
+      const clinicFolder = await this.legacyDrive.findOrCreateFolder(
+        drive,
+        buildClinicRootFolderName(input.clinicId, input.clinicName),
+        integration.rootFolderId!,
+      );
+      const patientsFolder = await this.legacyDrive.findOrCreateFolder(
+        drive,
+        'patients',
+        clinicFolder,
+      );
+      const patientFolder = await this.legacyDrive.findOrCreateFolder(
+        drive,
+        buildPatientFolderName(patient.id),
+        patientsFolder,
+      );
+      const category = folderForPatientFileType(input.type);
+      const targetFolder = await this.legacyDrive.findOrCreateFolder(
+        drive,
+        category,
+        patientFolder,
+      );
+      const sourceParents = source.data.parents ?? [];
+      const sourceAppProperties = source.data.appProperties ?? {};
+      const moved = (
+        await drive.files.update({
+          fileId: input.sourceDriveFileId,
+          addParents: sourceParents.includes(targetFolder)
+            ? undefined
+            : targetFolder,
+          removeParents:
+            sourceParents
+              .filter((parent) => parent !== targetFolder)
+              .join(',') || undefined,
+          requestBody: {
+            description:
+              input.description === undefined
+                ? (source.data.description ?? undefined)
+                : (input.description ?? ''),
+            appProperties: {
+              ...sourceAppProperties,
+              fileId: input.patientFileId,
+              patientId: patient.id,
+              tenantId: input.clinicId,
+              uploaderUserId: userId,
+              category,
+            },
+          },
+          fields:
+            'id,name,mimeType,size,md5Checksum,modifiedTime,headRevisionId,parents,description,appProperties',
+        })
+      ).data;
+      if (!moved.id)
+        throw this.error(
+          'DRIVE_IMPORT_MOVE_FAILED',
+          'The selected Drive file could not be moved into the patient folder.',
+        );
+      return {
+        storageProvider: StorageProviderType.GOOGLE_DRIVE,
+        storageIntegrationId: integration.id,
+        uploadedByUserId: userId,
+        storedName: moved.name ?? originalName,
+        path: `google-drive://${moved.id}`,
+        url: `/patient-files/${input.patientFileId}/download`,
+        mimeType: moved.mimeType ?? source.data.mimeType,
+        size: bytesRead,
+        driveFileId: moved.id,
+        driveFolderId: targetFolder,
+        driveModifiedAt: moved.modifiedTime
+          ? new Date(moved.modifiedTime)
+          : null,
+        externalMetadataJson: {
+          md5Checksum: moved.md5Checksum ?? null,
+          headRevisionId: moved.headRevisionId ?? null,
+          originalName,
+          driveImportSourceParents: sourceParents,
+          driveImportSourceAppProperties: sourceAppProperties,
+          driveImportManagedFolderId: targetFolder,
+        },
+      };
+    } finally {
+      await fs.rm(temporaryDirectory, { recursive: true, force: true });
+    }
+  }
+
+  async rollbackImport(result: StorageUploadResult): Promise<void> {
+    const driveFileId = result.driveFileId;
+    const integrationId = result.storageIntegrationId;
+    const metadata = result.externalMetadataJson ?? {};
+    const previousParents = metadata.driveImportSourceParents;
+    const previousProperties = metadata.driveImportSourceAppProperties;
+    const managedFolderId = metadata.driveImportManagedFolderId;
+    if (
+      !driveFileId ||
+      !integrationId ||
+      !Array.isArray(previousParents) ||
+      typeof managedFolderId !== 'string'
+    )
+      return;
+
+    const integration = await this.requireIntegration(integrationId);
+    const drive = await this.drive(integration);
+    await drive.files.update({
+      fileId: driveFileId,
+      addParents:
+        previousParents
+          .filter((parent): parent is string => typeof parent === 'string')
+          .join(',') || undefined,
+      removeParents: managedFolderId,
+      requestBody: {
+        appProperties:
+          previousProperties && typeof previousProperties === 'object'
+            ? (previousProperties as Record<string, string>)
+            : {},
+      },
+      fields: 'id',
     });
   }
 
@@ -595,73 +1094,550 @@ export class PersonalDriveStorage implements PersonalDrivePort {
 
   async sync(userId: string, context: PersonalDriveContext) {
     const integration = await this.requireUserIntegration(userId);
+    return {
+      provider: 'google_drive' as const,
+      ...(await this.syncIntegration(
+        integration,
+        undefined,
+        context.clinicId,
+        false,
+      )),
+    };
+  }
+
+  async syncConnectedIntegrations(): Promise<void> {
+    const integrations = await this.integrations
+      .createQueryBuilder('integration')
+      .addSelect([
+        'integration.encryptedAccessToken',
+        'integration.encryptedRefreshToken',
+      ])
+      .where('integration.status = :status', {
+        status: StorageIntegrationStatus.CONNECTED,
+      })
+      .getMany();
+
+    for (const integration of integrations) {
+      try {
+        const drive = await this.drive(integration);
+        await this.ensureChangeWatch(integration, drive);
+        await this.syncIntegration(integration, drive);
+      } catch {
+        // A later worker tick retries this integration without exposing Drive data.
+      }
+    }
+  }
+
+  async handleDriveNotification(
+    channelId: string,
+    channelToken: string,
+  ): Promise<boolean> {
+    const integration = await this.integrations
+      .createQueryBuilder('integration')
+      .addSelect([
+        'integration.encryptedAccessToken',
+        'integration.encryptedRefreshToken',
+        'integration.driveWatchTokenHash',
+      ])
+      .where('integration.driveWatchChannelId = :channelId', { channelId })
+      .andWhere('integration.status = :status', {
+        status: StorageIntegrationStatus.CONNECTED,
+      })
+      .getOne();
+
+    if (!integration?.driveWatchTokenHash) return false;
+    const receivedHash = createHash('sha256').update(channelToken).digest();
+    const expectedHash = Buffer.from(integration.driveWatchTokenHash, 'hex');
+    if (
+      expectedHash.length !== receivedHash.length ||
+      !timingSafeEqual(receivedHash, expectedHash)
+    )
+      return false;
+
+    const drive = await this.drive(integration);
+    await this.syncIntegration(integration, drive);
+    return true;
+  }
+
+  private async syncIntegration(
+    integration: UserStorageIntegration,
+    existingDrive?: drive_v3.Drive,
+    clinicId?: string,
+    advanceCursor = true,
+  ) {
+    while (this.integrationSyncLocks.has(integration.id))
+      await this.integrationSyncLocks.get(integration.id);
+
+    let release!: () => void;
+    const lock = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    this.integrationSyncLocks.set(integration.id, lock);
+    try {
+      return await this.syncIntegrationUnlocked(
+        integration,
+        existingDrive,
+        clinicId,
+        advanceCursor,
+      );
+    } finally {
+      if (this.integrationSyncLocks.get(integration.id) === lock)
+        this.integrationSyncLocks.delete(integration.id);
+      release();
+    }
+  }
+
+  private async syncIntegrationUnlocked(
+    integration: UserStorageIntegration,
+    existingDrive?: drive_v3.Drive,
+    clinicId?: string,
+    advanceCursor = true,
+  ) {
+    const drive = existingDrive ?? (await this.drive(integration));
+    if (!integration.driveStartPageToken) {
+      const startToken = await drive.changes.getStartPageToken({
+        fields: 'startPageToken',
+      });
+      if (advanceCursor) {
+        integration.driveStartPageToken =
+          startToken.data.startPageToken ?? null;
+        await this.integrations.save(integration);
+      }
+      return this.reconcileKnownFiles(integration, drive, clinicId);
+    }
+
+    let pageToken: string | undefined = integration.driveStartPageToken;
+    let scanned = 0;
+    let updated = 0;
+    let unavailable = 0;
+    while (pageToken) {
+      let response: { data: drive_v3.Schema$ChangeList };
+      try {
+        response = await drive.changes.list({
+          pageToken,
+          spaces: 'drive',
+          fields:
+            'nextPageToken,newStartPageToken,changes(fileId,removed,file(id,name,mimeType,size,md5Checksum,modifiedTime,headRevisionId,trashed,parents,description,appProperties))',
+        });
+      } catch (error) {
+        if (this.statusCode(error) !== 410) throw error;
+        const startToken = await drive.changes.getStartPageToken({
+          fields: 'startPageToken',
+        });
+        if (advanceCursor) {
+          integration.driveStartPageToken =
+            startToken.data.startPageToken ?? null;
+          await this.integrations.save(integration);
+        }
+        const reconciled = await this.reconcileKnownFiles(
+          integration,
+          drive,
+          clinicId,
+        );
+        return { ...reconciled, scanned: reconciled.scanned + scanned };
+      }
+
+      for (const change of response.data.changes ?? []) {
+        const result = await this.applyDriveChange(
+          integration,
+          drive,
+          change,
+          clinicId,
+        );
+        scanned += result.scanned;
+        updated += result.updated;
+        unavailable += result.unavailable;
+      }
+
+      pageToken = response.data.nextPageToken ?? undefined;
+      if (advanceCursor) {
+        integration.driveStartPageToken =
+          response.data.newStartPageToken ??
+          pageToken ??
+          integration.driveStartPageToken;
+        await this.integrations.save(integration);
+      }
+    }
+
+    const syncedAt = new Date().toISOString();
+    integration.metadataJson = advanceCursor
+      ? { ...integration.metadataJson, lastSyncAt: syncedAt }
+      : {
+          ...integration.metadataJson,
+          clinicSyncAt: {
+            ...(typeof integration.metadataJson.clinicSyncAt === 'object' &&
+            integration.metadataJson.clinicSyncAt !== null
+              ? integration.metadataJson.clinicSyncAt
+              : {}),
+            [clinicId ?? 'unknown']: syncedAt,
+          },
+        };
+    await this.integrations.save(integration);
+    return { scanned, updated, unavailable };
+  }
+
+  private async applyDriveChange(
+    integration: UserStorageIntegration,
+    drive: drive_v3.Drive,
+    change: drive_v3.Schema$Change,
+    clinicId?: string,
+  ) {
+    if (!change.fileId) return { scanned: 0, updated: 0, unavailable: 0 };
+    const file = await this.files.findOne({
+      where: {
+        storageIntegrationId: integration.id,
+        driveFileId: change.fileId,
+        ...(clinicId ? { patient: { clinicId } } : {}),
+      },
+    });
+    if (!file) return { scanned: 0, updated: 0, unavailable: 0 };
+
+    if (change.removed || change.file?.trashed) {
+      if (
+        file.storageStatus === PatientFileStorageStatus.UNAVAILABLE &&
+        file.syncSource === PatientFileSyncSource.APP
+      )
+        return { scanned: 1, updated: 0, unavailable: 1 };
+      const externalMetadataJson = appendPatientFileSyncAudit(
+        file.externalMetadataJson,
+        {
+          event: 'drive_file_unavailable',
+          source: 'drive',
+          details: {
+            driveFileId: file.driveFileId,
+            reason: change.removed ? 'removed' : 'trashed',
+            lastKnownName: file.storedName,
+            lastKnownHeadRevisionId:
+              file.externalMetadataJson?.headRevisionId ?? null,
+          },
+        },
+      );
+      await this.files.save(
+        this.files.create({
+          ...file,
+          storageStatus: PatientFileStorageStatus.UNAVAILABLE,
+          syncSource: PatientFileSyncSource.DRIVE_UPDATE,
+          syncReviewRequired: true,
+          syncReviewReason: 'drive_file_removed',
+          externalMetadataJson,
+        }),
+      );
+      return { scanned: 1, updated: 0, unavailable: 1 };
+    }
+
+    const metadata = change.file?.id
+      ? change.file
+      : (
+          await drive.files.get({
+            fileId: change.fileId,
+            fields:
+              'id,name,mimeType,size,md5Checksum,modifiedTime,headRevisionId,trashed,parents,description,appProperties',
+          })
+        ).data;
+    const appProperties = metadata.appProperties ?? {};
+    const patient = await this.patients.findOneBy({ id: file.patientId });
+    const associationChanged =
+      (appProperties.fileId && appProperties.fileId !== file.id) ||
+      (appProperties.patientId && appProperties.patientId !== file.patientId) ||
+      (appProperties.tenantId && appProperties.tenantId !== patient?.clinicId);
+    const managedFolder = patient
+      ? await this.managedPatientFolder(
+          integration,
+          drive,
+          file.patientId,
+          patient.clinicId,
+          metadata.parents ?? [],
+        )
+      : null;
+    if (associationChanged || !managedFolder) {
+      const reason = associationChanged
+        ? 'drive_file_association_changed'
+        : 'drive_file_moved_from_managed_folder';
+      const externalMetadataJson = appendPatientFileSyncAudit(
+        file.externalMetadataJson,
+        {
+          event: 'drive_file_review_required',
+          source: 'drive',
+          details: {
+            reason,
+            driveFileId: file.driveFileId,
+            parents: metadata.parents ?? [],
+            appProperties,
+          },
+        },
+      );
+      await this.files.save(
+        this.files.create({
+          ...file,
+          storageStatus: managedFolder
+            ? file.storageStatus
+            : PatientFileStorageStatus.UNAVAILABLE,
+          syncSource: PatientFileSyncSource.DRIVE_UPDATE,
+          syncReviewRequired: true,
+          syncReviewReason: reason,
+          externalMetadataJson,
+        }),
+      );
+      return {
+        scanned: 1,
+        updated: 0,
+        unavailable: managedFolder ? 0 : 1,
+      };
+    }
+    const before = {
+      name: file.storedName,
+      description: file.description,
+      type: file.type,
+      size: file.size,
+      md5Checksum: file.externalMetadataJson?.md5Checksum ?? null,
+      headRevisionId: file.externalMetadataJson?.headRevisionId ?? null,
+      driveModifiedAt: file.driveModifiedAt?.toISOString() ?? null,
+    };
+    const after = {
+      name: metadata.name ?? file.storedName,
+      description: metadata.description ?? file.description,
+      type:
+        managedFolder?.type === PatientFileType.DOCUMENT &&
+        file.type === PatientFileType.PDF
+          ? PatientFileType.PDF
+          : (managedFolder?.type ?? file.type),
+      size: Number(metadata.size ?? file.size),
+      md5Checksum: metadata.md5Checksum ?? null,
+      headRevisionId: metadata.headRevisionId ?? null,
+      driveModifiedAt: metadata.modifiedTime ?? null,
+    };
+    const changed = Object.keys(before).some(
+      (key) =>
+        before[key as keyof typeof before] !== after[key as keyof typeof after],
+    );
+    let externalMetadataJson: Record<string, unknown> = {
+      ...file.externalMetadataJson,
+      md5Checksum: metadata.md5Checksum ?? null,
+      headRevisionId: metadata.headRevisionId ?? null,
+    };
+    if (changed) {
+      const previousVersions = Array.isArray(
+        file.externalMetadataJson?.driveVersionHistory,
+      )
+        ? file.externalMetadataJson.driveVersionHistory.filter(
+            (item): item is Record<string, unknown> =>
+              typeof item === 'object' && item !== null,
+          )
+        : [];
+      const contentChanged =
+        Boolean(file.externalMetadataJson?.md5Checksum) &&
+        Boolean(metadata.md5Checksum) &&
+        file.externalMetadataJson.md5Checksum !== metadata.md5Checksum;
+      if (contentChanged) {
+        externalMetadataJson = {
+          ...externalMetadataJson,
+          driveVersionHistory: [
+            ...previousVersions,
+            {
+              revisionId: file.externalMetadataJson?.headRevisionId ?? null,
+              md5Checksum: file.externalMetadataJson?.md5Checksum ?? null,
+              modifiedAt: file.driveModifiedAt?.toISOString() ?? null,
+              name: file.storedName,
+              size: file.size,
+            },
+          ].slice(-50),
+        };
+      }
+      externalMetadataJson = appendPatientFileSyncAudit(externalMetadataJson, {
+        event: 'drive_file_changed',
+        source: 'drive',
+        details: { before, after },
+      });
+    }
+    const pendingReview = file.syncReviewRequired;
+    await this.files.save(
+      this.files.create({
+        ...file,
+        originalName: metadata.name ?? file.originalName,
+        storedName: metadata.name ?? file.storedName,
+        description: metadata.description ?? file.description,
+        type: after.type,
+        size: Number(metadata.size ?? file.size),
+        mimeType: metadata.mimeType ?? file.mimeType,
+        driveModifiedAt: metadata.modifiedTime
+          ? new Date(metadata.modifiedTime)
+          : file.driveModifiedAt,
+        storageStatus: metadata.trashed
+          ? PatientFileStorageStatus.UNAVAILABLE
+          : PatientFileStorageStatus.AVAILABLE,
+        syncSource: PatientFileSyncSource.DRIVE_UPDATE,
+        syncReviewRequired: pendingReview || Boolean(metadata.trashed),
+        syncReviewReason: file.syncReviewReason,
+        driveFolderId: managedFolder?.folderId ?? file.driveFolderId,
+        externalMetadataJson,
+      }),
+    );
+    return {
+      scanned: 1,
+      updated: 1,
+      unavailable: metadata.trashed ? 1 : 0,
+    };
+  }
+
+  private async managedPatientFolder(
+    integration: UserStorageIntegration,
+    drive: drive_v3.Drive,
+    patientId: string,
+    clinicId: string,
+    possibleCategoryFolderIds: string[],
+  ): Promise<{ folderId: string; type: PatientFileType } | null> {
+    for (const folderId of possibleCategoryFolderIds) {
+      const categoryFolder = await drive.files
+        .get({ fileId: folderId, fields: 'id,name,mimeType,parents' })
+        .then((response) => response.data)
+        .catch(() => null);
+      const categoryName = categoryFolder?.name;
+      if (
+        !categoryFolder ||
+        !categoryName ||
+        ![
+          'avatar',
+          'radiographs',
+          'clinical-images',
+          'documents',
+          'misc',
+        ].includes(categoryName)
+      )
+        continue;
+      const patientFolderId = categoryFolder.parents?.[0];
+      if (!patientFolderId) continue;
+      const patientFolder = await drive.files
+        .get({ fileId: patientFolderId, fields: 'id,name,parents' })
+        .then((response) => response.data)
+        .catch(() => null);
+      if (
+        patientFolder?.name !== buildPatientFolderName(patientId) ||
+        !patientFolder.parents?.[0]
+      )
+        continue;
+      const patientsFolder = await drive.files
+        .get({ fileId: patientFolder.parents[0], fields: 'id,name,parents' })
+        .then((response) => response.data)
+        .catch(() => null);
+      if (patientsFolder?.name !== 'patients' || !patientsFolder.parents?.[0])
+        continue;
+      const clinicFolder = await drive.files
+        .get({ fileId: patientsFolder.parents[0], fields: 'id,name,parents' })
+        .then((response) => response.data)
+        .catch(() => null);
+      if (
+        !clinicFolder?.parents?.includes(integration.rootFolderId ?? '') ||
+        !clinicFolder.name?.startsWith(
+          `DentalHub__tenant-${shortId(clinicId)}__`,
+        )
+      )
+        continue;
+      return {
+        folderId,
+        type: patientFileTypeFromDriveFolder(categoryName),
+      };
+    }
+    return null;
+  }
+
+  private async reconcileKnownFiles(
+    integration: UserStorageIntegration,
+    drive: drive_v3.Drive,
+    clinicId?: string,
+  ) {
     const files = await this.files.find({
       where: {
         storageIntegrationId: integration.id,
-        patient: { clinicId: context.clinicId },
+        ...(clinicId ? { patient: { clinicId } } : {}),
       },
     });
-    let scanned = 0,
-      updated = 0,
-      unavailable = 0;
+    let updated = 0;
+    let unavailable = 0;
     for (const file of files) {
+      if (!file.driveFileId) continue;
       try {
-        await this.access.assertPatientAccessible(
-          this.context(context),
-          file.patientId,
+        const metadata = await drive.files.get({
+          fileId: file.driveFileId,
+          fields:
+            'id,name,mimeType,size,md5Checksum,modifiedTime,headRevisionId,trashed,parents,description,appProperties',
+        });
+        const result = await this.applyDriveChange(
+          integration,
+          drive,
+          {
+            fileId: file.driveFileId,
+            file: metadata.data,
+          },
+          clinicId,
         );
-      } catch {
-        continue;
-      }
-      await this.withDrive(integration, async (drive) => {
-        scanned++;
-        let metadata: drive_v3.Schema$File | null;
-        try {
-          metadata = (
-            await drive.files.get({
-              fileId: file.driveFileId!,
-              fields: 'id,trashed,name,mimeType,size,md5Checksum,modifiedTime',
-            })
-          ).data;
-        } catch (error) {
-          if (this.statusCode(error) !== 404) throw error;
-          metadata = null;
-        }
-        if (!metadata || metadata.trashed) {
-          await this.files.update(file.id, {
+        updated += result.updated;
+        unavailable += result.unavailable;
+      } catch (error) {
+        if (this.statusCode(error) !== 404) throw error;
+        await this.files.save(
+          this.files.create({
+            ...file,
             storageStatus: PatientFileStorageStatus.UNAVAILABLE,
             syncSource: PatientFileSyncSource.DRIVE_UPDATE,
-          });
-          unavailable++;
-        } else {
-          await this.files.save(
-            this.files.create({
-              ...file,
-              storedName: metadata.name ?? file.storedName,
-              size: Number(metadata.size ?? file.size),
-              mimeType: metadata.mimeType ?? file.mimeType,
-              driveModifiedAt: metadata.modifiedTime
-                ? new Date(metadata.modifiedTime)
-                : null,
-              storageStatus: PatientFileStorageStatus.AVAILABLE,
-              syncSource: PatientFileSyncSource.DRIVE_UPDATE,
-              externalMetadataJson: {
-                ...file.externalMetadataJson,
-                md5Checksum: metadata.md5Checksum,
+            syncReviewRequired: true,
+            syncReviewReason: 'drive_file_removed',
+            externalMetadataJson: appendPatientFileSyncAudit(
+              file.externalMetadataJson,
+              {
+                event: 'drive_file_unavailable',
+                source: 'drive',
+                details: {
+                  driveFileId: file.driveFileId,
+                  reason: 'not_found',
+                  lastKnownName: file.storedName,
+                  lastKnownHeadRevisionId:
+                    file.externalMetadataJson?.headRevisionId ?? null,
+                },
               },
-            }),
-          );
-          updated++;
-        }
-      });
+            ),
+          }),
+        );
+        unavailable++;
+      }
     }
-    await this.integrations.update(integration.id, {
-      metadataJson: {
-        ...integration.metadataJson,
-        lastSyncAt: new Date().toISOString(),
+    return { scanned: files.length, updated, unavailable };
+  }
+
+  private async ensureChangeWatch(
+    integration: UserStorageIntegration,
+    drive: drive_v3.Drive,
+  ) {
+    const address = getEnv('GOOGLE_DRIVE_WEBHOOK_URL');
+    if (!address || !integration.driveStartPageToken) return;
+    if (
+      integration.driveWatchChannelId &&
+      integration.driveWatchExpiresAt &&
+      integration.driveWatchExpiresAt.getTime() > Date.now() + 60 * 60 * 1000
+    )
+      return;
+
+    const channelId = randomBytes(16).toString('hex');
+    const channelToken = randomBytes(32).toString('base64url');
+    const requestedExpiration = Date.now() + 24 * 60 * 60 * 1000;
+    const response = await drive.changes.watch({
+      pageToken: integration.driveStartPageToken,
+      requestBody: {
+        id: channelId,
+        type: 'web_hook',
+        address,
+        token: channelToken,
+        expiration: String(requestedExpiration),
       },
     });
-    return { provider: 'google_drive' as const, scanned, updated, unavailable };
+    integration.driveWatchChannelId = channelId;
+    integration.driveWatchResourceId = response.data.resourceId ?? null;
+    integration.driveWatchTokenHash = createHash('sha256')
+      .update(channelToken)
+      .digest('hex');
+    integration.driveWatchExpiresAt = response.data.expiration
+      ? new Date(Number(response.data.expiration))
+      : new Date(requestedExpiration);
+    await this.integrations.save(integration);
   }
 
   private migrationCandidates(userId: string, clinicId: string) {

@@ -114,6 +114,12 @@ export class PatientFile {
   })
   storageStatus: PatientFileStorageStatus;
 
+  @Column('bool', { default: false })
+  syncReviewRequired: boolean;
+
+  @Column('text', { nullable: true })
+  syncReviewReason: string | null;
+
   @Column({
     type: 'enum',
     enum: PatientFileSyncSource,

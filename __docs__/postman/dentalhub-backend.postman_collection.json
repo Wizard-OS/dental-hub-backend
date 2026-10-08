@@ -268,6 +268,21 @@
       "key": "examsId",
       "value": "",
       "type": "string"
+    },
+    {
+      "key": "membershipId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "professionalSpecialtiesId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "revisionId",
+      "value": "",
+      "type": "string"
     }
   ],
   "item": [
@@ -334,36 +349,6 @@
             },
             "description": "Obtener perfil del usuario autenticado"
           }
-        },
-        {
-          "name": "Seed",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/seed",
-              "host": ["{{baseUrl}}"],
-              "path": ["seed"]
-            },
-            "description": "Ejecutar seed de datos de prueba"
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Seed ejecutado', function () { pm.response.to.have.status(200); });",
-                  "const json = pm.response.json();",
-                  "if (json.clinicIds) {",
-                  "  pm.collectionVariables.set('clinicMainId', json.clinicIds['clinic-main']);",
-                  "  pm.collectionVariables.set('clinicEastId', json.clinicIds['clinic-east']);",
-                  "  pm.collectionVariables.set('clinicId', json.clinicIds['clinic-main']);",
-                  "}"
-                ]
-              }
-            }
-          ]
         },
         {
           "name": "Login",
@@ -1614,6 +1599,42 @@
           }
         },
         {
+          "name": "Listar agenda de un profesional con disponibilidad",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-clinic-id",
+                "value": "{{clinicId}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/appointments/agenda?from=2026-09-24T00:00:00.000Z&to=2026-09-25T00:00:00.000Z&professionalMembershipId={{professionalMembershipId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["appointments", "agenda"],
+              "query": [
+                {
+                  "key": "from",
+                  "value": "2026-09-24T00:00:00.000Z",
+                  "disabled": false
+                },
+                {
+                  "key": "to",
+                  "value": "2026-09-25T00:00:00.000Z",
+                  "disabled": false
+                },
+                {
+                  "key": "professionalMembershipId",
+                  "value": "{{professionalMembershipId}}",
+                  "disabled": false
+                }
+              ]
+            },
+            "description": "Listar agenda de un profesional con disponibilidad"
+          }
+        },
+        {
           "name": "Obtener tipo de cita",
           "request": {
             "method": "GET",
@@ -1713,42 +1734,16 @@
       "name": "Auth",
       "item": [
         {
-          "name": "[Test] Ruta privada de prueba",
+          "name": "Eliminar cuenta del usuario autenticado",
           "request": {
-            "method": "GET",
+            "method": "DELETE",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/auth/private",
+              "raw": "{{baseUrl}}/auth/account",
               "host": ["{{baseUrl}}"],
-              "path": ["auth", "private"]
+              "path": ["auth", "account"]
             },
-            "description": "[Test] Ruta privada de prueba"
-          }
-        },
-        {
-          "name": "[Test] Ruta protegida por rol (superUser/admin)",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/auth/private2",
-              "host": ["{{baseUrl}}"],
-              "path": ["auth", "private2"]
-            },
-            "description": "[Test] Ruta protegida por rol (superUser/admin)"
-          }
-        },
-        {
-          "name": "[Test] Ruta protegida por @Auth(admin)",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/auth/private3",
-              "host": ["{{baseUrl}}"],
-              "path": ["auth", "private3"]
-            },
-            "description": "[Test] Ruta protegida por @Auth(admin)"
+            "description": "Eliminar cuenta del usuario autenticado"
           }
         },
         {
@@ -1764,7 +1759,7 @@
             "description": "Actualizar perfil del usuario autenticado",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"firstName\": \"Juan\",\n  \"lastName\": \"Pérez\",\n  \"email\": \"new@example.com\",\n  \"phone\": \"+5491112345678\"\n}",
+              "raw": "{\n  \"firstName\": \"Juan\",\n  \"lastName\": \"Pérez\",\n  \"email\": \"new@example.com\",\n  \"phone\": \"+5491112345678\",\n  \"birthDate\": \"1988-05-12T00:00:00.000Z\",\n  \"professionalLicenseNumber\": \"CJPPU-12345\",\n  \"professionalSpecialtyId\": \"28d89310-5dc9-45ee-9db6-1b1f7b9da44f\",\n  \"rut\": \"210000000018\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1866,7 +1861,7 @@
             "description": "Restablecer contraseña usando OTP",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email\": \"user@example.com\",\n  \"otp\": \"1234\",\n  \"newPassword\": \"NewPass1\"\n}",
+              "raw": "{\n  \"email\": \"user@example.com\",\n  \"otp\": \"123456\",\n  \"newPassword\": \"NewPass1\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1888,7 +1883,7 @@
             "description": "Validar código OTP de recuperación",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email\": \"user@example.com\",\n  \"otp\": \"1234\"\n}",
+              "raw": "{\n  \"email\": \"user@example.com\",\n  \"otp\": \"123456\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -2144,6 +2139,44 @@
     {
       "name": "Billing",
       "item": [
+        {
+          "name": "Listar historial de facturación de la clínica",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-clinic-id",
+                "value": "{{clinicId}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/billing-history",
+              "host": ["{{baseUrl}}"],
+              "path": ["billing-history"]
+            },
+            "description": "Listar historial de facturación de la clínica"
+          }
+        },
+        {
+          "name": "Exportar historial de facturación en PDF",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-clinic-id",
+                "value": "{{clinicId}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/billing-history/export",
+              "host": ["{{baseUrl}}"],
+              "path": ["billing-history", "export"]
+            },
+            "description": "Exportar historial de facturación en PDF"
+          }
+        },
         {
           "name": "Create Premium Checkout",
           "request": {
@@ -2572,6 +2605,31 @@
           }
         },
         {
+          "name": "Obtener configuración de agenda de un profesional",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-clinic-id",
+                "value": "{{clinicId}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/clinics/{{clinicId}}/professionals/{{membershipId}}/appointment-settings",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "clinics",
+                "{{clinicId}}",
+                "professionals",
+                "{{membershipId}}",
+                "appointment-settings"
+              ]
+            },
+            "description": "Obtener configuración de agenda de un profesional"
+          }
+        },
+        {
           "name": "Actualizar clínica",
           "request": {
             "method": "PATCH",
@@ -2626,6 +2684,40 @@
               }
             }
           }
+        },
+        {
+          "name": "Actualizar configuración de agenda de un profesional",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "x-clinic-id",
+                "value": "{{clinicId}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/clinics/{{clinicId}}/professionals/{{membershipId}}/appointment-settings",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "clinics",
+                "{{clinicId}}",
+                "professionals",
+                "{{membershipId}}",
+                "appointment-settings"
+              ]
+            },
+            "description": "Actualizar configuración de agenda de un profesional",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"availability\": {\n    \"scope\": \"clinic\",\n    \"weekly\": [\n      {\n        \"dayOfWeek\": 1,\n        \"isOpen\": true,\n        \"startTime\": \"09:00\",\n        \"endTime\": \"18:00\"\n      }\n    ],\n    \"breaks\": [\n      {\n        \"name\": \"Almuerzo\",\n        \"daysOfWeek\": [\n          1,\n          2,\n          3,\n          4,\n          5\n        ],\n        \"startTime\": \"13:00\",\n        \"endTime\": \"14:00\"\n      }\n    ],\n    \"specialDates\": [\n      {\n        \"date\": \"2026-09-25\",\n        \"isClosed\": true,\n        \"reason\": \"Feriado\",\n        \"startTime\": \"10:00\",\n        \"endTime\": \"14:00\"\n      }\n    ]\n  },\n  \"scheduling\": {\n    \"defaultDurationMin\": 30,\n    \"slotIntervalMin\": 15,\n    \"bufferBetweenAppointmentsMin\": 10\n  },\n  \"reminders\": {\n    \"enabled\": true,\n    \"channels\": [\n      \"whatsapp\",\n      \"email\"\n    ],\n    \"noticesBeforeMinutes\": [\n      1440,\n      120\n    ],\n    \"messageTemplate\": \"Hola, {nombre}. Te recordamos tu cita de {tipo} el {fecha} a las {hora}.\"\n  },\n  \"confirmation\": {\n    \"enabled\": true,\n    \"requestBeforeMinutes\": 1440,\n    \"responseDeadlineBeforeMinutes\": 120,\n    \"channel\": \"email\",\n    \"noResponseAction\": \"keep_pending\",\n    \"messageTemplate\": \"Hola, {nombre}. ¿Confirmas tu cita de {tipo} para el {fecha} a las {hora}?\"\n  },\n  \"bookingRules\": {\n    \"patientBookingEnabled\": true,\n    \"minNoticeMinutes\": 120,\n    \"maxAdvanceDays\": 60,\n    \"maxActiveAppointmentsPerPatient\": 3,\n    \"approvalMode\": \"automatic\"\n  },\n  \"changeRules\": {\n    \"cancellation\": {\n      \"enabled\": true,\n      \"minNoticeMinutes\": 1440\n    },\n    \"reschedule\": {\n      \"enabled\": true,\n      \"minNoticeMinutes\": 1440,\n      \"maxChangesPerAppointment\": 2\n    },\n    \"outOfWindowAction\": \"contact_clinic\",\n    \"notifyProfessional\": true\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
         }
       ]
     },
@@ -2643,6 +2735,19 @@
               "path": ["common", "countries"]
             },
             "description": "Listar países disponibles para configuración"
+          }
+        },
+        {
+          "name": "Listar géneros disponibles para pacientes",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/common/patient-genders",
+              "host": ["{{baseUrl}}"],
+              "path": ["common", "patient-genders"]
+            },
+            "description": "Listar géneros disponibles para pacientes"
           }
         },
         {
@@ -2870,6 +2975,54 @@
           }
         },
         {
+          "name": "DELETE /integrations/google-drive/me/disconnect",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/integrations/google-drive/me/disconnect",
+              "host": ["{{baseUrl}}"],
+              "path": ["integrations", "google-drive", "me", "disconnect"]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"confirmFilesBackedUp\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "GET /integrations/google-drive/me/migration",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/integrations/google-drive/me/migration",
+              "host": ["{{baseUrl}}"],
+              "path": ["integrations", "google-drive", "me", "migration"]
+            },
+            "description": ""
+          }
+        },
+        {
+          "name": "GET /integrations/google-drive/me/status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/integrations/google-drive/me/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["integrations", "google-drive", "me", "status"]
+            },
+            "description": ""
+          }
+        },
+        {
           "name": "Generar URL OAuth de Google Drive",
           "request": {
             "method": "GET",
@@ -2912,6 +3065,63 @@
               "path": ["integrations", "google-drive", "status"]
             },
             "description": "Obtener estado de integración Google Drive"
+          }
+        },
+        {
+          "name": "POST /integrations/google-drive/me/connect",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/integrations/google-drive/me/connect",
+              "host": ["{{baseUrl}}"],
+              "path": ["integrations", "google-drive", "me", "connect"]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"serverAuthCode\": \"{{serverAuthCode}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "POST /integrations/google-drive/me/migration",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/integrations/google-drive/me/migration",
+              "host": ["{{baseUrl}}"],
+              "path": ["integrations", "google-drive", "me", "migration"]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"retry\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "POST /integrations/google-drive/me/sync",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/integrations/google-drive/me/sync",
+              "host": ["{{baseUrl}}"],
+              "path": ["integrations", "google-drive", "me", "sync"]
+            },
+            "description": ""
           }
         },
         {
@@ -4071,7 +4281,16 @@
               "host": ["{{baseUrl}}"],
               "path": ["patient-files", "{{patientFileId}}"]
             },
-            "description": "Eliminar archivo de paciente"
+            "description": "Eliminar archivo de paciente",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"confirmDriveTrash\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
           }
         },
         {
@@ -4094,6 +4313,69 @@
           }
         },
         {
+          "name": "Descargar archivo de paciente",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-clinic-id",
+                "value": "{{clinicId}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/patient-files/{{patientFileId}}/download",
+              "host": ["{{baseUrl}}"],
+              "path": ["patient-files", "{{patientFileId}}", "download"]
+            },
+            "description": "Descargar archivo de paciente"
+          }
+        },
+        {
+          "name": "Listar versiones anteriores de Google Drive",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-clinic-id",
+                "value": "{{clinicId}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/patient-files/{{patientFileId}}/drive-versions",
+              "host": ["{{baseUrl}}"],
+              "path": ["patient-files", "{{patientFileId}}", "drive-versions"]
+            },
+            "description": "Listar versiones anteriores de Google Drive"
+          }
+        },
+        {
+          "name": "Descargar una versión anterior del archivo",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-clinic-id",
+                "value": "{{clinicId}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/patient-files/{{patientFileId}}/drive-versions/{{revisionId}}/download",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "patient-files",
+                "{{patientFileId}}",
+                "drive-versions",
+                "{{revisionId}}",
+                "download"
+              ]
+            },
+            "description": "Descargar una versión anterior del archivo"
+          }
+        },
+        {
           "name": "Listar archivos del paciente",
           "request": {
             "method": "GET",
@@ -4110,6 +4392,57 @@
               "path": ["patients", "{{patientId}}", "files"]
             },
             "description": "Listar archivos del paciente"
+          }
+        },
+        {
+          "name": "Actualizar metadatos del archivo de paciente",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "x-clinic-id",
+                "value": "{{clinicId}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/patient-files/{{patientFileId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["patient-files", "{{patientFileId}}"]
+            },
+            "description": "Actualizar metadatos del archivo de paciente",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"profile_photo\",\n  \"originalName\": \"Postman {{$timestamp}}\",\n  \"description\": \"Generado desde Postman\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Restaurar archivo en revisión desde Google Drive",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-clinic-id",
+                "value": "{{clinicId}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/patient-files/{{patientFileId}}/restore-from-drive",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "patient-files",
+                "{{patientFileId}}",
+                "restore-from-drive"
+              ]
+            },
+            "description": "Restaurar archivo en revisión desde Google Drive"
           }
         },
         {
@@ -4163,6 +4496,39 @@
                   "value": "{{treatmentId}}"
                 }
               ]
+            }
+          }
+        },
+        {
+          "name": "Importar archivo seleccionado de Google Drive",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-clinic-id",
+                "value": "{{clinicId}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/patients/{{patientId}}/files/import-from-drive",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "patients",
+                "{{patientId}}",
+                "files",
+                "import-from-drive"
+              ]
+            },
+            "description": "Importar archivo seleccionado de Google Drive",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"driveFileId\": \"{{driveFileId}}\",\n  \"type\": \"profile_photo\",\n  \"description\": \"Generado desde Postman\",\n  \"appointmentId\": \"{{appointmentId}}\",\n  \"clinicalNoteId\": \"{{clinicalNoteId}}\",\n  \"treatmentId\": \"{{treatmentId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             }
           }
         },
@@ -4455,6 +4821,94 @@
             "body": {
               "mode": "raw",
               "raw": "{\n  \"reason\": \"Pago cargado por error\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Professional Specialties",
+      "item": [
+        {
+          "name": "DELETE /professional-specialties/{id}",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/professional-specialties/{{professionalSpecialtiesId}}",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "professional-specialties",
+                "{{professionalSpecialtiesId}}"
+              ]
+            },
+            "description": ""
+          }
+        },
+        {
+          "name": "List active professional specialties",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/professional-specialties?includeInactive={{includeInactive}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["professional-specialties"],
+              "query": [
+                {
+                  "key": "includeInactive",
+                  "value": "{{includeInactive}}",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "List active professional specialties"
+          }
+        },
+        {
+          "name": "PATCH /professional-specialties/{id}",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/professional-specialties/{{professionalSpecialtiesId}}",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "professional-specialties",
+                "{{professionalSpecialtiesId}}"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Ortodoncia\",\n  \"code\": \"ortodoncia\",\n  \"isActive\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "POST /professional-specialties",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/professional-specialties",
+              "host": ["{{baseUrl}}"],
+              "path": ["professional-specialties"]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Ortodoncia\",\n  \"code\": \"ortodoncia\",\n  \"isActive\": true\n}",
               "options": {
                 "raw": {
                   "language": "json"

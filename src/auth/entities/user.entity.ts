@@ -34,11 +34,12 @@ export class User {
   @Column('text', { select: false, nullable: true })
   password: string | null;
 
+  // Retained during Google-only account password migration; never used for app auth.
   @Index({ unique: true })
-  @Column('text', { nullable: true })
+  @Column('text', { nullable: true, select: false })
   googleSubject: string | null;
 
-  @Column('text', { nullable: true })
+  @Column('text', { nullable: true, select: false })
   googleEmail: string | null;
 
   @Column('text')

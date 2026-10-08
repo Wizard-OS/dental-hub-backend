@@ -34,6 +34,12 @@ export class UserStorageIntegration {
   @Column('text', { nullable: true, select: false }) encryptedRefreshToken:
     string | null;
   @Column('timestamptz', { nullable: true }) tokenExpiresAt: Date | null;
+  @Column('text', { nullable: true }) driveStartPageToken: string | null;
+  @Column('text', { nullable: true }) driveWatchChannelId: string | null;
+  @Column('text', { nullable: true }) driveWatchResourceId: string | null;
+  @Column('text', { nullable: true, select: false }) driveWatchTokenHash:
+    string | null;
+  @Column('timestamptz', { nullable: true }) driveWatchExpiresAt: Date | null;
   @Column('jsonb', { default: {} }) metadataJson: Record<string, unknown>;
   @CreateDateColumn() createdAt: Date;
   @UpdateDateColumn() updatedAt: Date;

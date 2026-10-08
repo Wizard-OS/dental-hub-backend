@@ -31,12 +31,10 @@ import {
 } from '../../auth/decorators';
 import { User } from '../../auth/entities/user.entity';
 import { ClinicMembershipRole } from '../../clinic-memberships/interfaces/clinic-membership-role.enum';
-import { GoogleAuthenticationError } from '../../auth/domain/google-identity';
 import { PersonalDrive } from '../application/personal-drive';
 import { PersonalDriveError } from '../domain/personal-drive';
 
 class ConnectDriveDto {
-  @ApiProperty() @IsString() @IsNotEmpty() @MaxLength(16384) idToken: string;
   @ApiProperty()
   @IsString()
   @IsNotEmpty()
@@ -45,6 +43,15 @@ class ConnectDriveDto {
 }
 class MigrateDriveDto {
   @ApiPropertyOptional() @IsOptional() @IsBoolean() retry?: boolean;
+}
+class DisconnectDriveDto {
+  @ApiPropertyOptional({
+    description:
+      'Confirm patient files owned by this Drive have been backed up or transferred.',
+  })
+  @IsOptional()
+  @IsBoolean()
+  confirmFilesBackedUp?: boolean;
 }
 
 @ApiTags('Integrations')
@@ -61,14 +68,14 @@ export class PersonalDriveController {
   @Auth()
   @Throttle({ default: { limit: 5, ttl: 60_000 } })
   connect(@GetUser() user: User, @Body() dto: ConnectDriveDto) {
-    return this.guard(() =>
-      this.drive.connect(user.id, dto.idToken, dto.serverAuthCode),
-    );
+    return this.guard(() => this.drive.connect(user.id, dto.serverAuthCode));
   }
   @Delete('disconnect')
   @Auth()
-  async disconnect(@GetUser() user: User) {
-    await this.guard(() => this.drive.disconnect(user.id));
+  async disconnect(@GetUser() user: User, @Body() dto?: DisconnectDriveDto) {
+    await this.guard(() =>
+      this.drive.disconnect(user.id, dto?.confirmFilesBackedUp ?? false),
+    );
     return { message: 'Google Drive disconnected. Files remain in Drive.' };
   }
   @Get('migration')
@@ -129,10 +136,7 @@ export class PersonalDriveController {
     try {
       return await action();
     } catch (error) {
-      if (
-        error instanceof PersonalDriveError ||
-        error instanceof GoogleAuthenticationError
-      )
+      if (error instanceof PersonalDriveError)
         throw new ConflictException({
           code: error.code,
           message: error.message,

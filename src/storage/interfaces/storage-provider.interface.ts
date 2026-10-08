@@ -11,6 +11,7 @@ export interface StorageUploadInput {
   fileId: string;
   file: UploadedFile;
   type: PatientFileType;
+  description?: string | null;
   checksum: string;
   baseUrl: string;
   relation: {

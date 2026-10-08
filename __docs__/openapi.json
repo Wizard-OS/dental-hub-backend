@@ -710,6 +710,36 @@
         ]
       }
     },
+    "/api/common/patient-genders": {
+      "get": {
+        "operationId": "PatientGendersController_findAll",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Opciones de género en el idioma solicitado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PatientGenderOptionResponseDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Listar géneros disponibles para pacientes",
+        "tags": [
+          "Common"
+        ]
+      }
+    },
     "/api/backoffice/overview": {
       "get": {
         "operationId": "BackofficeController_getOverview",
@@ -1219,6 +1249,165 @@
         ]
       }
     },
+    "/api/outbound-messages": {
+      "post": {
+        "operationId": "OutboundMessagesController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateOutboundMessageDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Mensaje creado"
+          }
+        },
+        "security": [
+          {
+            "x-clinic-id": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Crear mensaje saliente",
+        "tags": [
+          "Outbound Messages"
+        ]
+      },
+      "get": {
+        "operationId": "OutboundMessagesController_findAll",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Lista de mensajes salientes"
+          }
+        },
+        "security": [
+          {
+            "x-clinic-id": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Listar mensajes salientes",
+        "tags": [
+          "Outbound Messages"
+        ]
+      }
+    },
+    "/api/outbound-messages/{id}": {
+      "get": {
+        "operationId": "OutboundMessagesController_findOne",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "UUID del mensaje",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Mensaje encontrado"
+          }
+        },
+        "security": [
+          {
+            "x-clinic-id": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Obtener mensaje saliente por ID",
+        "tags": [
+          "Outbound Messages"
+        ]
+      },
+      "patch": {
+        "operationId": "OutboundMessagesController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "UUID del mensaje",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateOutboundMessageDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Mensaje actualizado"
+          }
+        },
+        "security": [
+          {
+            "x-clinic-id": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Actualizar mensaje saliente",
+        "tags": [
+          "Outbound Messages"
+        ]
+      },
+      "delete": {
+        "operationId": "OutboundMessagesController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "UUID del mensaje",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Mensaje eliminado"
+          }
+        },
+        "security": [
+          {
+            "x-clinic-id": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Eliminar mensaje saliente",
+        "tags": [
+          "Outbound Messages"
+        ]
+      }
+    },
     "/api/clinics": {
       "post": {
         "operationId": "ClinicsController_create",
@@ -1446,6 +1635,98 @@
         ]
       }
     },
+    "/api/clinics/{id}/professionals/{membershipId}/appointment-settings": {
+      "get": {
+        "operationId": "ClinicsController_getProfessionalAppointmentSettings",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "UUID de la clínica",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "membershipId",
+            "required": true,
+            "in": "path",
+            "description": "UUID de la membresía del profesional",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Configuración de agenda combinada con herencia de clínica"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "x-clinic-id": []
+          }
+        ],
+        "summary": "Obtener configuración de agenda de un profesional",
+        "tags": [
+          "Clinics"
+        ]
+      },
+      "patch": {
+        "operationId": "ClinicsController_updateProfessionalAppointmentSettings",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "UUID de la clínica",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "membershipId",
+            "required": true,
+            "in": "path",
+            "description": "UUID de la membresía del profesional",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateAppointmentSettingsDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Configuración de agenda del profesional guardada"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "x-clinic-id": []
+          }
+        ],
+        "summary": "Actualizar configuración de agenda de un profesional",
+        "tags": [
+          "Clinics"
+        ]
+      }
+    },
     "/api/billing/checkout": {
       "post": {
         "operationId": "BillingController_createCheckout",
@@ -1489,6 +1770,52 @@
           }
         },
         "summary": "Recibir webhooks de PayPal Billing",
+        "tags": [
+          "Billing"
+        ]
+      }
+    },
+    "/api/billing-history": {
+      "get": {
+        "operationId": "BillingHistoryController_findAll",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Historial de facturación"
+          }
+        },
+        "security": [
+          {
+            "x-clinic-id": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Listar historial de facturación de la clínica",
+        "tags": [
+          "Billing"
+        ]
+      }
+    },
+    "/api/billing-history/export": {
+      "get": {
+        "operationId": "BillingHistoryController_export",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "PDF del historial de facturación"
+          }
+        },
+        "security": [
+          {
+            "x-clinic-id": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Exportar historial de facturación en PDF",
         "tags": [
           "Billing"
         ]
@@ -2028,165 +2355,6 @@
         ]
       }
     },
-    "/api/outbound-messages": {
-      "post": {
-        "operationId": "OutboundMessagesController_create",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateOutboundMessageDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "Mensaje creado"
-          }
-        },
-        "security": [
-          {
-            "x-clinic-id": []
-          },
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Crear mensaje saliente",
-        "tags": [
-          "Outbound Messages"
-        ]
-      },
-      "get": {
-        "operationId": "OutboundMessagesController_findAll",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": "Lista de mensajes salientes"
-          }
-        },
-        "security": [
-          {
-            "x-clinic-id": []
-          },
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Listar mensajes salientes",
-        "tags": [
-          "Outbound Messages"
-        ]
-      }
-    },
-    "/api/outbound-messages/{id}": {
-      "get": {
-        "operationId": "OutboundMessagesController_findOne",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "description": "UUID del mensaje",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Mensaje encontrado"
-          }
-        },
-        "security": [
-          {
-            "x-clinic-id": []
-          },
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Obtener mensaje saliente por ID",
-        "tags": [
-          "Outbound Messages"
-        ]
-      },
-      "patch": {
-        "operationId": "OutboundMessagesController_update",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "description": "UUID del mensaje",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateOutboundMessageDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Mensaje actualizado"
-          }
-        },
-        "security": [
-          {
-            "x-clinic-id": []
-          },
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Actualizar mensaje saliente",
-        "tags": [
-          "Outbound Messages"
-        ]
-      },
-      "delete": {
-        "operationId": "OutboundMessagesController_remove",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "description": "UUID del mensaje",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Mensaje eliminado"
-          }
-        },
-        "security": [
-          {
-            "x-clinic-id": []
-          },
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Eliminar mensaje saliente",
-        "tags": [
-          "Outbound Messages"
-        ]
-      }
-    },
     "/api/clinic-memberships": {
       "post": {
         "operationId": "ClinicMembershipsController_create",
@@ -2650,13 +2818,13 @@
         ]
       }
     },
-    "/api/auth/private": {
-      "get": {
-        "operationId": "AuthController_testingPrivateRoute",
+    "/api/auth/account": {
+      "delete": {
+        "operationId": "AuthController_deleteAccount",
         "parameters": [],
         "responses": {
           "200": {
-            "description": ""
+            "description": "Cuenta eliminada"
           }
         },
         "security": [
@@ -2664,19 +2832,19 @@
             "bearer": []
           }
         ],
-        "summary": "[Test] Ruta privada de prueba",
+        "summary": "Eliminar cuenta del usuario autenticado",
         "tags": [
           "Auth"
         ]
       }
     },
-    "/api/auth/private2": {
+    "/api/user-sessions": {
       "get": {
-        "operationId": "AuthController_privateRoute2",
+        "operationId": "UserSessionsController_getActiveSessions",
         "parameters": [],
         "responses": {
           "200": {
-            "description": ""
+            "description": "Lista de sesiones activas"
           }
         },
         "security": [
@@ -2684,19 +2852,17 @@
             "bearer": []
           }
         ],
-        "summary": "[Test] Ruta protegida por rol (superUser/admin)",
+        "summary": "Obtener sesiones activas del usuario",
         "tags": [
-          "Auth"
+          "User Sessions"
         ]
-      }
-    },
-    "/api/auth/private3": {
-      "get": {
-        "operationId": "AuthController_privateRoute3",
+      },
+      "delete": {
+        "operationId": "UserSessionsController_revokeAllOtherSessions",
         "parameters": [],
         "responses": {
           "200": {
-            "description": ""
+            "description": "Sesiones revocadas"
           }
         },
         "security": [
@@ -2704,24 +2870,39 @@
             "bearer": []
           }
         ],
-        "summary": "[Test] Ruta protegida por @Auth(admin)",
+        "summary": "Revocar todas las demás sesiones",
         "tags": [
-          "Auth"
+          "User Sessions"
         ]
       }
     },
-    "/api/seed": {
-      "get": {
-        "operationId": "SeedController_executeSeed",
-        "parameters": [],
+    "/api/user-sessions/{id}": {
+      "delete": {
+        "operationId": "UserSessionsController_revokeSession",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "UUID de la sesión",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
-            "description": "Seed ejecutado correctamente"
+            "description": "Sesión revocada"
           }
         },
-        "summary": "Ejecutar seed de datos de prueba",
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Revocar una sesión específica",
         "tags": [
-          "Seed"
+          "User Sessions"
         ]
       }
     },
@@ -3092,6 +3273,58 @@
           }
         ],
         "summary": "Listar citas de la clínica",
+        "tags": [
+          "Appointments"
+        ]
+      }
+    },
+    "/api/appointments/agenda": {
+      "get": {
+        "operationId": "AppointmentsController_findAgenda",
+        "parameters": [
+          {
+            "name": "from",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "example": "2026-09-24T00:00:00.000Z",
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "example": "2026-09-25T00:00:00.000Z",
+              "type": "string"
+            }
+          },
+          {
+            "name": "professionalMembershipId",
+            "required": true,
+            "in": "query",
+            "description": "UUID de la membresía del profesional",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Citas y disponibilidad del profesional para el rango"
+          }
+        },
+        "security": [
+          {
+            "x-clinic-id": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Listar agenda de un profesional con disponibilidad",
         "tags": [
           "Appointments"
         ]
@@ -5052,6 +5285,49 @@
         ]
       }
     },
+    "/api/patients/{patientId}/files/import-from-drive": {
+      "post": {
+        "operationId": "PatientFilesController_importFromDrive",
+        "parameters": [
+          {
+            "name": "patientId",
+            "required": true,
+            "in": "path",
+            "description": "UUID del paciente",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImportPatientFileFromDriveDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Archivo importado al paciente"
+          }
+        },
+        "security": [
+          {
+            "x-clinic-id": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Importar archivo seleccionado de Google Drive",
+        "tags": [
+          "Patient Files"
+        ]
+      }
+    },
     "/api/patients/{patientId}/profile-photo": {
       "post": {
         "operationId": "PatientFilesController_createProfilePhoto",
@@ -5133,6 +5409,47 @@
           "Patient Files"
         ]
       },
+      "patch": {
+        "operationId": "PatientFilesController_updateMetadata",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "UUID del archivo",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdatePatientFileDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Metadatos actualizados"
+          }
+        },
+        "security": [
+          {
+            "x-clinic-id": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Actualizar metadatos del archivo de paciente",
+        "tags": [
+          "Patient Files"
+        ]
+      },
       "delete": {
         "operationId": "PatientFilesController_remove",
         "parameters": [
@@ -5146,6 +5463,16 @@
             }
           }
         ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeletePatientFileDto"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Archivo eliminado"
@@ -5162,6 +5489,317 @@
         "summary": "Eliminar archivo de paciente",
         "tags": [
           "Patient Files"
+        ]
+      }
+    },
+    "/api/patient-files/{id}/restore-from-drive": {
+      "post": {
+        "operationId": "PatientFilesController_restoreFromDrive",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "UUID del archivo",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Archivo restaurado"
+          }
+        },
+        "security": [
+          {
+            "x-clinic-id": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Restaurar archivo en revisión desde Google Drive",
+        "tags": [
+          "Patient Files"
+        ]
+      }
+    },
+    "/api/patient-files/{id}/drive-versions": {
+      "get": {
+        "operationId": "PatientFilesController_listDriveRevisions",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "UUID del archivo",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "x-clinic-id": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Listar versiones anteriores de Google Drive",
+        "tags": [
+          "Patient Files"
+        ]
+      }
+    },
+    "/api/patient-files/{id}/drive-versions/{revisionId}/download": {
+      "get": {
+        "operationId": "PatientFilesController_downloadDriveRevision",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "UUID del archivo",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "revisionId",
+            "required": true,
+            "in": "path",
+            "description": "ID de la versión de Drive",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "x-clinic-id": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Descargar una versión anterior del archivo",
+        "tags": [
+          "Patient Files"
+        ]
+      }
+    },
+    "/api/patient-files/{id}/download": {
+      "get": {
+        "operationId": "PatientFilesController_download",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "UUID del archivo",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Archivo descargado"
+          }
+        },
+        "security": [
+          {
+            "x-clinic-id": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Descargar archivo de paciente",
+        "tags": [
+          "Patient Files"
+        ]
+      }
+    },
+    "/api/integrations/google-drive/me/status": {
+      "get": {
+        "operationId": "PersonalDriveController_status",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Integrations"
+        ]
+      }
+    },
+    "/api/integrations/google-drive/me/connect": {
+      "post": {
+        "operationId": "PersonalDriveController_connect",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConnectDriveDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Integrations"
+        ]
+      }
+    },
+    "/api/integrations/google-drive/me/disconnect": {
+      "delete": {
+        "operationId": "PersonalDriveController_disconnect",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DisconnectDriveDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Integrations"
+        ]
+      }
+    },
+    "/api/integrations/google-drive/me/migration": {
+      "get": {
+        "operationId": "PersonalDriveController_migrationStatus",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Integrations"
+        ]
+      },
+      "post": {
+        "operationId": "PersonalDriveController_migrate",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MigrateDriveDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Integrations"
+        ]
+      }
+    },
+    "/api/integrations/google-drive/me/sync": {
+      "post": {
+        "operationId": "PersonalDriveController_sync",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Integrations"
         ]
       }
     },
@@ -5506,74 +6144,6 @@
         ]
       }
     },
-    "/api/user-sessions": {
-      "get": {
-        "operationId": "UserSessionsController_getActiveSessions",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": "Lista de sesiones activas"
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Obtener sesiones activas del usuario",
-        "tags": [
-          "User Sessions"
-        ]
-      },
-      "delete": {
-        "operationId": "UserSessionsController_revokeAllOtherSessions",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": "Sesiones revocadas"
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Revocar todas las demás sesiones",
-        "tags": [
-          "User Sessions"
-        ]
-      }
-    },
-    "/api/user-sessions/{id}": {
-      "delete": {
-        "operationId": "UserSessionsController_revokeSession",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "description": "UUID de la sesión",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Sesión revocada"
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Revocar una sesión específica",
-        "tags": [
-          "User Sessions"
-        ]
-      }
-    },
     "/api/payment-methods": {
       "post": {
         "operationId": "PaymentMethodsController_create",
@@ -5745,6 +6315,157 @@
         "summary": "Establecer método de pago como predeterminado",
         "tags": [
           "Payment Methods"
+        ]
+      }
+    },
+    "/api/professional-specialties": {
+      "get": {
+        "operationId": "ProfessionalSpecialtiesController_findAll",
+        "parameters": [
+          {
+            "name": "includeInactive",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ProfessionalSpecialty"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List active professional specialties",
+        "tags": [
+          "Professional Specialties"
+        ]
+      },
+      "post": {
+        "operationId": "ProfessionalSpecialtiesController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateProfessionalSpecialtyDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfessionalSpecialty"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Professional Specialties"
+        ]
+      }
+    },
+    "/api/professional-specialties/{id}": {
+      "patch": {
+        "operationId": "ProfessionalSpecialtiesController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateProfessionalSpecialtyDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfessionalSpecialty"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Professional Specialties"
+        ]
+      },
+      "delete": {
+        "operationId": "ProfessionalSpecialtiesController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfessionalSpecialty"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Professional Specialties"
         ]
       }
     },
@@ -6251,6 +6972,37 @@
           }
         }
       },
+      "Gender": {
+        "type": "string",
+        "enum": [
+          "Male",
+          "Female",
+          "Non-binary",
+          "Other",
+          "Prefer not to say"
+        ]
+      },
+      "PatientGenderOptionResponseDto": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "example": "Male",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Gender"
+              }
+            ]
+          },
+          "label": {
+            "type": "string",
+            "example": "Hombre"
+          }
+        },
+        "required": [
+          "value",
+          "label"
+        ]
+      },
       "UpdateBackofficeClinicDto": {
         "type": "object",
         "properties": {
@@ -6412,6 +7164,119 @@
         "required": [
           "planCode"
         ]
+      },
+      "CreateOutboundMessageDto": {
+        "type": "object",
+        "properties": {
+          "clinicId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "UUID de la clínica. Opcional/deprecado en endpoints con x-clinic-id."
+          },
+          "patientId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "UUID del paciente"
+          },
+          "appointmentId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "UUID de la cita"
+          },
+          "templateId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "UUID de la plantilla de mensaje"
+          },
+          "channel": {
+            "enum": [
+              "email",
+              "sms",
+              "whatsapp",
+              "push_notification"
+            ],
+            "type": "string",
+            "example": "email",
+            "description": "Canal de envío"
+          },
+          "payloadJson": {
+            "type": "object",
+            "additionalProperties": true,
+            "example": {
+              "name": "Juan"
+            },
+            "description": "Payload JSON del mensaje"
+          },
+          "status": {
+            "enum": [
+              "queued",
+              "sent",
+              "failed",
+              "cancelled"
+            ],
+            "type": "string",
+            "example": "queued",
+            "description": "Estado del mensaje"
+          }
+        },
+        "required": [
+          "channel"
+        ]
+      },
+      "UpdateOutboundMessageDto": {
+        "type": "object",
+        "properties": {
+          "clinicId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "UUID de la clínica. Opcional/deprecado en endpoints con x-clinic-id."
+          },
+          "patientId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "UUID del paciente"
+          },
+          "appointmentId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "UUID de la cita"
+          },
+          "templateId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "UUID de la plantilla de mensaje"
+          },
+          "channel": {
+            "enum": [
+              "email",
+              "sms",
+              "whatsapp",
+              "push_notification"
+            ],
+            "type": "string",
+            "example": "email",
+            "description": "Canal de envío"
+          },
+          "payloadJson": {
+            "type": "object",
+            "additionalProperties": true,
+            "example": {
+              "name": "Juan"
+            },
+            "description": "Payload JSON del mensaje"
+          },
+          "status": {
+            "enum": [
+              "queued",
+              "sent",
+              "failed",
+              "cancelled"
+            ],
+            "type": "string",
+            "example": "queued",
+            "description": "Estado del mensaje"
+          }
+        }
       },
       "CreateClinicDto": {
         "type": "object",
@@ -7426,119 +8291,6 @@
           "providerOrderId"
         ]
       },
-      "CreateOutboundMessageDto": {
-        "type": "object",
-        "properties": {
-          "clinicId": {
-            "type": "string",
-            "format": "uuid",
-            "description": "UUID de la clínica. Opcional/deprecado en endpoints con x-clinic-id."
-          },
-          "patientId": {
-            "type": "string",
-            "format": "uuid",
-            "description": "UUID del paciente"
-          },
-          "appointmentId": {
-            "type": "string",
-            "format": "uuid",
-            "description": "UUID de la cita"
-          },
-          "templateId": {
-            "type": "string",
-            "format": "uuid",
-            "description": "UUID de la plantilla de mensaje"
-          },
-          "channel": {
-            "enum": [
-              "email",
-              "sms",
-              "whatsapp",
-              "push_notification"
-            ],
-            "type": "string",
-            "example": "email",
-            "description": "Canal de envío"
-          },
-          "payloadJson": {
-            "type": "object",
-            "additionalProperties": true,
-            "example": {
-              "name": "Juan"
-            },
-            "description": "Payload JSON del mensaje"
-          },
-          "status": {
-            "enum": [
-              "queued",
-              "sent",
-              "failed",
-              "cancelled"
-            ],
-            "type": "string",
-            "example": "queued",
-            "description": "Estado del mensaje"
-          }
-        },
-        "required": [
-          "channel"
-        ]
-      },
-      "UpdateOutboundMessageDto": {
-        "type": "object",
-        "properties": {
-          "clinicId": {
-            "type": "string",
-            "format": "uuid",
-            "description": "UUID de la clínica. Opcional/deprecado en endpoints con x-clinic-id."
-          },
-          "patientId": {
-            "type": "string",
-            "format": "uuid",
-            "description": "UUID del paciente"
-          },
-          "appointmentId": {
-            "type": "string",
-            "format": "uuid",
-            "description": "UUID de la cita"
-          },
-          "templateId": {
-            "type": "string",
-            "format": "uuid",
-            "description": "UUID de la plantilla de mensaje"
-          },
-          "channel": {
-            "enum": [
-              "email",
-              "sms",
-              "whatsapp",
-              "push_notification"
-            ],
-            "type": "string",
-            "example": "email",
-            "description": "Canal de envío"
-          },
-          "payloadJson": {
-            "type": "object",
-            "additionalProperties": true,
-            "example": {
-              "name": "Juan"
-            },
-            "description": "Payload JSON del mensaje"
-          },
-          "status": {
-            "enum": [
-              "queued",
-              "sent",
-              "failed",
-              "cancelled"
-            ],
-            "type": "string",
-            "example": "queued",
-            "description": "Estado del mensaje"
-          }
-        }
-      },
       "CreateClinicMembershipDto": {
         "type": "object",
         "properties": {
@@ -7724,9 +8476,9 @@
           },
           "otp": {
             "type": "string",
-            "pattern": "^\\d{4}$",
-            "example": "1234",
-            "description": "Código OTP de 4 dígitos"
+            "pattern": "^\\d{6}$",
+            "example": "123456",
+            "description": "Código OTP de 6 dígitos"
           }
         },
         "required": [
@@ -7745,9 +8497,9 @@
           },
           "otp": {
             "type": "string",
-            "pattern": "^\\d{4}$",
-            "example": "1234",
-            "description": "Código OTP de 4 dígitos"
+            "pattern": "^\\d{6}$",
+            "example": "123456",
+            "description": "Código OTP de 6 dígitos"
           },
           "newPassword": {
             "type": "string",
@@ -7792,6 +8544,29 @@
             "maxLength": 20,
             "example": "+5491112345678",
             "description": "Teléfono"
+          },
+          "birthDate": {
+            "type": "string",
+            "example": "1988-05-12T00:00:00.000Z",
+            "description": "Fecha de nacimiento"
+          },
+          "professionalLicenseNumber": {
+            "type": "string",
+            "maxLength": 80,
+            "example": "CJPPU-12345",
+            "description": "Número de caja profesional"
+          },
+          "professionalSpecialtyId": {
+            "type": "string",
+            "format": "uuid",
+            "example": "28d89310-5dc9-45ee-9db6-1b1f7b9da44f",
+            "description": "Especialidad profesional"
+          },
+          "rut": {
+            "type": "string",
+            "maxLength": 30,
+            "example": "210000000018",
+            "description": "RUT"
           }
         }
       },
@@ -7887,6 +8662,39 @@
         "required": [
           "name",
           "durationMin"
+        ]
+      },
+      "ProfessionalSpecialty": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "name",
+          "isActive",
+          "createdAt",
+          "updatedAt"
         ]
       },
       "Treatment": {
@@ -8281,6 +9089,104 @@
           "createdAt"
         ]
       },
+      "UserStorageIntegration": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "userId": {
+            "type": "string"
+          },
+          "user": {
+            "$ref": "#/components/schemas/User"
+          },
+          "googleSubject": {
+            "type": "string"
+          },
+          "googleEmail": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "connected",
+              "disconnected",
+              "error"
+            ]
+          },
+          "rootFolderId": {
+            "type": "string",
+            "nullable": true
+          },
+          "encryptedAccessToken": {
+            "type": "string",
+            "nullable": true
+          },
+          "encryptedRefreshToken": {
+            "type": "string",
+            "nullable": true
+          },
+          "tokenExpiresAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true
+          },
+          "driveStartPageToken": {
+            "type": "string",
+            "nullable": true
+          },
+          "driveWatchChannelId": {
+            "type": "string",
+            "nullable": true
+          },
+          "driveWatchResourceId": {
+            "type": "string",
+            "nullable": true
+          },
+          "driveWatchTokenHash": {
+            "type": "string",
+            "nullable": true
+          },
+          "driveWatchExpiresAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true
+          },
+          "metadataJson": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "userId",
+          "user",
+          "googleSubject",
+          "googleEmail",
+          "status",
+          "rootFolderId",
+          "encryptedAccessToken",
+          "encryptedRefreshToken",
+          "tokenExpiresAt",
+          "driveStartPageToken",
+          "driveWatchChannelId",
+          "driveWatchResourceId",
+          "driveWatchTokenHash",
+          "driveWatchExpiresAt",
+          "metadataJson",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
       "PatientFile": {
         "type": "object",
         "properties": {
@@ -8345,6 +9251,23 @@
             "type": "string",
             "nullable": true
           },
+          "uploadedByUserId": {
+            "type": "string",
+            "nullable": true
+          },
+          "storageIntegration": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/UserStorageIntegration"
+              }
+            ]
+          },
+          "storageIntegrationId": {
+            "type": "string",
+            "nullable": true
+          },
           "type": {
             "type": "string",
             "enum": [
@@ -8388,6 +9311,13 @@
               "unavailable",
               "pending_classification"
             ]
+          },
+          "syncReviewRequired": {
+            "type": "boolean"
+          },
+          "syncReviewReason": {
+            "type": "string",
+            "nullable": true
           },
           "syncSource": {
             "type": "string",
@@ -8443,6 +9373,9 @@
           "treatmentId",
           "uploadedByMembership",
           "uploadedByMembershipId",
+          "uploadedByUserId",
+          "storageIntegration",
+          "storageIntegrationId",
           "type",
           "originalName",
           "storedName",
@@ -8452,6 +9385,8 @@
           "size",
           "storageProvider",
           "storageStatus",
+          "syncReviewRequired",
+          "syncReviewReason",
           "syncSource",
           "driveFileId",
           "driveFolderId",
@@ -9206,6 +10141,9 @@
       "User": {
         "type": "object",
         "properties": {
+          "currentSessionId": {
+            "type": "string"
+          },
           "id": {
             "type": "string"
           },
@@ -9213,7 +10151,16 @@
             "type": "string"
           },
           "password": {
-            "type": "string"
+            "type": "string",
+            "nullable": true
+          },
+          "googleSubject": {
+            "type": "string",
+            "nullable": true
+          },
+          "googleEmail": {
+            "type": "string",
+            "nullable": true
           },
           "firstName": {
             "type": "string"
@@ -9242,6 +10189,32 @@
           "profilePhotoUrl": {
             "type": "string"
           },
+          "birthDate": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true
+          },
+          "professionalLicenseNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "rut": {
+            "type": "string",
+            "nullable": true
+          },
+          "professionalSpecialtyId": {
+            "type": "string",
+            "nullable": true
+          },
+          "professionalSpecialty": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ProfessionalSpecialty"
+              }
+            ]
+          },
           "passwordResetOtpHash": {
             "type": "string",
             "nullable": true
@@ -9252,6 +10225,14 @@
             "nullable": true
           },
           "passwordResetOtpUsedAt": {
+            "format": "date-time",
+            "type": "string",
+            "nullable": true
+          },
+          "passwordResetOtpAttemptCount": {
+            "type": "number"
+          },
+          "passwordResetOtpLockedUntil": {
             "format": "date-time",
             "type": "string",
             "nullable": true
@@ -9287,10 +10268,13 @@
           "id",
           "email",
           "password",
+          "googleSubject",
+          "googleEmail",
           "firstName",
           "lastName",
           "isActive",
           "roles",
+          "passwordResetOtpAttemptCount",
           "appointments",
           "clinicalNotes",
           "memberships",
@@ -9333,6 +10317,11 @@
               "type": "boolean"
             }
           },
+          "appointmentSettingsJson": {
+            "type": "object",
+            "additionalProperties": true,
+            "nullable": true
+          },
           "isActive": {
             "type": "boolean"
           },
@@ -9365,6 +10354,7 @@
           "userId",
           "role",
           "permissionsJson",
+          "appointmentSettingsJson",
           "isActive",
           "appointments",
           "clinicalNotes",
@@ -10824,6 +11814,109 @@
           "status"
         ]
       },
+      "ImportPatientFileFromDriveDto": {
+        "type": "object",
+        "properties": {
+          "driveFileId": {
+            "type": "string",
+            "maxLength": 1024,
+            "description": "File ID selected through Google Drive Picker"
+          },
+          "type": {
+            "enum": [
+              "profile_photo",
+              "image",
+              "radiography",
+              "pdf",
+              "document",
+              "other"
+            ],
+            "type": "string"
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 1000
+          },
+          "appointmentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "clinicalNoteId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "treatmentId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "driveFileId",
+          "type"
+        ]
+      },
+      "UpdatePatientFileDto": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "enum": [
+              "profile_photo",
+              "image",
+              "radiography",
+              "pdf",
+              "document",
+              "other"
+            ],
+            "type": "string"
+          },
+          "originalName": {
+            "type": "string",
+            "maxLength": 255
+          },
+          "description": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 1000
+          }
+        }
+      },
+      "DeletePatientFileDto": {
+        "type": "object",
+        "properties": {
+          "confirmDriveTrash": {
+            "type": "boolean",
+            "description": "Confirm moving this Google Drive file into Drive Trash."
+          }
+        }
+      },
+      "ConnectDriveDto": {
+        "type": "object",
+        "properties": {
+          "serverAuthCode": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "serverAuthCode"
+        ]
+      },
+      "DisconnectDriveDto": {
+        "type": "object",
+        "properties": {
+          "confirmFilesBackedUp": {
+            "type": "boolean",
+            "description": "Confirm patient files owned by this Drive have been backed up or transferred."
+          }
+        }
+      },
+      "MigrateDriveDto": {
+        "type": "object",
+        "properties": {
+          "retry": {
+            "type": "boolean"
+          }
+        }
+      },
       "GoogleDriveOAuthCallbackDto": {
         "type": "object",
         "properties": {
@@ -11081,6 +12174,51 @@
             "maximum": 2100,
             "example": 2028,
             "description": "Año de expiración"
+          }
+        }
+      },
+      "CreateProfessionalSpecialtyDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 100,
+            "example": "Ortodoncia"
+          },
+          "code": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 80,
+            "example": "ortodoncia"
+          },
+          "isActive": {
+            "type": "boolean",
+            "example": true
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "UpdateProfessionalSpecialtyDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 100,
+            "example": "Ortodoncia"
+          },
+          "code": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 80,
+            "example": "ortodoncia"
+          },
+          "isActive": {
+            "type": "boolean",
+            "example": true
           }
         }
       },

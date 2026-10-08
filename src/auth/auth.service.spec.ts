@@ -108,6 +108,7 @@ describe('AuthService password reset', () => {
       userSessionsService as never,
       new PasswordHasherService(),
       new PasswordResetOtpService(),
+      { configured: false, sendCode: jest.fn() },
     );
   });
 
@@ -157,6 +158,19 @@ describe('AuthService password reset', () => {
     await expect(
       service.login({ email, password: 'OldPass1' }),
     ).rejects.toBeInstanceOf(UnauthorizedException);
+    await expect(
+      service.login({ email, password: 'NewPass1' }),
+    ).resolves.toMatchObject({ email, token: 'jwt-token' });
+  });
+
+  it('lets a Google-only account establish a password through recovery', async () => {
+    users.get(userId)!.password = null;
+    const response = await service.forgotPassword({ email });
+    const otp = response.devOtp!;
+
+    await expect(
+      service.resetPassword({ email, otp, newPassword: 'NewPass1' }),
+    ).resolves.toEqual({ message: 'Password reset successfully' });
     await expect(
       service.login({ email, password: 'NewPass1' }),
     ).resolves.toMatchObject({ email, token: 'jwt-token' });

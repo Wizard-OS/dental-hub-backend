@@ -10,6 +10,9 @@ import {
   StorageUploadResult,
 } from './interfaces/storage-provider.interface';
 import { StorageProviderRegistry } from './storage-provider-registry.service';
+import { PatientFileDriveImport } from './interfaces/patient-file-drive-import.interface';
+import { Patient } from '../patients/entities/patient.entity';
+import { PatientFileType } from '../patient-files/interfaces/patient-file-type.enum';
 
 @Injectable()
 export class StorageService {
@@ -31,6 +34,52 @@ export class StorageService {
         message: 'The uploader membership is unavailable.',
       });
     return this.personalDrive.upload(input, uploader.userId);
+  }
+
+  async importFromDrive(
+    input: PatientFileDriveImport,
+  ): Promise<StorageUploadResult> {
+    const uploader = await this.memberships.findOneBy({
+      id: input.uploadedByMembershipId,
+      clinicId: input.clinicId,
+      isActive: true,
+    });
+    if (!uploader)
+      throw new ConflictException({
+        code: 'UPLOAD_IDENTITY_REQUIRED',
+        message: 'The uploader membership is unavailable.',
+      });
+    return this.personalDrive.importFromDrive(input, uploader.userId);
+  }
+
+  rollbackDriveImport(result: StorageUploadResult) {
+    return this.personalDrive.rollbackImport(result);
+  }
+
+  updateDriveMetadata(
+    file: PatientFile,
+    input: {
+      name?: string;
+      description?: string | null;
+      type?: PatientFileType;
+      clinicId: string;
+      clinicName: string;
+      patient: Patient;
+    },
+  ) {
+    return this.personalDrive.updateMetadata(file, input);
+  }
+
+  restoreDriveFile(file: PatientFile) {
+    return this.personalDrive.restore(file);
+  }
+
+  listDriveRevisions(file: PatientFile) {
+    return this.personalDrive.listRevisions(file);
+  }
+
+  downloadDriveRevision(file: PatientFile, revisionId: string) {
+    return this.personalDrive.downloadRevision(file, revisionId);
   }
   async markUnavailable(
     providerType: StorageProviderType,

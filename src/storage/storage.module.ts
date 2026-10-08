@@ -1,6 +1,5 @@
 import { AuthModule } from '../auth/auth.module';
 import { User } from '../auth/entities/user.entity';
-import { GoogleTokenVerifier } from '../auth/infrastructure/google-identity-verifier';
 import { ClinicMembership } from '../clinic-memberships/entities/clinic-membership.entity';
 import { PatientsModule } from '../patients/patients.module';
 import { UserStorageIntegration } from './entities/user-storage-integration.entity';
@@ -8,6 +7,9 @@ import { DriveMigrationItem } from './entities/drive-migration-item.entity';
 import { PersonalDriveStorage } from './infrastructure/personal-drive-storage';
 import { PersonalDrive } from './application/personal-drive';
 import { PersonalDriveController } from './presentation/personal-drive.controller';
+import { GoogleTokenVerifier } from './infrastructure/google-identity-verifier';
+import { GoogleDriveChangesController } from './presentation/google-drive-changes.controller';
+import { PersonalDriveSyncWorker } from './personal-drive-sync-worker.service';
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
@@ -38,17 +40,20 @@ import { StorageProviderRegistry } from './storage-provider-registry.service';
       PatientFile,
     ]),
   ],
-  controllers: [PersonalDriveController, GoogleDriveIntegrationController],
+  controllers: [
+    PersonalDriveController,
+    GoogleDriveIntegrationController,
+    GoogleDriveChangesController,
+  ],
   providers: [
     StorageService,
+    GoogleTokenVerifier,
     PersonalDriveStorage,
+    PersonalDriveSyncWorker,
     {
       provide: PersonalDrive,
-      useFactory: (
-        port: PersonalDriveStorage,
-        identities: GoogleTokenVerifier,
-      ) => new PersonalDrive(port, identities),
-      inject: [PersonalDriveStorage, GoogleTokenVerifier],
+      useFactory: (port: PersonalDriveStorage) => new PersonalDrive(port),
+      inject: [PersonalDriveStorage],
     },
     LocalStorageProvider,
     GoogleDriveStorageProvider,

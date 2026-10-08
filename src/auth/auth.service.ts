@@ -4,6 +4,7 @@ import {
   BadRequestException,
   Injectable,
   InternalServerErrorException,
+  Logger,
   UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
@@ -31,9 +32,12 @@ import {
 import { validateAndNormalizeUploadedFile } from '../common/files/upload-validation';
 import { PasswordHasherService } from './services/password-hasher.service';
 import { PasswordResetOtpService } from './services/password-reset-otp.service';
+import { PasswordResetEmailProvider } from './services/password-reset-email.provider';
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
@@ -51,6 +55,8 @@ export class AuthService {
     private readonly passwordHasher: PasswordHasherService,
 
     private readonly passwordResetOtp: PasswordResetOtpService,
+
+    private readonly passwordResetEmail: PasswordResetEmailProvider,
   ) {}
 
   async create(createUserDto: CreateUserDto, request?: Request) {
@@ -85,7 +91,6 @@ export class AuthService {
       select: {
         id: true,
         email: true,
-        googleEmail: true,
         password: true,
         firstName: true,
         lastName: true,
@@ -113,19 +118,6 @@ export class AuthService {
       request ? buildSessionMetadata(request) : {},
     );
 
-    return this.buildAuthResponse(user, session.id);
-  }
-
-  async createGoogleSession(userId: string, request: Request) {
-    const user = await this.userRepository.findOneBy({
-      id: userId,
-      isActive: true,
-    });
-    if (!user) throw new UnauthorizedException('Account is inactive');
-    const session = await this.userSessionsService.createSession(
-      user.id,
-      buildSessionMetadata(request),
-    );
     return this.buildAuthResponse(user, session.id);
   }
 
@@ -159,10 +151,16 @@ export class AuthService {
       passwordResetOtpLockedUntil: null,
     });
 
-    // TODO: Send the OTP through the configured email provider.
+    if (this.passwordResetEmail.configured) {
+      try {
+        await this.passwordResetEmail.sendCode(email, otp);
+      } catch {
+        this.logger.error('Password reset email delivery failed');
+      }
+    }
+
     if (this.passwordResetOtp.shouldExposeDevOtp()) {
       genericResponse.devOtp = otp;
-      console.log(`Password reset OTP for ${email}: ${otp}`);
     }
 
     return genericResponse;
@@ -419,6 +417,7 @@ export class AuthService {
     const userWithoutPassword = { ...user } as Partial<User>;
     delete userWithoutPassword.password;
     delete userWithoutPassword.googleSubject;
+    delete userWithoutPassword.googleEmail;
     const credentials = await this.userRepository.findOne({
       where: { id: user.id },
       select: { id: true, password: true },

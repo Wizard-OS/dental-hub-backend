@@ -1,4 +1,3 @@
-import { GoogleIdentityVerifier } from '../../auth/application/google-authentication';
 import {
   DriveAuthorization,
   DriveMigrationProgress,
@@ -8,14 +7,13 @@ import {
 } from '../domain/personal-drive';
 
 export interface PersonalDrivePort {
-  subjectForUser(userId: string): Promise<string | null>;
   exchangeCode(code: string): Promise<DriveAuthorization>;
   connect(
     userId: string,
     authorization: DriveAuthorization,
   ): Promise<PersonalDriveStatus>;
   status(userId: string): Promise<PersonalDriveStatus>;
-  disconnect(userId: string): Promise<void>;
+  disconnect(userId: string, confirmFilesBackedUp?: boolean): Promise<void>;
   migrate(
     userId: string,
     context: PersonalDriveContext,
@@ -34,26 +32,18 @@ export interface PersonalDrivePort {
     updated: number;
     unavailable: number;
   }>;
+  syncConnectedIntegrations(): Promise<void>;
+  handleDriveNotification(
+    channelId: string,
+    channelToken: string,
+  ): Promise<boolean>;
 }
 
 export class PersonalDrive {
-  constructor(
-    private readonly port: PersonalDrivePort,
-    private readonly identities: GoogleIdentityVerifier,
-  ) {}
-  async connect(userId: string, idToken: string, serverAuthCode: string) {
-    const identity = await this.identities.verify(idToken);
-    if (identity.subject !== (await this.port.subjectForUser(userId)))
-      throw new PersonalDriveError(
-        'DRIVE_ACCOUNT_MISMATCH',
-        'Connect the Google account linked to your DentalHub login.',
-      );
+  constructor(private readonly port: PersonalDrivePort) {}
+
+  async connect(userId: string, serverAuthCode: string) {
     const authorization = await this.port.exchangeCode(serverAuthCode);
-    if (authorization.subject !== identity.subject)
-      throw new PersonalDriveError(
-        'DRIVE_ACCOUNT_MISMATCH',
-        'Drive permission was granted by a different Google account.',
-      );
     if (
       !authorization.scope
         .split(' ')
@@ -68,8 +58,8 @@ export class PersonalDrive {
   status(userId: string) {
     return this.port.status(userId);
   }
-  disconnect(userId: string) {
-    return this.port.disconnect(userId);
+  disconnect(userId: string, confirmFilesBackedUp = false) {
+    return this.port.disconnect(userId, confirmFilesBackedUp);
   }
   migrate(userId: string, context: PersonalDriveContext, retry = false) {
     return this.port.migrate(userId, context, retry);
@@ -79,5 +69,11 @@ export class PersonalDrive {
   }
   sync(userId: string, context: PersonalDriveContext) {
     return this.port.sync(userId, context);
+  }
+  syncConnectedIntegrations() {
+    return this.port.syncConnectedIntegrations();
+  }
+  handleDriveNotification(channelId: string, channelToken: string) {
+    return this.port.handleDriveNotification(channelId, channelToken);
   }
 }

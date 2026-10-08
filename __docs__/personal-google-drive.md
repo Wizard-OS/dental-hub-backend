@@ -1,74 +1,69 @@
-# Google login and personal Google Drive storage
+# DentalHub authentication and patient files in Google Drive
 
-The app supports Android and iOS Google sign-in alongside password login. Each uploader connects their own Google account. Patient records, clinic permissions, and file metadata stay in PostgreSQL. Patient file content goes into the uploader's private `DentalHub` Drive folder, grouped by clinic, patient, and file category. Authorized clinic colleagues read files through the authenticated backend download endpoint.
+DentalHub registration and email/password login create the only app sessions. Google authorization is a separate action in the signed-in user's settings: it grants that DentalHub user access to a Google Drive account for patient attachments. The Drive email does not need to match the DentalHub email, and Drive credentials never create or link an app account.
 
-## Google project setup
+Patient images and attachments, including X-rays and history images, are stored in the uploader's managed `DentalHub` Drive folders. PostgreSQL continues to store structured clinical data and patient-file associations. App uploads create Drive files; app-side name, description, and category edits update Drive; Drive-side content and metadata changes reconcile into the patient-file record. Structured medical-history fields are not synchronized to Drive.
 
-Use the existing `dentalhub-a4217` Google/Firebase project and enable the Google Drive API. Configure the OAuth consent screen with the app name, support email, privacy policy, and test users while the app is in testing. Request `openid`, `email`, `profile`, and `https://www.googleapis.com/auth/drive.file`. No service account is used.
+## Google configuration
 
-Create these OAuth clients in the same project:
+Enable the Google Drive API and configure the consent screen. The mobile settings flow requests the `drive.file` scope and a server authorization code. Identity scopes may be requested by the Google SDK to identify the connected Drive account, but they are used only for the Drive connection; the backend does not use them for DentalHub authentication.
 
-- A Web application client for the backend. Its client ID is the server client ID used by both mobile platforms. Keep its client secret on the backend. Native server authorization codes use an empty redirect URI; the app does not send Google consent through the old `dentalhub://` browser callback.
-- An Android client for `com.wizardos.dentalHub`, registered with the debug signing SHA-1 and each release/Play App Signing SHA-1. Enable Google sign-in in Firebase and download the refreshed `android/app/google-services.json` when applicable. Never replace signing certificates with invented values.
-- An iOS client for `com.wizardos.dentalHub`. Its reversed client ID is registered in the app URL schemes through `GoogleOAuth.xcconfig`.
-
-Configure the non-secret client IDs:
-
-```sh
-python3 scripts/configure_google_oauth.py \
-  --server-client-id YOUR_WEB_CLIENT_ID.apps.googleusercontent.com \
-  --ios-client-id YOUR_IOS_CLIENT_ID.apps.googleusercontent.com
-flutter run --dart-define-from-file=config/google_oauth.json
-```
-
-The script validates both IDs, writes the Dart build configuration, and updates the iOS build settings. The actual IDs start with the Google project number and a hyphen. The placeholders above must be replaced. Flutter release builds must also use `--dart-define-from-file=config/google_oauth.json`. Missing IDs disable sign-in with a readable configuration error.
-
-Official platform setup: [Android plugin](https://pub.dev/packages/google_sign_in_android), [iOS plugin](https://pub.dev/packages/google_sign_in_ios).
-
-## Backend setup and deployment
-
-In the adjacent `dental-hub-backend`, configure the deployment environment:
+Configure these backend secrets:
 
 ```dotenv
-GOOGLE_DRIVE_CLIENT_ID=<same Web/server client ID used by the app>
+GOOGLE_DRIVE_CLIENT_ID=<Web/server OAuth client ID>
 GOOGLE_DRIVE_CLIENT_SECRET=<Web OAuth client secret>
 INTEGRATION_TOKEN_ENCRYPTION_KEY=<persistent random 32-byte key encoded as 64 hex characters>
+GOOGLE_DRIVE_WEBHOOK_URL=https://api.example.com/webhooks/google-drive/changes
+GOOGLE_DRIVE_SYNC_WORKER_ENABLED=true
 ```
 
-Generate the encryption key once with `openssl rand -hex 32`, store it as a deployment secret, and keep it stable across redeploys. Changing it prevents existing credentials from being decrypted. Do not put the client secret or encryption key in Flutter configuration, source control, logs, or API responses.
+`GOOGLE_DRIVE_WEBHOOK_URL` is a public HTTPS URL. If it is unset, the five-minute background worker still reconciles connected accounts. Google change notifications trigger reconciliation sooner; notifications contain no patient data and are authenticated with a per-channel secret token. Keep the encryption key stable across deployments; changing it prevents stored refresh tokens from being decrypted.
 
-Deploy in this order:
+Password reset delivery must be configured before removing Google app login:
 
-1. Apply `202610040001_personal_google_drive.sql` using the existing `pnpm migrate:sql` runner with `DB_SYNCHRONIZE=false`.
-2. Deploy the backend and verify `/auth/google` and the personal Drive endpoints are present.
-3. Build and deploy the mobile app with the matching client IDs.
+```dotenv
+RESEND_API_KEY=<Resend API key>
+AUTH_EMAIL_FROM=<verified sender address>
+```
 
-Cloud project registration, real credential provisioning, and device account consent are required for a live sign-in test. Compilation and mocked tests do not verify these steps.
+If `AUTH_EMAIL_FROM` is unset, the backend uses `MEMBERSHIP_EMAIL_FROM`. Google-only DentalHub users must use **Forgot password** to set a DentalHub password before rollout. A production deployment must have a working reset-email sender before announcing the change. The old Google identity columns remain in PostgreSQL for migration history but are no longer part of app authentication.
 
-## Login, ownership, and migration
+## Storage and synchronization rules
 
-Google authentication produces the existing DentalHub JWT/session. Email matches require the existing password once before linking. Google-only users may establish a password through the existing email OTP reset flow. Google identity is tied to its stable `sub`, rather than email alone.
+- Each file is owned by the Google account of the DentalHub user who uploaded or imported it. Authorized clinic members access the file through the backend's clinic-scoped download route.
+- DentalHub automatically reconciles files already associated with patient records and located in the managed clinic/patient/category folder tree. Unrecognized Drive files are never scanned or imported automatically.
+- Import a new Drive file from the patient record with Google Picker. The selected file is validated, moved into the managed patient/category folder, and associated with that patient. This keeps the selected Drive file itself under ongoing sync.
+- App uploads create files in Drive. App metadata edits update the Drive name, description, category, and association. Changes made in Drive update the patient-file record through change notifications and periodic reconciliation.
+- A concurrent change is saved as a review flag and audit entry; the app does not overwrite the Drive version. Drive revision IDs/checksums and recent metadata audit entries are retained on the patient-file record for review.
+- A Drive deletion or move outside the managed tree keeps the PostgreSQL patient-file record and audit history, marks the attachment unavailable, and flags it for review. Restore a trashed file from the patient-file record or move an externally moved file back into its managed folder.
+- Deleting an app attachment requires an explicit confirmation before moving its Drive file to Trash. Google Drive Trash can be restored through DentalHub while the owner remains connected.
+- Disconnecting an account that owns patient files requires the user to confirm that those files have been backed up or transferred. Disconnecting removes the app's credentials, not the Drive data; in-app access resumes only after the same Drive account is reconnected.
 
-Drive setup is offered after Google login and is available later under Profile > Google Drive. Login and clinic records remain usable when setup is skipped; new file uploads require a connected Drive. Google cancellation is not an app logout. Missing offline authorization requires sign-out/sign-in and renewed consent. The backend preserves a stored refresh token when Google omits it on a later exchange.
+Google Drive is the live file location for these attachments, not an independent backup. Maintain a separate file backup/retention strategy. Back up and restore PostgreSQL separately for structured medical history, patient associations, and audit metadata. Verify both recovery paths during disaster-recovery exercises.
 
-Migration starts after connection and resumes when the Drive settings screen is opened. It processes up to ten files per request and persists per-file progress. Only files attributable to the current uploader in the current clinic are eligible; the user's current patient permissions are checked. The app shows migrated, remaining, failed, skipped, and unassigned counts, with a retry action. Opening another clinic's settings resumes that clinic's files.
-
-Migration verifies content size and checksum before switching the file reference. File IDs and patient avatar references stay intact. Local source copies are removed after the database commit; original legacy Drive copies remain. Missing sources, unknown uploaders, and denied access leave the original reference intact. Upload recovery locates app-created Drive content by the existing file ID to prevent repeated migration from duplicating content.
-
-Existing clinic integrations remain for reading old files. New uploads use the personal integration. A file stores its integration ID, so viewing or deleting it uses its owner's credentials. Disconnecting clears credentials and blocks uploads and in-app access to that user's Drive files until reconnection; it does not delete Drive content. Logging out revokes the app session and clears account-specific file caches and temporary documents while retaining the server Drive connection for authorized colleagues.
-
-`drive.file` access is limited to app-created or explicitly authorized files. Refresh updates existing app records and detects missing/trashed files; it does not import arbitrary files manually placed in Drive.
+If HIPAA applies, use an eligible Google Workspace or Cloud Identity account and accept Google's BAA before storing PHI. Validate local health-data and privacy requirements separately.
 
 ## API contracts
 
-- `POST /auth/google`: `{idToken, existingPassword?}`. Returns the existing auth response plus `hasPassword` and `googleEmail`. A matching unlinked account returns HTTP 409 with `GOOGLE_ACCOUNT_LINK_REQUIRED` until its password is confirmed.
-- `POST /auth/google/link`: authenticated `{idToken, currentPassword?}`. Requires the matching account email and existing password for a new link.
-- `GET /integrations/google-drive/me/status`, `POST .../connect` with `{idToken, serverAuthCode}`, and `DELETE .../disconnect`: scoped to the JWT user; no clinic header is needed.
-- `GET .../migration`, `POST .../migration` with `{retry?: boolean}`, and `POST .../sync`: require the active `x-clinic-id` and clinic membership.
-- `GET /patient-files/:id/download`: requires the app JWT and clinic header for both legacy/local and personal Drive content. Files remain private in Google Drive.
+DentalHub authentication exposes `/auth/register`, `/auth/login`, and password recovery. `/auth/google` and `/auth/google/link` are removed.
 
-Storage failures use actionable HTTP 409 errors such as `DRIVE_CONNECTION_REQUIRED`, `DRIVE_ACCOUNT_MISMATCH`, or `DRIVE_RECONNECT_REQUIRED`; they do not invalidate the DentalHub session.
+- `GET /integrations/google-drive/me/status`, `POST /integrations/google-drive/me/connect` with `{serverAuthCode}`, and `DELETE /integrations/google-drive/me/disconnect` require the DentalHub JWT. Disconnect requires `{confirmFilesBackedUp: true}` when the account owns patient files.
+- `GET /integrations/google-drive/me/migration`, `POST /integrations/google-drive/me/migration` with `{retry?: boolean}`, and `POST /integrations/google-drive/me/sync` require an active clinic membership.
+- `POST /patients/:patientId/files/import-from-drive` requires an authenticated clinic member and accepts `{driveFileId, type, description?, appointmentId?, clinicalNoteId?, treatmentId?}`. The Drive file ID must be selected through Google Picker and accessible with the connected `drive.file` grant.
+- `PATCH /patient-files/:id` updates `originalName`, `description`, or `type` in the app and Drive. If Drive changed since the app's last sync, the API returns `DRIVE_SYNC_CONFLICT` and flags the record for review.
+- `GET /patient-files/:id/drive-versions` lists Drive revisions, and `GET /patient-files/:id/drive-versions/:revisionId/download` lets an authorized clinic member inspect an earlier version.
+- `POST /patient-files/:id/restore-from-drive` restores a file from Google Drive Trash.
+- `DELETE /patient-files/:id` requires `{confirmDriveTrash: true}` for a Google Drive attachment.
+- `POST /webhooks/google-drive/changes` is the Google Drive notification callback. It accepts Google channel headers and does not expose patient data.
+- `GET /patient-files/:id/download` requires the DentalHub JWT and clinic scope. Clinic members without access to the patient cannot download or import its files.
 
-## Live acceptance checks
+## Rollout and acceptance
 
-Use two Google test accounts in one clinic. Sign each into the app, grant Drive permission, and upload an image and PDF. Confirm each upload is in its uploader's Drive, both authorized users can open the files through DentalHub, and a user from another clinic is denied. Test declining consent, reconnecting after revocation, migration retry, logout during a download, and Android/iOS debug and release client registration.
+1. Configure and test password-reset email delivery. Tell Google-only users to set a DentalHub password through password recovery before the release.
+2. Apply `202610040001_personal_google_drive.sql` and `202610070001_personal_drive_bidirectional_sync.sql` with `DB_SYNCHRONIZE=false`.
+3. Deploy the backend. Confirm `/auth/google` and `/auth/google/link` are absent from routing and OpenAPI, while password auth and Drive settings routes remain.
+4. From a DentalHub account, connect a Drive account with a different email. Upload an image, change its name/category in DentalHub, then edit its name/content in Drive and confirm the record reconciles.
+5. Use Picker to import a Drive file to a patient/category; confirm it moves into that managed folder and subsequent Drive changes reconcile. Confirm an arbitrary file outside managed folders is not imported automatically.
+6. Test conflict review, moving a file outside the managed tree, Drive Trash and restore, disconnect confirmation, clinic authorization, notification delivery, and periodic-worker fallback.
+7. Back up and restore PostgreSQL clinical history independently from the Drive file backup/retention process.

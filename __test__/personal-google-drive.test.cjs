@@ -18,7 +18,7 @@ const {
 } = require('../dist/storage/entities/drive-migration-item.entity');
 const {
   GoogleTokenVerifier,
-} = require('../dist/auth/infrastructure/google-identity-verifier');
+} = require('../dist/storage/infrastructure/google-identity-verifier');
 
 function personal(options = {}) {
   const credentials = {
@@ -57,8 +57,13 @@ function personal(options = {}) {
   };
   const files = options.files ?? {
     find: async () => [],
+    count: async () => 0,
+    findOne: async () => null,
     update: mock.fn(async () => ({})),
+    save: mock.fn(async (x) => x),
+    create: (x) => x,
   };
+  const patients = options.patients ?? {};
   const migrations = options.migrations ?? {};
   const legacy = {
     findOneBy: async () => ({ id: 'legacy', status: 'connected' }),
@@ -82,8 +87,8 @@ function personal(options = {}) {
   };
   const service = new PersonalDriveStorage(
     integrations,
-    {},
     files,
+    patients,
     migrations,
     legacy,
     tokens,
@@ -92,7 +97,7 @@ function personal(options = {}) {
     access,
   );
   service.drive = mock.fn(async () => options.drive);
-  return { service, integrations, credentials };
+  return { service, integrations, credentials, files, patients };
 }
 
 test('uploads resolve the authenticated uploader, independently of clinic Drive', async () => {
@@ -159,6 +164,9 @@ test('missing offline credentials cannot create a connected integration', async 
 test('a subsequent authorization preserves the refresh token and original integration ID', async () => {
   const drive = {
     files: { get: async () => ({ data: { id: 'root', trashed: false } }) },
+    changes: {
+      getStartPageToken: async () => ({ data: { startPageToken: 'next' } }),
+    },
   };
   const { service, credentials, integrations } = personal({ drive });
   await service.connect('user-a', {
@@ -171,6 +179,355 @@ test('a subsequent authorization preserves the refresh token and original integr
   assert.equal(
     integrations.save.mock.calls[0].arguments[0].id,
     'integration-a',
+  );
+});
+
+test('a DentalHub user can connect a Drive account with a different email', async () => {
+  const drive = {
+    files: {},
+    changes: {
+      getStartPageToken: async () => ({ data: { startPageToken: 'start' } }),
+    },
+  };
+  const { service, integrations } = personal({ credentials: null, drive });
+  await assert.doesNotReject(
+    service.connect('user-a', {
+      subject: 'google-drive-subject',
+      email: 'different-google-account@example.test',
+      accessToken: 'access',
+      refreshToken: 'refresh',
+      scope: 'https://www.googleapis.com/auth/drive.file',
+    }),
+  );
+  assert.equal(
+    integrations.save.mock.calls[0].arguments[0].googleEmail,
+    'different-google-account@example.test',
+  );
+});
+
+test('Picker import moves the selected Drive file into its patient folder', async () => {
+  const historyMd5 = createHash('md5').update('history data').digest('hex');
+  const source = {
+    id: 'picked-file',
+    name: 'history.txt',
+    mimeType: 'text/plain',
+    size: '12',
+    parents: ['source-folder'],
+    appProperties: { source: 'picker' },
+    modifiedTime: '2026-10-07T12:00:00.000Z',
+    md5Checksum: historyMd5,
+  };
+  const drive = {
+    files: {
+      get: mock.fn(async (params) =>
+        params.alt === 'media'
+          ? { data: Readable.from(['history data']) }
+          : { data: source },
+      ),
+      update: mock.fn(async (params) => ({
+        data: {
+          id: 'picked-file',
+          name: 'history.txt',
+          mimeType: 'text/plain',
+          size: '12',
+          parents: [params.addParents],
+          modifiedTime: '2026-10-07T12:01:00.000Z',
+          md5Checksum: historyMd5,
+        },
+      })),
+    },
+  };
+  const patients = {
+    findOne: async () => ({ id: 'patient-a', clinic: { name: 'Clinic A' } }),
+  };
+  const { service } = personal({ drive, patients });
+  const imported = await service.importFromDrive(
+    {
+      clinicId: 'clinic-a',
+      clinicName: 'Clinic A',
+      patientId: 'patient-a',
+      patientFileId: 'patient-file-a',
+      uploadedByMembershipId: 'membership-a',
+      sourceDriveFileId: 'picked-file',
+      type: 'document',
+      relation: {},
+    },
+    'user-a',
+  );
+  assert.equal(imported.driveFileId, 'picked-file');
+  assert.equal(imported.storageProvider, 'google_drive');
+  assert.equal(imported.driveFolderId, 'folder-documents');
+  assert.deepEqual(
+    drive.files.update.mock.calls[0].arguments[0].requestBody.appProperties,
+    {
+      source: 'picker',
+      fileId: 'patient-file-a',
+      patientId: 'patient-a',
+      tenantId: 'clinic-a',
+      uploaderUserId: 'user-a',
+      category: 'documents',
+    },
+  );
+  assert.equal(
+    drive.files.update.mock.calls[0].arguments[0].removeParents,
+    'source-folder',
+  );
+});
+
+test('Drive file edits update the patient record and retain the previous revision', async () => {
+  const file = {
+    id: 'patient-file-a',
+    patientId: 'patient-a',
+    storageIntegrationId: 'integration-a',
+    driveFileId: 'drive-file-a',
+    driveFolderId: 'category-folder',
+    uploadedByUserId: 'user-a',
+    storedName: 'old-xray.png',
+    originalName: 'old-xray.png',
+    description: null,
+    type: 'radiography',
+    size: 100,
+    mimeType: 'image/png',
+    storageStatus: 'available',
+    syncReviewRequired: false,
+    syncReviewReason: null,
+    externalMetadataJson: {
+      md5Checksum: 'old-md5',
+      headRevisionId: 'old-revision',
+    },
+    driveModifiedAt: new Date('2026-10-07T12:00:00.000Z'),
+  };
+  const folderData = {
+    'category-folder': {
+      id: 'category-folder',
+      name: 'radiographs',
+      parents: ['patient-folder'],
+    },
+    'patient-folder': {
+      id: 'patient-folder',
+      name: 'patient-PAC-PATIEN__patien',
+      parents: ['patients-folder'],
+    },
+    'patients-folder': {
+      id: 'patients-folder',
+      name: 'patients',
+      parents: ['clinic-folder'],
+    },
+    'clinic-folder': {
+      id: 'clinic-folder',
+      name: 'DentalHub__tenant-clinic__clinic-a',
+      parents: ['root'],
+    },
+  };
+  const files = {
+    findOne: async () => file,
+    save: mock.fn(async (value) => value),
+    create: (value) => value,
+  };
+  const patients = {
+    findOneBy: async () => ({ id: 'patient-a', clinicId: 'clinic-a' }),
+  };
+  const drive = {
+    files: {
+      get: async ({ fileId }) => ({ data: folderData[fileId] }),
+    },
+  };
+  const { service } = personal({ drive, files, patients });
+  const result = await service.applyDriveChange(
+    {
+      id: 'integration-a',
+      rootFolderId: 'root',
+    },
+    drive,
+    {
+      fileId: 'drive-file-a',
+      file: {
+        id: 'drive-file-a',
+        name: 'new-xray.png',
+        mimeType: 'image/png',
+        size: '120',
+        md5Checksum: 'new-md5',
+        headRevisionId: 'new-revision',
+        modifiedTime: '2026-10-07T12:01:00.000Z',
+        parents: ['category-folder'],
+        appProperties: {
+          fileId: 'patient-file-a',
+          patientId: 'patient-a',
+          tenantId: 'clinic-a',
+        },
+      },
+    },
+  );
+  assert.equal(result.updated, 1);
+  const saved = files.save.mock.calls[0].arguments[0];
+  assert.equal(saved.storedName, 'new-xray.png');
+  assert.equal(saved.size, 120);
+  assert.deepEqual(saved.externalMetadataJson.driveVersionHistory, [
+    {
+      revisionId: 'old-revision',
+      md5Checksum: 'old-md5',
+      modifiedAt: '2026-10-07T12:00:00.000Z',
+      name: 'old-xray.png',
+      size: 100,
+    },
+  ]);
+  assert.equal(saved.externalMetadataJson.headRevisionId, 'new-revision');
+});
+
+test('clinic manual sync does not advance the shared account change cursor', async () => {
+  const drive = {
+    changes: {
+      list: async () => ({
+        data: { changes: [], newStartPageToken: 'new-cursor' },
+      }),
+    },
+  };
+  const { service, integrations, credentials } = personal({ drive });
+  credentials.driveStartPageToken = 'existing-cursor';
+  await service.sync('user-a', { clinicId: 'clinic-a' });
+  assert.equal(
+    integrations.save.mock.calls.at(-1).arguments[0].driveStartPageToken,
+    'existing-cursor',
+  );
+});
+
+test('app metadata edits update the same file in its managed Drive category', async () => {
+  const drive = {
+    files: {
+      get: async () => ({
+        data: {
+          id: 'drive-file-a',
+          name: 'old.png',
+          mimeType: 'image/png',
+          size: '100',
+          md5Checksum: 'checksum',
+          modifiedTime: '2026-10-07T12:00:00.000Z',
+          parents: ['old-folder'],
+          description: 'old description',
+          appProperties: { fileId: 'patient-file-a' },
+        },
+      }),
+      update: mock.fn(async (params) => ({
+        data: {
+          id: 'drive-file-a',
+          name: params.requestBody.name,
+          mimeType: 'image/png',
+          size: '100',
+          md5Checksum: 'checksum',
+          modifiedTime: '2026-10-07T12:01:00.000Z',
+          parents: [params.addParents],
+          description: params.requestBody.description,
+        },
+      })),
+    },
+  };
+  const { service } = personal({ drive });
+  const result = await service.updateMetadata(
+    {
+      id: 'patient-file-a',
+      patientId: 'patient-a',
+      storageIntegrationId: 'integration-a',
+      driveFileId: 'drive-file-a',
+      driveModifiedAt: new Date('2026-10-07T12:00:00.000Z'),
+      storedName: 'old.png',
+      url: '/patient-files/patient-file-a/download',
+      uploadedByUserId: 'user-a',
+      type: 'image',
+      externalMetadataJson: {},
+    },
+    {
+      name: 'new.png',
+      description: 'new description',
+      type: 'radiography',
+      clinicId: 'clinic-a',
+      clinicName: 'Clinic A',
+      patient: { id: 'patient-a' },
+    },
+  );
+  const update = drive.files.update.mock.calls[0].arguments[0];
+  assert.equal(result.storedName, 'new.png');
+  assert.equal(update.requestBody.description, 'new description');
+  assert.equal(update.requestBody.appProperties.category, 'radiographs');
+  assert.equal(update.addParents, 'folder-radiographs');
+  assert.equal(update.removeParents, 'old-folder');
+});
+
+test('Drive changes outside the managed patient tree are flagged and not synced', async () => {
+  const file = {
+    id: 'patient-file-a',
+    patientId: 'patient-a',
+    storageIntegrationId: 'integration-a',
+    driveFileId: 'drive-file-a',
+    driveFolderId: 'category-folder',
+    storedName: 'xray.png',
+    externalMetadataJson: {},
+    storageStatus: 'available',
+  };
+  const files = {
+    findOne: async () => file,
+    save: mock.fn(async (value) => value),
+    create: (value) => value,
+  };
+  const patients = {
+    findOneBy: async () => ({ id: 'patient-a', clinicId: 'clinic-a' }),
+  };
+  const drive = {
+    files: {
+      get: async () => ({ data: { id: 'random-folder', name: 'My Drive' } }),
+    },
+  };
+  const { service } = personal({ drive, files, patients });
+  const result = await service.applyDriveChange(
+    { id: 'integration-a', rootFolderId: 'root' },
+    drive,
+    {
+      fileId: 'drive-file-a',
+      file: {
+        id: 'drive-file-a',
+        name: 'renamed-outside.png',
+        parents: ['random-folder'],
+        appProperties: { fileId: 'patient-file-a', patientId: 'patient-a' },
+      },
+    },
+  );
+  assert.equal(result.updated, 0);
+  assert.equal(
+    files.save.mock.calls[0].arguments[0].storageStatus,
+    'unavailable',
+  );
+  assert.equal(files.save.mock.calls[0].arguments[0].syncReviewRequired, true);
+});
+
+test('Drive-side deletion preserves the patient record for review', async () => {
+  const file = {
+    id: 'patient-file-a',
+    patientId: 'patient-a',
+    storageIntegrationId: 'integration-a',
+    driveFileId: 'drive-file-a',
+    storedName: 'xray.png',
+    externalMetadataJson: { headRevisionId: 'revision-a' },
+    storageStatus: 'available',
+    syncSource: 'drive_update',
+    syncReviewRequired: false,
+  };
+  const files = {
+    findOne: async () => file,
+    save: mock.fn(async (value) => value),
+    create: (value) => value,
+  };
+  const { service } = personal({ files });
+  await service.applyDriveChange(
+    { id: 'integration-a', rootFolderId: 'root' },
+    {},
+    { fileId: 'drive-file-a', removed: true },
+  );
+  const saved = files.save.mock.calls[0].arguments[0];
+  assert.equal(saved.storageStatus, 'unavailable');
+  assert.equal(saved.syncReviewRequired, true);
+  assert.equal(saved.syncReviewReason, 'drive_file_removed');
+  assert.equal(
+    saved.externalMetadataJson.syncAudit.at(-1).event,
+    'drive_file_unavailable',
   );
 });
 
@@ -205,6 +562,37 @@ test('private downloads use the file owner integration and return a stream', asy
     fileId: 'drive-file',
     alt: 'media',
   });
+});
+
+test('patient file owners can inspect and download retained Drive revisions', async () => {
+  const revision = Readable.from(['previous-version']);
+  const drive = {
+    revisions: {
+      list: mock.fn(async () => ({
+        data: {
+          revisions: [
+            {
+              id: 'revision-a',
+              modifiedTime: '2026-10-07T12:00:00.000Z',
+              size: '16',
+            },
+          ],
+        },
+      })),
+      get: mock.fn(async () => ({ data: revision })),
+    },
+  };
+  const { service } = personal({ drive });
+  const file = {
+    storageIntegrationId: 'integration-a',
+    driveFileId: 'drive-file-a',
+  };
+  await assert.doesNotReject(service.listRevisions(file));
+  assert.equal((await service.listRevisions(file))[0].id, 'revision-a');
+  const stream = await service.downloadRevision(file, 'revision-a');
+  let text = '';
+  for await (const chunk of stream) text += chunk;
+  assert.equal(text, 'previous-version');
 });
 
 test('legacy Drive downloads still resolve the existing clinic integration', async () => {
@@ -254,9 +642,28 @@ test('disconnect clears credentials but does not trash Google files', async () =
       encryptedAccessToken: null,
       encryptedRefreshToken: null,
       tokenExpiresAt: null,
+      driveWatchChannelId: null,
+      driveWatchResourceId: null,
+      driveWatchTokenHash: null,
+      driveWatchExpiresAt: null,
     },
   ]);
   assert.equal(service.drive.mock.callCount(), 0);
+});
+
+test('disconnect requires backup confirmation when patient attachments remain', async () => {
+  const files = {
+    count: async () => 2,
+  };
+  const { service, integrations } = personal({ files });
+  await assert.rejects(
+    service.disconnect('user-a'),
+    (error) =>
+      error.getResponse().code === 'DRIVE_FILES_BACKUP_CONFIRMATION_REQUIRED',
+  );
+  assert.equal(integrations.update.mock.callCount(), 0);
+  await service.disconnect('user-a', true);
+  assert.equal(integrations.update.mock.callCount(), 1);
 });
 
 function migrationFixture(file, allow = true, failCommit = false) {
@@ -324,10 +731,12 @@ function migrationFixture(file, allow = true, failCommit = false) {
     },
   };
   const files = {
-    manager: { transaction: async (fn) => {
-      if (failCommit) throw new Error("Database unavailable");
-      return fn(manager);
-    } },
+    manager: {
+      transaction: async (fn) => {
+        if (failCommit) throw new Error('Database unavailable');
+        return fn(manager);
+      },
+    },
     find: async () => [file],
   };
   const access = {
@@ -441,7 +850,6 @@ test('Google verifier rejects unverified email, expired or invalid signed tokens
   }
 });
 
-
 test('a failed migration database commit retains the local original for retry', async () => {
   const directory = path.resolve('uploads/patient-files');
   await fs.mkdir(directory, { recursive: true });
@@ -449,21 +857,44 @@ test('a failed migration database commit retains the local original for retry', 
   const source = path.join(directory, name);
   await fs.writeFile(source, 'original');
   try {
-    const { service, finishes, updated } = migrationFixture({
-      id: 'file', patientId: 'patient', storedName: name, storageProvider: 'local',
-      uploadedByMembershipId: 'member', originalName: 'file.txt', mimeType: 'text/plain',
-      type: 'document', patient: { id: 'patient', clinic: { name: 'Clinic' } },
-    }, true, true);
-    await service.migrate('user-a', { clinicId: 'clinic', membershipId: 'member', role: 'owner' }, false);
+    const { service, finishes, updated } = migrationFixture(
+      {
+        id: 'file',
+        patientId: 'patient',
+        storedName: name,
+        storageProvider: 'local',
+        uploadedByMembershipId: 'member',
+        originalName: 'file.txt',
+        mimeType: 'text/plain',
+        type: 'document',
+        patient: { id: 'patient', clinic: { name: 'Clinic' } },
+      },
+      true,
+      true,
+    );
+    await service.migrate(
+      'user-a',
+      { clinicId: 'clinic', membershipId: 'member', role: 'owner' },
+      false,
+    );
     assert.equal(await fs.readFile(source, 'utf8'), 'original');
     assert.equal(finishes[0].status, 'failed');
     assert.equal(updated.length, 0);
-  } finally { await fs.unlink(source); }
+  } finally {
+    await fs.unlink(source);
+  }
 });
 
 test('migration eligibility excludes unknown ownership and already migrated files', async () => {
   let query;
-  const { service } = personal({ files: { find: async (options) => { query = options; return []; } } });
+  const { service } = personal({
+    files: {
+      find: async (options) => {
+        query = options;
+        return [];
+      },
+    },
+  });
   await service.migrationCandidates('user-a', 'clinic-a');
   assert.equal(query.where.uploadedByUserId, 'user-a');
   assert.equal(query.where.patient.clinicId, 'clinic-a');
@@ -472,21 +903,46 @@ test('migration eligibility excludes unknown ownership and already migrated file
 });
 
 test('retry reuses an existing app file only after validating its content', async () => {
-  const directory = await fs.mkdtemp(path.join(require('node:os').tmpdir(), 'drive-verification-'));
+  const directory = await fs.mkdtemp(
+    path.join(require('node:os').tmpdir(), 'drive-verification-'),
+  );
   const source = path.join(directory, 'file');
   const bytes = Buffer.from('verified-content');
   await fs.writeFile(source, bytes);
-  let metadata = { id: 'existing', name: 'file.txt', size: String(bytes.length), md5Checksum: createHash('md5').update(bytes).digest('hex') };
-  const create = mock.fn(async () => { throw new Error('Must reuse the existing file'); });
-  const drive = { files: { list: async () => ({ data: { files: [metadata] } }), create } };
+  let metadata = {
+    id: 'existing',
+    name: 'file.txt',
+    size: String(bytes.length),
+    md5Checksum: createHash('md5').update(bytes).digest('hex'),
+  };
+  const create = mock.fn(async () => {
+    throw new Error('Must reuse the existing file');
+  });
+  const drive = {
+    files: { list: async () => ({ data: { files: [metadata] } }), create },
+  };
   const { service } = personal({ drive });
-  const input = { clinicId: 'clinic', clinicName: 'Clinic', patient: { id: 'patient', firstName: 'A', lastName: 'B' }, fileId: 'file', file: { path: source, originalname: 'file.txt', mimetype: 'text/plain' }, type: 'document', relation: {} };
+  const input = {
+    clinicId: 'clinic',
+    clinicName: 'Clinic',
+    patient: { id: 'patient', firstName: 'A', lastName: 'B' },
+    fileId: 'file',
+    file: { path: source, originalname: 'file.txt', mimetype: 'text/plain' },
+    type: 'document',
+    relation: {},
+  };
   try {
     const result = await service.upload(input, 'user-a');
     assert.equal(result.driveFileId, 'existing');
     assert.equal(result.storageIntegrationId, 'integration-a');
     assert.equal(create.mock.callCount(), 0);
     metadata = { ...metadata, md5Checksum: 'wrong' };
-    await assert.rejects(service.upload(input, 'user-a'), (error) => error.getResponse().code === 'DRIVE_UPLOAD_VERIFICATION_FAILED');
-  } finally { await fs.rm(directory, { recursive: true }); }
+    await assert.rejects(
+      service.upload(input, 'user-a'),
+      (error) =>
+        error.getResponse().code === 'DRIVE_UPLOAD_VERIFICATION_FAILED',
+    );
+  } finally {
+    await fs.rm(directory, { recursive: true });
+  }
 });

@@ -5,6 +5,7 @@ import {
   Delete,
   Get,
   Param,
+  Patch,
   Post,
   Req,
   Res,
@@ -21,10 +22,12 @@ import {
   ApiConsumes,
   ApiOperation,
   ApiParam,
+  ApiPropertyOptional,
   ApiResponse,
   ApiSecurity,
   ApiTags,
 } from '@nestjs/swagger';
+import { IsBoolean, IsOptional } from 'class-validator';
 
 import { PatientFilesService } from './patient-files.service';
 import { CreatePatientFileDto } from './dto/create-patient-file.dto';
@@ -40,9 +43,22 @@ import {
   GetClinicMembershipId,
   GetClinicMembershipRole,
   GetClinicPermissions,
+  GetUser,
 } from '../auth/decorators';
+import { User } from '../auth/entities/user.entity';
 import { ClinicMembershipRole } from '../clinic-memberships/interfaces/clinic-membership-role.enum';
 import { ClinicAccessContext } from '../patients/services/patient-access.service';
+import { ImportPatientFileFromDriveDto } from './dto/import-patient-file-from-drive.dto';
+import { UpdatePatientFileDto } from './dto/update-patient-file.dto';
+
+class DeletePatientFileDto {
+  @ApiPropertyOptional({
+    description: 'Confirm moving this Google Drive file into Drive Trash.',
+  })
+  @IsOptional()
+  @IsBoolean()
+  confirmDriveTrash?: boolean;
+}
 
 @ApiTags('Patient Files')
 @ApiBearerAuth()
@@ -104,6 +120,28 @@ export class PatientFilesController {
       membershipId,
       file,
       baseUrl,
+      dto,
+    );
+  }
+
+  @Post('patients/:patientId/files/import-from-drive')
+  @ApiOperation({ summary: 'Importar archivo seleccionado de Google Drive' })
+  @ApiParam({ name: 'patientId', description: 'UUID del paciente' })
+  @ApiResponse({ status: 201, description: 'Archivo importado al paciente' })
+  importFromDrive(
+    @GetUser() user: User,
+    @GetClinicId() clinicId: string,
+    @GetClinicMembershipId() membershipId: string,
+    @GetClinicMembershipRole() role: ClinicMembershipRole,
+    @GetClinicPermissions() permissionsJson: Record<string, boolean>,
+    @Param('patientId') patientId: string,
+    @Body() dto: ImportPatientFileFromDriveDto,
+  ) {
+    return this.patientFilesService.importFromDrive(
+      this.context(clinicId, membershipId, role, permissionsJson),
+      patientId,
+      membershipId,
+      user,
       dto,
     );
   }
@@ -183,6 +221,85 @@ export class PatientFilesController {
     );
   }
 
+  @Patch('patient-files/:id')
+  @ApiOperation({ summary: 'Actualizar metadatos del archivo de paciente' })
+  @ApiParam({ name: 'id', description: 'UUID del archivo' })
+  @ApiResponse({ status: 200, description: 'Metadatos actualizados' })
+  updateMetadata(
+    @GetClinicId() clinicId: string,
+    @GetClinicMembershipId() membershipId: string,
+    @GetClinicMembershipRole() role: ClinicMembershipRole,
+    @GetClinicPermissions() permissionsJson: Record<string, boolean>,
+    @Param('id') id: string,
+    @Body() dto: UpdatePatientFileDto,
+  ) {
+    return this.patientFilesService.updateMetadata(
+      this.context(clinicId, membershipId, role, permissionsJson),
+      id,
+      dto,
+    );
+  }
+
+  @Post('patient-files/:id/restore-from-drive')
+  @ApiOperation({ summary: 'Restaurar archivo en revisión desde Google Drive' })
+  @ApiParam({ name: 'id', description: 'UUID del archivo' })
+  @ApiResponse({ status: 200, description: 'Archivo restaurado' })
+  restoreFromDrive(
+    @GetClinicId() clinicId: string,
+    @GetClinicMembershipId() membershipId: string,
+    @GetClinicMembershipRole() role: ClinicMembershipRole,
+    @GetClinicPermissions() permissionsJson: Record<string, boolean>,
+    @Param('id') id: string,
+  ) {
+    return this.patientFilesService.restoreFromDrive(
+      this.context(clinicId, membershipId, role, permissionsJson),
+      id,
+    );
+  }
+
+  @Get('patient-files/:id/drive-versions')
+  @ApiOperation({ summary: 'Listar versiones anteriores de Google Drive' })
+  @ApiParam({ name: 'id', description: 'UUID del archivo' })
+  listDriveRevisions(
+    @GetClinicId() clinicId: string,
+    @GetClinicMembershipId() membershipId: string,
+    @GetClinicMembershipRole() role: ClinicMembershipRole,
+    @GetClinicPermissions() permissionsJson: Record<string, boolean>,
+    @Param('id') id: string,
+  ) {
+    return this.patientFilesService.listDriveRevisions(
+      this.context(clinicId, membershipId, role, permissionsJson),
+      id,
+    );
+  }
+
+  @Get('patient-files/:id/drive-versions/:revisionId/download')
+  @ApiOperation({ summary: 'Descargar una versión anterior del archivo' })
+  @ApiParam({ name: 'id', description: 'UUID del archivo' })
+  @ApiParam({ name: 'revisionId', description: 'ID de la versión de Drive' })
+  async downloadDriveRevision(
+    @GetClinicId() clinicId: string,
+    @GetClinicMembershipId() membershipId: string,
+    @GetClinicMembershipRole() role: ClinicMembershipRole,
+    @GetClinicPermissions() permissionsJson: Record<string, boolean>,
+    @Param('id') id: string,
+    @Param('revisionId') revisionId: string,
+    @Res() response: Response,
+  ) {
+    const revision = await this.patientFilesService.downloadDriveRevision(
+      this.context(clinicId, membershipId, role, permissionsJson),
+      id,
+      revisionId,
+    );
+    response.setHeader('Content-Type', revision.mimeType);
+    response.setHeader(
+      'Content-Disposition',
+      `attachment; filename="${encodeURIComponent(revision.originalName)}"`,
+    );
+    response.setHeader('Cache-Control', 'private, no-store');
+    return pipeline(revision.stream, response);
+  }
+
   @Get('patient-files/:id/download')
   @ApiOperation({ summary: 'Descargar archivo de paciente' })
   @ApiParam({ name: 'id', description: 'UUID del archivo' })
@@ -212,6 +329,7 @@ export class PatientFilesController {
 
   @Delete('patient-files/:id')
   @ApiOperation({ summary: 'Eliminar archivo de paciente' })
+  @ApiBody({ type: DeletePatientFileDto, required: false })
   @ApiParam({ name: 'id', description: 'UUID del archivo' })
   @ApiResponse({ status: 200, description: 'Archivo eliminado' })
   remove(
@@ -220,10 +338,12 @@ export class PatientFilesController {
     @GetClinicMembershipRole() role: ClinicMembershipRole,
     @GetClinicPermissions() permissionsJson: Record<string, boolean>,
     @Param('id') id: string,
+    @Body() dto?: DeletePatientFileDto,
   ) {
     return this.patientFilesService.remove(
       this.context(clinicId, membershipId, role, permissionsJson),
       id,
+      dto?.confirmDriveTrash ?? false,
     );
   }
 
