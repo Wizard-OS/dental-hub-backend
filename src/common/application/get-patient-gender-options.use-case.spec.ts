@@ -12,8 +12,6 @@ describe('GetPatientGenderOptions', () => {
     expect(useCase.execute('es')).toEqual([
       { value: Gender.MALE, label: 'es:Male' },
       { value: Gender.FEMALE, label: 'es:Female' },
-      { value: Gender.NON_BINARY, label: 'es:Non-binary' },
-      { value: Gender.OTHER, label: 'es:Other' },
       { value: Gender.PREFER_NOT_TO_SAY, label: 'es:Prefer not to say' },
     ]);
   });

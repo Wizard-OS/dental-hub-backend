@@ -9,6 +9,8 @@ export class I18nPatientGenderLabelTranslatorAdapter implements PatientGenderLab
   constructor(private readonly i18n: I18nService) {}
 
   translate(value: Gender, language: string): string {
-    return String(this.i18n.translate(`gender.${value}`, { lang: language }));
+    return String(
+      this.i18n.translate(`api.gender.${value}`, { lang: language }),
+    );
   }
 }
