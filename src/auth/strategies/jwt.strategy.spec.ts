@@ -20,6 +20,9 @@ describe('JwtStrategy', () => {
     user = {
       id: userId,
       email: 'doctor@dentalhub.test',
+      password: null,
+      googleSubject: null,
+      googleEmail: null,
       firstName: 'Ana',
       lastName: 'Silva',
       isActive: true,
@@ -27,11 +30,12 @@ describe('JwtStrategy', () => {
       appointments: [],
       clinicalNotes: [],
       memberships: [],
+      passwordResetOtpAttemptCount: 0,
       createdAt: new Date(),
       updatedAt: new Date(),
       checkFieldsBeforeInsert: jest.fn(),
       checkFieldsBeforeUpdate: jest.fn(),
-    } as User;
+    };
 
     userRepository = {
       findOneBy: jest.fn(() => user),

@@ -1,3 +1,4 @@
+import { i18nValidationMessage } from 'nestjs-i18n';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { IsEnum, IsOptional, IsString } from 'class-validator';
 
@@ -9,7 +10,7 @@ export class QueryBackofficeSupportRequestsDto extends PaginationDto {
     example: 'facturación',
     description: 'Busca por asunto, mensaje o email de contacto',
   })
-  @IsString()
+  @IsString({ message: i18nValidationMessage('validation.isString') })
   @IsOptional()
   search?: string;
 
@@ -18,7 +19,9 @@ export class QueryBackofficeSupportRequestsDto extends PaginationDto {
     example: SupportRequestStatus.OPEN,
     description: 'Filtra por estado de solicitud',
   })
-  @IsEnum(SupportRequestStatus)
+  @IsEnum(SupportRequestStatus, {
+    message: i18nValidationMessage('validation.isEnum'),
+  })
   @IsOptional()
   status?: SupportRequestStatus;
 }

@@ -1,3 +1,4 @@
+import { apiMessage } from '../common/i18n/api-message';
 import { QueryClinicalNotesDto } from './dto/query-clinical-notes.dto';
 import { PatientFileStorageStatus } from '../patient-files/interfaces/patient-file-storage-status.enum';
 import {
@@ -91,7 +92,9 @@ export class ClinicalNotesService {
   ) {
     await this.patientAccessService.assertPatientAccessible(context, patientId);
     if (dto.from && dto.to && new Date(dto.from) > new Date(dto.to))
-      throw new BadRequestException('from must be before to');
+      throw new BadRequestException(
+        apiMessage('api.messages.from_must_be_before_to'),
+      );
     const query = this.clinicalNoteRepository
       .createQueryBuilder('note')
       .innerJoin('note.clinicalRecord', 'record')
@@ -135,7 +138,9 @@ export class ClinicalNotesService {
 
   async findOne(context: ClinicAccessContext, id: string) {
     if (!isUUID(id)) {
-      throw new BadRequestException('Invalid clinical note id');
+      throw new BadRequestException(
+        apiMessage('api.messages.invalid_clinical_note_id'),
+      );
     }
 
     const note = await this.clinicalNoteRepository
@@ -150,7 +155,9 @@ export class ClinicalNotesService {
       .getOne();
 
     if (!note) {
-      throw new NotFoundException(`Clinical note with id ${id} not found`);
+      throw new NotFoundException(
+        apiMessage('api.messages.clinical_note_with_id_not_found', { id: id }),
+      );
     }
 
     await this.patientAccessService.assertPatientAccessible(
@@ -178,7 +185,9 @@ export class ClinicalNotesService {
       dto.clinicalRecordId !== note.clinicalRecordId
     ) {
       throw new BadRequestException(
-        'Cannot move a clinical note to another record',
+        apiMessage(
+          'api.messages.cannot_move_a_clinical_note_to_another_record',
+        ),
       );
     }
 
@@ -190,7 +199,9 @@ export class ClinicalNotesService {
     this.patientAccessService.assertCanManageClinical(context);
     const note = await this.findOne(context, id);
     await this.clinicalNoteRepository.remove(note);
-    return { message: `Clinical note ${id} removed` };
+    return {
+      message: apiMessage('api.messages.clinical_note_removed', { id: id }),
+    };
   }
 
   private async assertRecordInClinic(
@@ -206,7 +217,9 @@ export class ClinicalNotesService {
 
     if (!record) {
       throw new BadRequestException(
-        'Clinical record does not belong to the requested clinic',
+        apiMessage(
+          'api.messages.clinical_record_does_not_belong_to_the_requested_clinic',
+        ),
       );
     }
 

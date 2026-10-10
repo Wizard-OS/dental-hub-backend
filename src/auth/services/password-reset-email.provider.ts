@@ -1,3 +1,4 @@
+import { apiMessage } from '../../common/i18n/api-message';
 import { Injectable, ServiceUnavailableException } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 
@@ -15,7 +16,7 @@ export class PasswordResetEmailProvider {
   async sendCode(to: string, code: string): Promise<void> {
     if (!this.configured) {
       throw new ServiceUnavailableException(
-        'Password reset email is not configured',
+        apiMessage('api.messages.password_reset_email_is_not_configured'),
       );
     }
 
@@ -36,13 +37,13 @@ export class PasswordResetEmailProvider {
       }),
     }).catch(() => {
       throw new ServiceUnavailableException(
-        'Password reset email delivery failed',
+        apiMessage('api.messages.password_reset_email_delivery_failed'),
       );
     });
 
     if (!response.ok) {
       throw new ServiceUnavailableException(
-        'Password reset email delivery failed',
+        apiMessage('api.messages.password_reset_email_delivery_failed'),
       );
     }
   }

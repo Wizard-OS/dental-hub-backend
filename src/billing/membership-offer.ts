@@ -1,3 +1,4 @@
+import { apiMessage } from '../common/i18n/api-message';
 import { BadRequestException } from '@nestjs/common';
 import { getEnv } from '../config/env';
 import { BillingInterval } from './interfaces/billing-interval.enum';
@@ -12,13 +13,17 @@ export function membershipQuote(
 ) {
   const code = promotionCode?.trim().toUpperCase() || null;
   if (!Object.values(BillingInterval).includes(interval)) {
-    throw new BadRequestException('Invalid billing interval');
+    throw new BadRequestException(
+      apiMessage('api.messages.invalid_billing_interval'),
+    );
   }
   if (
     code &&
     (code !== PROMOTION_CODE || interval !== BillingInterval.yearly)
   ) {
-    throw new BadRequestException('Promotion is not valid for this plan');
+    throw new BadRequestException(
+      apiMessage('api.messages.promotion_is_not_valid_for_this_plan'),
+    );
   }
   const subtotal = interval === BillingInterval.yearly ? 10000 : 1000;
   const discount = code ? 1000 : 0;

@@ -1,3 +1,4 @@
+import { apiMessage, type ApiMessage } from '../common/i18n/api-message';
 import {
   Injectable,
   NotFoundException,
@@ -46,13 +47,13 @@ export class UserSessionsService {
   async revokeSession(
     userId: string,
     sessionId: string,
-  ): Promise<{ message: string }> {
+  ): Promise<{ message: ApiMessage }> {
     const session = await this.sessionRepository.findOne({
       where: { id: sessionId, userId },
     });
 
     if (!session) {
-      throw new NotFoundException('Session not found');
+      throw new NotFoundException(apiMessage('api.messages.session_not_found'));
     }
 
     const now = new Date();
@@ -61,13 +62,13 @@ export class UserSessionsService {
     session.lastActiveAt = now;
     await this.sessionRepository.save(session);
 
-    return { message: 'Session revoked successfully' };
+    return { message: apiMessage('api.messages.session_revoked_successfully') };
   }
 
   async revokeAllOtherSessions(
     userId: string,
     currentSessionId?: string,
-  ): Promise<{ message: string }> {
+  ): Promise<{ message: ApiMessage }> {
     const where: FindOptionsWhere<UserSession> = { userId, isRevoked: false };
     if (currentSessionId) {
       where.id = Not(currentSessionId);
@@ -80,7 +81,11 @@ export class UserSessionsService {
       lastActiveAt: now,
     });
 
-    return { message: 'All other sessions revoked successfully' };
+    return {
+      message: apiMessage(
+        'api.messages.all_other_sessions_revoked_successfully',
+      ),
+    };
   }
 
   async assertActiveSession(
@@ -92,7 +97,9 @@ export class UserSessionsService {
     });
 
     if (!session || session.isRevoked) {
-      throw new UnauthorizedException('Session not valid');
+      throw new UnauthorizedException(
+        apiMessage('api.messages.session_not_valid'),
+      );
     }
 
     return session;
@@ -110,11 +117,11 @@ export class UserSessionsService {
   async revokeCurrentSession(
     userId: string,
     currentSessionId: string,
-  ): Promise<{ message: string }> {
+  ): Promise<{ message: ApiMessage }> {
     await this.revokeSession(userId, currentSessionId);
 
     return {
-      message: 'Logged out successfully',
+      message: apiMessage('api.messages.logged_out_successfully'),
     };
   }
 }

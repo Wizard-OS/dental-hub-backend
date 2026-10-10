@@ -1,3 +1,4 @@
+import { i18nValidationMessage } from 'nestjs-i18n';
 import {
   IsDateString,
   IsEnum,
@@ -18,7 +19,7 @@ export class CreateAppointmentDto {
     description:
       'UUID de la clínica. Opcional/deprecado en endpoints con x-clinic-id.',
   })
-  @IsUUID()
+  @IsUUID(undefined, { message: i18nValidationMessage('validation.isUUID') })
   @IsOptional()
   clinicId?: string;
 
@@ -26,24 +27,24 @@ export class CreateAppointmentDto {
     example: 'b2c3d4e5-f6a7-8901-bcde-f12345678901',
     description: 'UUID del paciente',
   })
-  @IsUUID()
+  @IsUUID(undefined, { message: i18nValidationMessage('validation.isUUID') })
   patientId: string;
 
   @ApiPropertyOptional({
     example: 'c3d4e5f6-a7b8-9012-cdef-123456789012',
     description: 'UUID del dentista (usuario)',
   })
-  @IsUUID()
+  @IsUUID(undefined, { message: i18nValidationMessage('validation.isUUID') })
   @IsOptional()
   dentistId?: string;
 
   @ApiPropertyOptional({ description: 'UUID de la membresía del profesional' })
-  @IsUUID()
+  @IsUUID(undefined, { message: i18nValidationMessage('validation.isUUID') })
   @IsOptional()
   professionalMembershipId?: string;
 
   @ApiPropertyOptional({ description: 'UUID del tipo de cita' })
-  @IsUUID()
+  @IsUUID(undefined, { message: i18nValidationMessage('validation.isUUID') })
   @IsOptional()
   appointmentTypeId?: string;
 
@@ -51,21 +52,27 @@ export class CreateAppointmentDto {
     example: 'Limpieza dental general',
     description: 'Descripción de la cita',
   })
-  @IsString()
+  @IsString({ message: i18nValidationMessage('validation.isString') })
   description: string;
 
   @ApiProperty({
     example: '2026-04-15T09:00:00.000Z',
     description: 'Hora de inicio (ISO 8601)',
   })
-  @IsDateString()
+  @IsDateString(
+    {},
+    { message: i18nValidationMessage('validation.isDateString') },
+  )
   startTime: Date;
 
   @ApiProperty({
     example: '2026-04-15T10:00:00.000Z',
     description: 'Hora de fin (ISO 8601)',
   })
-  @IsDateString()
+  @IsDateString(
+    {},
+    { message: i18nValidationMessage('validation.isDateString') },
+  )
   endTime: Date;
 
   @ApiPropertyOptional({
@@ -73,7 +80,9 @@ export class CreateAppointmentDto {
     example: AppointmentStatus.SCHEDULED,
     description: 'Estado de la cita',
   })
-  @IsEnum(AppointmentStatus)
+  @IsEnum(AppointmentStatus, {
+    message: i18nValidationMessage('validation.isEnum'),
+  })
   @IsOptional()
   status?: AppointmentStatus;
 
@@ -82,7 +91,9 @@ export class CreateAppointmentDto {
     example: AppointmentConfirmationStatus.PENDING,
     description: 'Estado de confirmación de asistencia',
   })
-  @IsEnum(AppointmentConfirmationStatus)
+  @IsEnum(AppointmentConfirmationStatus, {
+    message: i18nValidationMessage('validation.isEnum'),
+  })
   @IsOptional()
   confirmationStatus?: AppointmentConfirmationStatus;
 
@@ -90,7 +101,10 @@ export class CreateAppointmentDto {
     example: '2026-09-14T10:00:00.000Z',
     description: 'Fecha/hora en que se solicitó confirmación',
   })
-  @IsDateString()
+  @IsDateString(
+    {},
+    { message: i18nValidationMessage('validation.isDateString') },
+  )
   @IsOptional()
   confirmationRequestedAt?: Date;
 
@@ -98,7 +112,10 @@ export class CreateAppointmentDto {
     example: '2026-09-14T12:00:00.000Z',
     description: 'Fecha/hora en que el paciente confirmó',
   })
-  @IsDateString()
+  @IsDateString(
+    {},
+    { message: i18nValidationMessage('validation.isDateString') },
+  )
   @IsOptional()
   confirmedAt?: Date;
 
@@ -106,7 +123,10 @@ export class CreateAppointmentDto {
     example: '2026-09-14T12:30:00.000Z',
     description: 'Fecha/hora del último cambio de horario solicitado',
   })
-  @IsDateString()
+  @IsDateString(
+    {},
+    { message: i18nValidationMessage('validation.isDateString') },
+  )
   @IsOptional()
   lastRescheduledAt?: Date;
 
@@ -114,8 +134,8 @@ export class CreateAppointmentDto {
     example: 1,
     description: 'Cantidad de reprogramaciones realizadas para la cita',
   })
-  @IsInt()
-  @Min(0)
+  @IsInt({ message: i18nValidationMessage('validation.isInt') })
+  @Min(0, { message: i18nValidationMessage('validation.min') })
   @IsOptional()
   rescheduleCount?: number;
 
@@ -123,17 +143,17 @@ export class CreateAppointmentDto {
     example: 'Dolor de muela',
     description: 'Razón de la cita',
   })
-  @IsString()
+  @IsString({ message: i18nValidationMessage('validation.isString') })
   @IsOptional()
   reason?: string;
 
   @ApiPropertyOptional({ description: 'Razón de cancelación' })
-  @IsString()
+  @IsString({ message: i18nValidationMessage('validation.isString') })
   @IsOptional()
   cancelReason?: string;
 
   @ApiPropertyOptional({ description: 'UUID de la membresía que creó la cita' })
-  @IsUUID()
+  @IsUUID(undefined, { message: i18nValidationMessage('validation.isUUID') })
   @IsOptional()
   createdByMembershipId?: string;
 }

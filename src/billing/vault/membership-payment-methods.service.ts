@@ -1,3 +1,4 @@
+import { apiMessage } from '../../common/i18n/api-message';
 import {
   BadRequestException,
   ConflictException,
@@ -76,10 +77,14 @@ export class MembershipPaymentMethodsService {
       });
       if (session && session.type !== dto.type)
         throw new ConflictException(
-          'Request ID already used for another payment method type',
+          apiMessage(
+            'api.messages.request_id_already_used_for_another_payment_method_type',
+          ),
         );
       if (session && session.expiresAt <= new Date())
-        throw new ConflictException('Setup expired; use a new request ID');
+        throw new ConflictException(
+          apiMessage('api.messages.setup_expired_use_a_new_request_id'),
+        );
       if (!session)
         session = await repo.save(
           repo.create({
@@ -104,7 +109,9 @@ export class MembershipPaymentMethodsService {
           previous?.providerCustomerId,
         );
         if (!result.id)
-          throw new BadRequestException('PayPal did not return a setup token');
+          throw new BadRequestException(
+            apiMessage('api.messages.paypal_did_not_return_a_setup_token'),
+          );
         session.providerSetupTokenId = result.id;
         session.approvalUrl =
           result.links?.find((l) => ['approve', 'payer-action'].includes(l.rel))
@@ -127,14 +134,17 @@ export class MembershipPaymentMethodsService {
     return withBillingLock(this.db, clinicId, async (manager) => {
       const sessions = manager.getRepository(MembershipSetupSession);
       const session = await sessions.findOneBy({ id: sessionId, clinicId });
-      if (!session) throw new NotFoundException('Setup session not found');
+      if (!session)
+        throw new NotFoundException(
+          apiMessage('api.messages.setup_session_not_found'),
+        );
       if (session.paymentMethodId)
         return methodSummary(
           await this.requireMethod(manager, clinicId, session.paymentMethodId),
         );
       if (session.expiresAt <= new Date() || !session.providerSetupTokenId)
         throw new BadRequestException(
-          'Setup session expired or not initialized',
+          apiMessage('api.messages.setup_session_expired_or_not_initialized'),
         );
       if (!session.approvedCustomerId) {
         const setup = await this.provider.getSetup(
@@ -145,12 +155,16 @@ export class MembershipPaymentMethodsService {
           setup.status !== 'APPROVED' ||
           !setup.customer?.id
         )
-          throw new BadRequestException('Payment method approval is required');
+          throw new BadRequestException(
+            apiMessage('api.messages.payment_method_approval_is_required'),
+          );
         if (
           setup.customer.merchant_customer_id &&
           setup.customer.merchant_customer_id !== clinicId
         )
-          throw new BadRequestException('Setup customer mismatch');
+          throw new BadRequestException(
+            apiMessage('api.messages.setup_customer_mismatch'),
+          );
         session.approvedCustomerId = setup.customer.id;
         session.status = 'approved';
         await sessions.save(session);
@@ -162,7 +176,7 @@ export class MembershipPaymentMethodsService {
         );
         if (!exchanged.id)
           throw new BadRequestException(
-            'PayPal did not return a payment token',
+            apiMessage('api.messages.paypal_did_not_return_a_payment_token'),
           );
         session.providerPaymentTokenId = exchanged.id;
         await sessions.save(session);
@@ -175,12 +189,16 @@ export class MembershipPaymentMethodsService {
         token.customer.id !== session.approvedCustomerId ||
         token.id !== session.providerPaymentTokenId
       )
-        throw new BadRequestException('Vault customer mismatch');
+        throw new BadRequestException(
+          apiMessage('api.messages.vault_customer_mismatch'),
+        );
       const existing = await manager
         .getRepository(MembershipPaymentMethod)
         .findOneBy({ providerTokenId: token.id });
       if (existing && (existing.clinicId !== clinicId || existing.deletedAt))
-        throw new ConflictException('Payment token already used');
+        throw new ConflictException(
+          apiMessage('api.messages.payment_token_already_used'),
+        );
       const metadata = this.metadata(token, session.type);
       const method =
         existing ??
@@ -191,7 +209,9 @@ export class MembershipPaymentMethodsService {
           ...metadata,
         });
       if (methodExpired(method))
-        throw new BadRequestException('Card is expired');
+        throw new BadRequestException(
+          apiMessage('api.messages.card_is_expired'),
+        );
       return manager.transaction(async (tx) => {
         if (!existing)
           method.isDefault = !(await tx
@@ -223,7 +243,9 @@ export class MembershipPaymentMethodsService {
         )
       ) {
         throw new ConflictException(
-          'This legacy subscription manages its payment source in PayPal',
+          apiMessage(
+            'api.messages.this_legacy_subscription_manages_its_payment_source_in_paypal',
+          ),
         );
       }
       await manager.transaction(async (tx) => {
@@ -251,7 +273,10 @@ export class MembershipPaymentMethodsService {
         .addSelect(['m.providerTokenId', 'm.providerCustomerId'])
         .where('m.id = :id AND m.clinicId = :clinicId', { id, clinicId })
         .getOne();
-      if (!method) throw new NotFoundException('Payment method not found');
+      if (!method)
+        throw new NotFoundException(
+          apiMessage('api.messages.payment_method_not_found'),
+        );
       if (method.deletedAt) return { deleted: true };
       const sub = await manager
         .getRepository(ClinicSubscription)
@@ -263,7 +288,9 @@ export class MembershipPaymentMethodsService {
         )
       )
         throw new ConflictException(
-          'Select another method or cancel the membership before removing this method',
+          apiMessage(
+            'api.messages.select_another_method_or_cancel_the_membership_before_removing_this_method',
+          ),
         );
       try {
         await this.provider.deleteToken(method.providerTokenId);
@@ -290,8 +317,12 @@ export class MembershipPaymentMethodsService {
         clinicId,
       })
       .getOne();
-    if (!method) throw new NotFoundException('Payment method not found');
-    if (methodExpired(method)) throw new BadRequestException('Card is expired');
+    if (!method)
+      throw new NotFoundException(
+        apiMessage('api.messages.payment_method_not_found'),
+      );
+    if (methodExpired(method))
+      throw new BadRequestException(apiMessage('api.messages.card_is_expired'));
     return method;
   }
   async verify(method: MembershipPaymentMethod) {
@@ -300,18 +331,24 @@ export class MembershipPaymentMethodsService {
       token.id !== method.providerTokenId ||
       token.customer?.id !== method.providerCustomerId
     )
-      throw new BadRequestException('Payment token ownership mismatch');
+      throw new BadRequestException(
+        apiMessage('api.messages.payment_token_ownership_mismatch'),
+      );
     const metadata = this.metadata(token, method.type);
     if (methodExpired(metadata))
-      throw new BadRequestException('Card is expired');
+      throw new BadRequestException(apiMessage('api.messages.card_is_expired'));
     Object.assign(method, metadata);
   }
   private metadata(token: VaultResource, type: 'card' | 'paypal') {
     const card = token.payment_source?.card;
     if (type === 'card' && (!card || !/^\d{4}$/.test(card.last_digits ?? '')))
-      throw new BadRequestException('Verified card details missing');
+      throw new BadRequestException(
+        apiMessage('api.messages.verified_card_details_missing'),
+      );
     if (type === 'paypal' && !token.payment_source?.paypal)
-      throw new BadRequestException('Verified PayPal wallet missing');
+      throw new BadRequestException(
+        apiMessage('api.messages.verified_paypal_wallet_missing'),
+      );
     return {
       type,
       brand: card?.brand ?? null,

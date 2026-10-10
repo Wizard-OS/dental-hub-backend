@@ -1,3 +1,4 @@
+import { i18nValidationMessage } from 'nestjs-i18n';
 import {
   ArrayNotEmpty,
   IsArray,
@@ -17,7 +18,7 @@ export class UpdateOdontogramToothDto {
     example: ToothStatus.CARIES,
     description: 'Estado de la pieza dental',
   })
-  @IsEnum(ToothStatus)
+  @IsEnum(ToothStatus, { message: i18nValidationMessage('validation.isEnum') })
   status: ToothStatus;
 
   @ApiPropertyOptional({
@@ -27,38 +28,41 @@ export class UpdateOdontogramToothDto {
     description:
       'Superficies afectadas. Si se omite, se registra la pieza completa.',
   })
-  @IsArray()
-  @ArrayNotEmpty()
-  @IsEnum(ToothSurface, { each: true })
+  @IsArray({ message: i18nValidationMessage('validation.isArray') })
+  @ArrayNotEmpty({ message: i18nValidationMessage('validation.arrayNotEmpty') })
+  @IsEnum(ToothSurface, {
+    each: true,
+    message: i18nValidationMessage('validation.isEnum'),
+  })
   @IsOptional()
   surfaces?: ToothSurface[];
 
   @ApiPropertyOptional({ example: 'Lesión oclusal visible' })
-  @IsString()
+  @IsString({ message: i18nValidationMessage('validation.isString') })
   @IsOptional()
   observation?: string;
 
   @ApiPropertyOptional({ example: 'Caries inicial en fosa central' })
-  @IsString()
+  @IsString({ message: i18nValidationMessage('validation.isString') })
   @IsOptional()
   description?: string;
 
   @ApiPropertyOptional({ example: 'Restauración de resina' })
-  @IsString()
+  @IsString({ message: i18nValidationMessage('validation.isString') })
   @IsOptional()
   treatmentType?: string;
 
   @ApiPropertyOptional({
     description: 'UUID de la evolución clínica asociada',
   })
-  @IsUUID()
+  @IsUUID(undefined, { message: i18nValidationMessage('validation.isUUID') })
   @IsOptional()
   clinicalNoteId?: string;
 
   @ApiPropertyOptional({
     description: 'UUID del tratamiento asociado',
   })
-  @IsUUID()
+  @IsUUID(undefined, { message: i18nValidationMessage('validation.isUUID') })
   @IsOptional()
   treatmentId?: string;
 }

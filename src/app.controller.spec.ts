@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { apiMessage } from './common/i18n/api-message';
 
 describe('AppController', () => {
   let appController: AppController;
@@ -15,8 +16,10 @@ describe('AppController', () => {
   });
 
   describe('root', () => {
-    it('should return "Hello World!"', () => {
-      expect(appController.getHello()).toBe('Hello World!');
+    it('returns a localized API greeting message reference', () => {
+      expect(appController.getHello()).toEqual(
+        apiMessage('api.messages.hello_world'),
+      );
     });
   });
 });

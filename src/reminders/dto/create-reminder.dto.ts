@@ -1,3 +1,4 @@
+import { i18nValidationMessage } from 'nestjs-i18n';
 import { IsDateString, IsEnum, IsOptional, IsUUID } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
@@ -7,11 +8,11 @@ import { ReminderStatus } from '../interfaces/reminder-status.enum';
 
 export class CreateReminderDto {
   @ApiProperty({ description: 'UUID de la cita' })
-  @IsUUID()
+  @IsUUID(undefined, { message: i18nValidationMessage('validation.isUUID') })
   appointmentId: string;
 
   @ApiPropertyOptional({ description: 'UUID de la plantilla de mensaje' })
-  @IsUUID()
+  @IsUUID(undefined, { message: i18nValidationMessage('validation.isUUID') })
   @IsOptional()
   templateId?: string;
 
@@ -20,7 +21,7 @@ export class CreateReminderDto {
     example: ReminderType.EMAIL,
     description: 'Tipo de recordatorio',
   })
-  @IsEnum(ReminderType)
+  @IsEnum(ReminderType, { message: i18nValidationMessage('validation.isEnum') })
   @IsOptional()
   type?: ReminderType;
 
@@ -29,7 +30,9 @@ export class CreateReminderDto {
     example: NotificationChannel.EMAIL,
     description: 'Canal de notificación',
   })
-  @IsEnum(NotificationChannel)
+  @IsEnum(NotificationChannel, {
+    message: i18nValidationMessage('validation.isEnum'),
+  })
   channel: NotificationChannel;
 
   @ApiPropertyOptional({
@@ -37,7 +40,9 @@ export class CreateReminderDto {
     example: ReminderStatus.SCHEDULED,
     description: 'Estado del recordatorio',
   })
-  @IsEnum(ReminderStatus)
+  @IsEnum(ReminderStatus, {
+    message: i18nValidationMessage('validation.isEnum'),
+  })
   @IsOptional()
   status?: ReminderStatus;
 
@@ -45,6 +50,9 @@ export class CreateReminderDto {
     example: '2026-04-14T08:00:00.000Z',
     description: 'Fecha/hora programada (ISO 8601)',
   })
-  @IsDateString()
+  @IsDateString(
+    {},
+    { message: i18nValidationMessage('validation.isDateString') },
+  )
   scheduledAt: Date;
 }

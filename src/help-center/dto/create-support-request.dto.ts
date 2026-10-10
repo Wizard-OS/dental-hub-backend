@@ -1,3 +1,4 @@
+import { i18nValidationMessage } from 'nestjs-i18n';
 import {
   IsEmail,
   IsOptional,
@@ -14,9 +15,9 @@ export class CreateSupportRequestDto {
     minLength: 3,
     maxLength: 200,
   })
-  @IsString()
-  @MinLength(3)
-  @MaxLength(200)
+  @IsString({ message: i18nValidationMessage('validation.isString') })
+  @MinLength(3, { message: i18nValidationMessage('validation.minLength') })
+  @MaxLength(200, { message: i18nValidationMessage('validation.maxLength') })
   subject: string;
 
   @ApiProperty({
@@ -25,9 +26,9 @@ export class CreateSupportRequestDto {
     minLength: 10,
     maxLength: 2000,
   })
-  @IsString()
-  @MinLength(10)
-  @MaxLength(2000)
+  @IsString({ message: i18nValidationMessage('validation.isString') })
+  @MinLength(10, { message: i18nValidationMessage('validation.minLength') })
+  @MaxLength(2000, { message: i18nValidationMessage('validation.maxLength') })
   message: string;
 
   @ApiPropertyOptional({
@@ -35,7 +36,7 @@ export class CreateSupportRequestDto {
     description: 'Email de contacto alternativo',
   })
   @IsOptional()
-  @IsString()
-  @IsEmail()
+  @IsString({ message: i18nValidationMessage('validation.isString') })
+  @IsEmail({}, { message: i18nValidationMessage('validation.isEmail') })
   contactEmail?: string;
 }

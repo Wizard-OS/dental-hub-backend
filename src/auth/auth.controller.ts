@@ -1,3 +1,4 @@
+import { apiMessage } from '../common/i18n/api-message';
 import {
   Controller,
   Delete,
@@ -132,7 +133,7 @@ export class AuthController {
     createUploadInterceptor({
       directory: 'profile-photos',
       maxSizeMb: 5,
-      imageOnlyMessage: 'Only image files are allowed',
+      imageOnlyMessage: apiMessage('api.messages.only_image_files_are_allowed'),
       filename: (request) => {
         const userId =
           (request as Request & { user?: User }).user?.id ?? 'user';

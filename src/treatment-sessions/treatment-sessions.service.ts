@@ -1,3 +1,4 @@
+import { apiMessage } from '../common/i18n/api-message';
 import {
   BadRequestException,
   Injectable,
@@ -38,7 +39,9 @@ export class TreatmentSessionsService {
 
     if (treatment.patientId !== record.patientId) {
       throw new BadRequestException(
-        'Treatment and clinical record must belong to the same patient',
+        apiMessage(
+          'api.messages.treatment_and_clinical_record_must_belong_to_the_same_patient',
+        ),
       );
     }
 
@@ -63,7 +66,9 @@ export class TreatmentSessionsService {
 
   async findOne(clinicId: string, id: string) {
     if (!isUUID(id)) {
-      throw new BadRequestException('Invalid treatment session id');
+      throw new BadRequestException(
+        apiMessage('api.messages.invalid_treatment_session_id'),
+      );
     }
 
     const session = await this.treatmentSessionRepository
@@ -76,7 +81,11 @@ export class TreatmentSessionsService {
       .getOne();
 
     if (!session) {
-      throw new NotFoundException(`Treatment session with id ${id} not found`);
+      throw new NotFoundException(
+        apiMessage('api.messages.treatment_session_with_id_not_found', {
+          id: id,
+        }),
+      );
     }
 
     return session;
@@ -96,7 +105,9 @@ export class TreatmentSessionsService {
 
     if (treatment.patientId !== record.patientId) {
       throw new BadRequestException(
-        'Treatment and clinical record must belong to the same patient',
+        apiMessage(
+          'api.messages.treatment_and_clinical_record_must_belong_to_the_same_patient',
+        ),
       );
     }
 
@@ -111,7 +122,9 @@ export class TreatmentSessionsService {
   async remove(clinicId: string, id: string) {
     const session = await this.findOne(clinicId, id);
     await this.treatmentSessionRepository.remove(session);
-    return { message: `Treatment session ${id} removed` };
+    return {
+      message: apiMessage('api.messages.treatment_session_removed', { id: id }),
+    };
   }
 
   private async findTreatmentInClinic(treatmentId: string, clinicId: string) {
@@ -124,7 +137,10 @@ export class TreatmentSessionsService {
 
     if (!treatment) {
       throw new BadRequestException(
-        `Treatment ${treatmentId} does not belong to the requested clinic`,
+        apiMessage(
+          'api.messages.treatment_does_not_belong_to_the_requested_clinic',
+          { treatmentId: treatmentId },
+        ),
       );
     }
 
@@ -144,7 +160,10 @@ export class TreatmentSessionsService {
 
     if (!record) {
       throw new BadRequestException(
-        `Clinical record ${clinicalRecordId} does not belong to the requested clinic`,
+        apiMessage(
+          'api.messages.clinical_record_by_id_does_not_belong_to_clinic',
+          { clinicalRecordId: clinicalRecordId },
+        ),
       );
     }
 

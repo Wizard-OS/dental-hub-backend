@@ -1,3 +1,4 @@
+import { apiMessage } from '../common/i18n/api-message';
 import {
   Injectable,
   BadRequestException,
@@ -46,7 +47,9 @@ export class ClinicMembershipsService {
 
   async findAll(clinicId: string) {
     if (!isUUID(clinicId)) {
-      throw new BadRequestException('Invalid clinic id');
+      throw new BadRequestException(
+        apiMessage('api.messages.invalid_clinic_id'),
+      );
     }
 
     return await this.clinicMembershipRepository.find({
@@ -58,7 +61,9 @@ export class ClinicMembershipsService {
 
   async findOne(clinicId: string, id: string) {
     if (!isUUID(id)) {
-      throw new BadRequestException('Invalid membership id');
+      throw new BadRequestException(
+        apiMessage('api.messages.invalid_membership_id'),
+      );
     }
 
     const membership = await this.clinicMembershipRepository.findOne({
@@ -67,7 +72,9 @@ export class ClinicMembershipsService {
     });
 
     if (!membership) {
-      throw new NotFoundException(`Membership with id ${id} not found`);
+      throw new NotFoundException(
+        apiMessage('api.messages.membership_with_id_not_found', { id: id }),
+      );
     }
 
     return membership;
@@ -88,7 +95,9 @@ export class ClinicMembershipsService {
       updateClinicMembershipDto.userId &&
       updateClinicMembershipDto.userId !== membership.userId
     ) {
-      throw new BadRequestException('Membership user cannot be changed');
+      throw new BadRequestException(
+        apiMessage('api.messages.membership_user_cannot_be_changed'),
+      );
     }
 
     if (
@@ -134,7 +143,7 @@ export class ClinicMembershipsService {
   private ensureClinicScope(scopedClinicId: string, bodyClinicId: string) {
     if (scopedClinicId !== bodyClinicId) {
       throw new BadRequestException(
-        'clinicId does not match x-clinic-id scope',
+        apiMessage('api.messages.clinicid_does_not_match_x_clinic_id_scope'),
       );
     }
   }
@@ -153,7 +162,7 @@ export class ClinicMembershipsService {
 
     if (ownerCount === 0) {
       throw new BadRequestException(
-        'Clinic must keep at least one active owner',
+        apiMessage('api.messages.clinic_must_keep_at_least_one_active_owner'),
       );
     }
   }
@@ -178,9 +187,13 @@ export class ClinicMembershipsService {
 
   private handleDBErrors(error: unknown): never {
     if (error instanceof Object && 'code' in error && error.code === '23505') {
-      throw new BadRequestException((error as Record<string, unknown>).detail);
+      throw new BadRequestException(
+        apiMessage('api.messages.duplicate_record'),
+      );
     }
 
-    throw new InternalServerErrorException('Please check server logs');
+    throw new InternalServerErrorException(
+      apiMessage('api.messages.please_check_server_logs'),
+    );
   }
 }

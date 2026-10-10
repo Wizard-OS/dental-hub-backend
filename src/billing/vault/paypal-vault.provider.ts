@@ -1,3 +1,4 @@
+import { apiMessage } from '../../common/i18n/api-message';
 import { Injectable, ServiceUnavailableException } from '@nestjs/common';
 import { getEnv, getRequiredEnv } from '../../config/env';
 import { PayPalBillingProvider } from '../providers/paypal-billing.provider';
@@ -54,7 +55,9 @@ export class PayPalVaultProvider {
   ) {
     if (!this.setupConfigured)
       throw new ServiceUnavailableException(
-        'PayPal credentials and return URLs must be configured',
+        apiMessage(
+          'api.messages.paypal_credentials_and_return_urls_must_be_configured',
+        ),
       );
     const experience = {
       return_url: getRequiredEnv('PAYPAL_RETURN_URL'),

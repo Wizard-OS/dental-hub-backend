@@ -1,3 +1,4 @@
+import { i18nValidationMessage } from 'nestjs-i18n';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { IsEnum, IsOptional, IsString } from 'class-validator';
 
@@ -9,7 +10,7 @@ export class QueryBackofficeClinicsDto extends PaginationDto {
     example: 'Dental Hub',
     description: 'Busca por nombre, email o teléfono de clínica',
   })
-  @IsString()
+  @IsString({ message: i18nValidationMessage('validation.isString') })
   @IsOptional()
   search?: string;
 
@@ -18,7 +19,7 @@ export class QueryBackofficeClinicsDto extends PaginationDto {
     example: 'active',
     description: 'Filtra clínicas activas o inactivas',
   })
-  @IsString()
+  @IsString({ message: i18nValidationMessage('validation.isString') })
   @IsOptional()
   status?: 'active' | 'inactive';
 
@@ -27,7 +28,9 @@ export class QueryBackofficeClinicsDto extends PaginationDto {
     example: MembershipPlanCode.premium,
     description: 'Filtra por plan comercial actual',
   })
-  @IsEnum(MembershipPlanCode)
+  @IsEnum(MembershipPlanCode, {
+    message: i18nValidationMessage('validation.isEnum'),
+  })
   @IsOptional()
   planCode?: MembershipPlanCode;
 }

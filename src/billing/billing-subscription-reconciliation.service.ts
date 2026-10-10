@@ -1,3 +1,4 @@
+import { apiMessage } from '../common/i18n/api-message';
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { MembershipService } from '../membership/membership.service';
 import { BillingProvider } from '../membership/interfaces/billing-provider.enum';
@@ -55,12 +56,16 @@ export class BillingSubscriptionReconciliationService {
           local.providerPlanId !== details.providerPlanId
         ) {
           throw new BadRequestException(
-            'Subscription does not match current clinic checkout',
+            apiMessage(
+              'api.messages.subscription_does_not_match_current_clinic_checkout',
+            ),
           );
         }
         if (local.checkoutQuote && !details.currentPeriodStart) {
           throw new BadRequestException(
-            'Provider has not confirmed the trial start date',
+            apiMessage(
+              'api.messages.provider_has_not_confirmed_the_trial_start_date',
+            ),
           );
         }
         const trialStartedAt = local.checkoutQuote

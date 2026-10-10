@@ -1,3 +1,5 @@
+import { i18nValidationMessage } from 'nestjs-i18n';
+import { apiMessage } from '../common/i18n/api-message';
 import { pipeline } from 'stream/promises';
 import {
   Body,
@@ -56,7 +58,7 @@ class DeletePatientFileDto {
     description: 'Confirm moving this Google Drive file into Drive Trash.',
   })
   @IsOptional()
-  @IsBoolean()
+  @IsBoolean({ message: i18nValidationMessage('validation.isBoolean') })
   confirmDriveTrash?: boolean;
 }
 
@@ -164,7 +166,9 @@ export class PatientFilesController {
     createUploadInterceptor({
       directory: 'patient-files',
       maxSizeMb: 10,
-      imageOnlyMessage: 'Profile photo must be an image',
+      imageOnlyMessage: apiMessage(
+        'api.messages.profile_photo_must_be_an_image',
+      ),
       filename: timestampedUploadName,
     }),
   )

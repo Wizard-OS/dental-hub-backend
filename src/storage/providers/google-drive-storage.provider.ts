@@ -1,3 +1,4 @@
+import { apiMessage } from '../../common/i18n/api-message';
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { OAuth2Client } from 'google-auth-library';
@@ -39,7 +40,9 @@ export class GoogleDriveStorageProvider implements StorageProvider {
 
     if (!clientId || !clientSecret) {
       throw new BadRequestException(
-        'GOOGLE_DRIVE_CLIENT_ID and GOOGLE_DRIVE_CLIENT_SECRET are required',
+        apiMessage(
+          'api.messages.google_drive_client_id_and_google_drive_client_secret_are_required',
+        ),
       );
     }
 
@@ -80,7 +83,7 @@ export class GoogleDriveStorageProvider implements StorageProvider {
       !integration.encryptedAccessToken
     ) {
       throw new BadRequestException(
-        'Google Drive integration is not connected',
+        apiMessage('api.messages.google_drive_integration_is_not_connected'),
       );
     }
 
@@ -260,7 +263,9 @@ export class GoogleDriveStorageProvider implements StorageProvider {
     });
 
     if (!created.data.id) {
-      throw new BadRequestException('Could not create Google Drive folder');
+      throw new BadRequestException(
+        apiMessage('api.messages.could_not_create_google_drive_folder'),
+      );
     }
 
     return created.data.id;
@@ -272,7 +277,7 @@ export class GoogleDriveStorageProvider implements StorageProvider {
     const integration = await this.findActiveIntegration(clinicId);
     if (!integration) {
       throw new BadRequestException(
-        'Google Drive integration is not connected',
+        apiMessage('api.messages.google_drive_integration_is_not_connected'),
       );
     }
 

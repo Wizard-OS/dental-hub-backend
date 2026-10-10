@@ -1,3 +1,4 @@
+import { apiMessage } from '../common/i18n/api-message';
 import {
   BadRequestException,
   Injectable,
@@ -91,7 +92,9 @@ export class TreatmentsService {
 
   async findOne(context: ClinicAccessContext, id: string) {
     if (!isUUID(id)) {
-      throw new BadRequestException('Invalid treatment id');
+      throw new BadRequestException(
+        apiMessage('api.messages.invalid_treatment_id'),
+      );
     }
 
     const treatment = await this.treatmentRepository
@@ -105,7 +108,9 @@ export class TreatmentsService {
       .getOne();
 
     if (!treatment) {
-      throw new NotFoundException(`Treatment with id ${id} not found`);
+      throw new NotFoundException(
+        apiMessage('api.messages.treatment_with_id_not_found', { id: id }),
+      );
     }
 
     await this.patientAccessService.assertPatientAccessible(
@@ -164,7 +169,9 @@ export class TreatmentsService {
     const treatment = await this.findOne(context, id);
     treatment.isActive = false;
     await this.treatmentRepository.save(treatment);
-    return { message: `Treatment ${id} archived` };
+    return {
+      message: apiMessage('api.messages.treatment_archived', { id: id }),
+    };
   }
 
   private async assertPatientInClinic(patientId: string, clinicId: string) {
@@ -175,7 +182,9 @@ export class TreatmentsService {
 
     if (!patient) {
       throw new BadRequestException(
-        'Patient does not belong to the requested clinic',
+        apiMessage(
+          'api.messages.patient_does_not_belong_to_the_requested_clinic',
+        ),
       );
     }
   }
@@ -192,7 +201,10 @@ export class TreatmentsService {
 
     if (!membership) {
       throw new BadRequestException(
-        `Doctor/user with id ${doctorId} does not belong to the requested clinic`,
+        apiMessage(
+          'api.messages.doctor_user_with_id_does_not_belong_to_the_requested_clinic',
+          { doctorId: doctorId },
+        ),
       );
     }
   }
@@ -208,7 +220,9 @@ export class TreatmentsService {
 
     if (!membership) {
       throw new BadRequestException(
-        `Membership ${membershipId} does not belong to the requested clinic`,
+        apiMessage('api.messages.membership_by_id_does_not_belong_to_clinic', {
+          membershipId: membershipId,
+        }),
       );
     }
   }
@@ -225,7 +239,9 @@ export class TreatmentsService {
 
     if (!invoice) {
       throw new BadRequestException(
-        'Invoice does not belong to patient and clinic scope',
+        apiMessage(
+          'api.messages.invoice_does_not_belong_to_patient_and_clinic_scope',
+        ),
       );
     }
   }

@@ -1,3 +1,4 @@
+import { i18nValidationMessage } from 'nestjs-i18n';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import {
   ArrayNotEmpty,
@@ -14,7 +15,7 @@ export class UpdateBackofficeUserDto {
     example: true,
     description: 'Estado administrativo del usuario',
   })
-  @IsBoolean()
+  @IsBoolean({ message: i18nValidationMessage('validation.isBoolean') })
   @IsOptional()
   isActive?: boolean;
 
@@ -24,9 +25,12 @@ export class UpdateBackofficeUserDto {
     example: [ValidRoles.superUser],
     description: 'Roles globales del usuario',
   })
-  @IsArray()
-  @ArrayNotEmpty()
-  @IsEnum(ValidRoles, { each: true })
+  @IsArray({ message: i18nValidationMessage('validation.isArray') })
+  @ArrayNotEmpty({ message: i18nValidationMessage('validation.arrayNotEmpty') })
+  @IsEnum(ValidRoles, {
+    each: true,
+    message: i18nValidationMessage('validation.isEnum'),
+  })
   @IsOptional()
   roles?: ValidRoles[];
 }

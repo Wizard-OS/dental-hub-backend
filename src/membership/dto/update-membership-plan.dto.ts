@@ -1,3 +1,4 @@
+import { i18nValidationMessage } from 'nestjs-i18n';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsEnum, IsOptional, IsString, MaxLength } from 'class-validator';
 
@@ -9,15 +10,17 @@ export class UpdateMembershipPlanDto {
     example: MembershipPlanCode.premium,
     description: 'Plan comercial a asignar manualmente',
   })
-  @IsEnum(MembershipPlanCode)
+  @IsEnum(MembershipPlanCode, {
+    message: i18nValidationMessage('validation.isEnum'),
+  })
   planCode: MembershipPlanCode;
 
   @ApiPropertyOptional({
     example: 'Upgrade manual MVP',
     description: 'Motivo auditable del cambio manual',
   })
-  @IsString()
-  @MaxLength(500)
+  @IsString({ message: i18nValidationMessage('validation.isString') })
+  @MaxLength(500, { message: i18nValidationMessage('validation.maxLength') })
   @IsOptional()
   reason?: string;
 }

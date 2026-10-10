@@ -51,10 +51,12 @@ describe('User sessions by device (e2e)', () => {
       )
       .send(credentials)
       .expect(201);
+    const desktopToken = (desktopLogin.body as { token: string }).token;
+    const mobileToken = (mobileLogin.body as { token: string }).token;
 
     const sessionsResponse = await request(server)
       .get('/user-sessions')
-      .set('Authorization', `Bearer ${mobileLogin.body.token}`)
+      .set('Authorization', `Bearer ${mobileToken}`)
       .expect(200);
 
     expect(sessionsResponse.body).toEqual(
@@ -75,24 +77,30 @@ describe('User sessions by device (e2e)', () => {
       ]),
     );
 
-    const desktopSession = sessionsResponse.body.find(
-      (session: { deviceName: string }) =>
-        session.deviceName === 'MacBook Pro 16"',
+    const sessions = sessionsResponse.body as {
+      deviceName: string;
+      id: string;
+    }[];
+    const desktopSession = sessions.find(
+      (session) => session.deviceName === 'MacBook Pro 16"',
     );
+    if (!desktopSession) {
+      throw new Error('Expected desktop session to be present');
+    }
 
     await request(server)
       .delete(`/user-sessions/${desktopSession.id}`)
-      .set('Authorization', `Bearer ${mobileLogin.body.token}`)
+      .set('Authorization', `Bearer ${mobileToken}`)
       .expect(200);
 
     await request(server)
       .get('/auth/profile')
-      .set('Authorization', `Bearer ${desktopLogin.body.token}`)
+      .set('Authorization', `Bearer ${desktopToken}`)
       .expect(401);
 
     await request(server)
       .get('/auth/profile')
-      .set('Authorization', `Bearer ${mobileLogin.body.token}`)
+      .set('Authorization', `Bearer ${mobileToken}`)
       .expect(200);
   });
 });

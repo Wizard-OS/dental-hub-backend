@@ -1,3 +1,4 @@
+import { apiMessage, type ApiMessage } from '../../common/i18n/api-message';
 import {
   ConflictException,
   Injectable,
@@ -84,7 +85,7 @@ export class PersonalDriveStorage implements PersonalDrivePort {
     )
       throw this.error(
         'GOOGLE_NOT_CONFIGURED',
-        'Google Drive is not configured.',
+        apiMessage('api.messages.google_drive_is_not_configured'),
       );
     return new OAuth2Client(
       process.env.GOOGLE_DRIVE_CLIENT_ID,
@@ -100,13 +101,17 @@ export class PersonalDriveStorage implements PersonalDrivePort {
         if (error instanceof ConflictException) throw error;
         throw this.error(
           'DRIVE_RECONNECT_REQUIRED',
-          'Drive authorization expired. Sign in to Google again and allow Drive access.',
+          apiMessage(
+            'api.messages.drive_authorization_expired_sign_in_to_google_again_and_allow_drive_access',
+          ),
         );
       });
     if (!tokens.id_token || !tokens.access_token)
       throw this.error(
         'DRIVE_RECONNECT_REQUIRED',
-        'Sign in to Google again and allow Drive access.',
+        apiMessage(
+          'api.messages.sign_in_to_google_again_and_allow_drive_access',
+        ),
       );
 
     const identity = await this.verifier.verify(tokens.id_token);
@@ -128,12 +133,16 @@ export class PersonalDriveStorage implements PersonalDrivePort {
     if (existing && existing.googleSubject !== authorization.subject)
       throw this.error(
         'DRIVE_ACCOUNT_MISMATCH',
-        'Reconnect the original Google account to preserve access to your files.',
+        apiMessage(
+          'api.messages.reconnect_the_original_google_account_to_preserve_access_to_your_files',
+        ),
       );
     if (!authorization.refreshToken && !existing?.encryptedRefreshToken)
       throw this.error(
         'DRIVE_RECONNECT_REQUIRED',
-        'Offline Drive permission is missing. Sign in to Google again and allow Drive access.',
+        apiMessage(
+          'api.messages.offline_drive_permission_is_missing_sign_in_to_google_again_and_allow',
+        ),
       );
     const integration =
       existing ??
@@ -163,7 +172,9 @@ export class PersonalDriveStorage implements PersonalDrivePort {
       if (!root || root.data.trashed)
         throw this.error(
           'DRIVE_FOLDER_UNAVAILABLE',
-          'Your DentalHub Drive folder is unavailable. Restore it in Google Drive and reconnect.',
+          apiMessage(
+            'api.messages.your_dentalhub_drive_folder_is_unavailable_restore_it_in_google_drive_and',
+          ),
         );
     } else {
       integration.rootFolderId = await this.legacyDrive.findOrCreateFolder(
@@ -210,7 +221,10 @@ export class PersonalDriveStorage implements PersonalDrivePort {
     if (attachedFiles > 0 && !confirmFilesBackedUp)
       throw this.error(
         'DRIVE_FILES_BACKUP_CONFIRMATION_REQUIRED',
-        `This Drive account owns ${attachedFiles} patient file(s). Back them up or transfer them before disconnecting, then confirm to continue.`,
+        apiMessage(
+          'api.messages.this_drive_account_owns_patient_file_s_back_them_up_or_transfer',
+          { attachedFiles: attachedFiles },
+        ),
       );
 
     if (integration.driveWatchChannelId && integration.driveWatchResourceId) {
@@ -251,7 +265,9 @@ export class PersonalDriveStorage implements PersonalDrivePort {
     },
   ): Promise<StorageUploadResult> {
     if (!file.driveFileId || !file.storageIntegrationId)
-      throw new NotFoundException('Patient file is not stored in Drive.');
+      throw new NotFoundException(
+        apiMessage('api.messages.patient_file_is_not_stored_in_drive'),
+      );
     const integration = await this.requireIntegration(
       file.storageIntegrationId,
     );
@@ -303,7 +319,9 @@ export class PersonalDriveStorage implements PersonalDrivePort {
       );
       throw this.error(
         'DRIVE_SYNC_CONFLICT',
-        'This file changed in Google Drive. Review the Drive version before applying app changes.',
+        apiMessage(
+          'api.messages.this_file_changed_in_google_drive_review_the_drive_version_before_applying',
+        ),
       );
     }
 
@@ -379,7 +397,9 @@ export class PersonalDriveStorage implements PersonalDrivePort {
 
   async restore(file: PatientFile): Promise<StorageUploadResult> {
     if (!file.driveFileId || !file.storageIntegrationId)
-      throw new NotFoundException('Patient file is not stored in Drive.');
+      throw new NotFoundException(
+        apiMessage('api.messages.patient_file_is_not_stored_in_drive'),
+      );
     const integration = await this.requireIntegration(
       file.storageIntegrationId,
     );
@@ -430,7 +450,9 @@ export class PersonalDriveStorage implements PersonalDrivePort {
 
   async listRevisions(file: PatientFile) {
     if (!file.driveFileId || !file.storageIntegrationId)
-      throw new NotFoundException('Patient file is not stored in Drive.');
+      throw new NotFoundException(
+        apiMessage('api.messages.patient_file_is_not_stored_in_drive'),
+      );
     const integration = await this.requireIntegration(
       file.storageIntegrationId,
     );
@@ -455,7 +477,9 @@ export class PersonalDriveStorage implements PersonalDrivePort {
 
   async downloadRevision(file: PatientFile, revisionId: string) {
     if (!file.driveFileId || !file.storageIntegrationId)
-      throw new NotFoundException('Patient file is not stored in Drive.');
+      throw new NotFoundException(
+        apiMessage('api.messages.patient_file_is_not_stored_in_drive'),
+      );
     const integration = await this.requireIntegration(
       file.storageIntegrationId,
     );
@@ -504,7 +528,9 @@ export class PersonalDriveStorage implements PersonalDrivePort {
       if ((existing.data.files?.length ?? 0) > 1)
         throw this.error(
           'DRIVE_DUPLICATE_FILE',
-          'Duplicate Drive files need attention before migration can continue.',
+          apiMessage(
+            'api.messages.duplicate_drive_files_need_attention_before_migration_can_continue',
+          ),
         );
       const metadata =
         existing.data.files?.[0] ??
@@ -542,7 +568,9 @@ export class PersonalDriveStorage implements PersonalDrivePort {
       )
         throw this.error(
           'DRIVE_UPLOAD_VERIFICATION_FAILED',
-          'Drive upload could not be verified. Retry the upload.',
+          apiMessage(
+            'api.messages.drive_upload_could_not_be_verified_retry_the_upload',
+          ),
         );
       return {
         storageProvider: StorageProviderType.GOOGLE_DRIVE,
@@ -576,7 +604,8 @@ export class PersonalDriveStorage implements PersonalDrivePort {
       where: { id: input.patientId, clinicId: input.clinicId },
       relations: { clinic: true },
     });
-    if (!patient) throw new NotFoundException('Patient not found');
+    if (!patient)
+      throw new NotFoundException(apiMessage('api.messages.patient_missing'));
 
     const drive = await this.drive(integration);
     const source = await drive.files.get({
@@ -594,7 +623,9 @@ export class PersonalDriveStorage implements PersonalDrivePort {
     if (alreadyImported)
       throw this.error(
         'DRIVE_FILE_ALREADY_IMPORTED',
-        'This Drive file is already attached to a patient record.',
+        apiMessage(
+          'api.messages.this_drive_file_is_already_attached_to_a_patient_record',
+        ),
       );
     const allowedMimeTypes = new Set([
       'application/msword',
@@ -615,7 +646,9 @@ export class PersonalDriveStorage implements PersonalDrivePort {
     ) {
       throw this.error(
         'DRIVE_IMPORT_FILE_UNSUPPORTED',
-        'Select an untrashed image or document smaller than 10 MB.',
+        apiMessage(
+          'api.messages.select_an_untrashed_image_or_document_smaller_than_10_mb',
+        ),
       );
     }
 
@@ -650,7 +683,9 @@ export class PersonalDriveStorage implements PersonalDrivePort {
       ).catch(() => {
         throw this.error(
           'DRIVE_IMPORT_DOWNLOAD_FAILED',
-          'The selected Drive file could not be imported.',
+          apiMessage(
+            'api.messages.the_selected_drive_file_could_not_be_imported',
+          ),
         );
       });
 
@@ -661,7 +696,9 @@ export class PersonalDriveStorage implements PersonalDrivePort {
       )
         throw this.error(
           'DRIVE_IMPORT_VERIFICATION_FAILED',
-          'The selected Drive file changed or failed integrity verification. Try importing it again.',
+          apiMessage(
+            'api.messages.the_selected_drive_file_changed_or_failed_integrity_verification_try_importing_it',
+          ),
         );
 
       const file: UploadedFile = {
@@ -732,7 +769,9 @@ export class PersonalDriveStorage implements PersonalDrivePort {
       if (!moved.id)
         throw this.error(
           'DRIVE_IMPORT_MOVE_FAILED',
-          'The selected Drive file could not be moved into the patient folder.',
+          apiMessage(
+            'api.messages.the_selected_drive_file_could_not_be_moved_into_the_patient_folder',
+          ),
         );
       return {
         storageProvider: StorageProviderType.GOOGLE_DRIVE,
@@ -798,7 +837,9 @@ export class PersonalDriveStorage implements PersonalDrivePort {
 
   async download(file: PatientFile, clinicId: string): Promise<Readable> {
     if (!file.driveFileId)
-      throw new NotFoundException('Patient file is unavailable.');
+      throw new NotFoundException(
+        apiMessage('api.messages.patient_file_is_unavailable'),
+      );
     if (!file.storageIntegrationId) {
       const legacy = await this.legacyIntegrations.findOneBy({
         clinicId,
@@ -808,7 +849,9 @@ export class PersonalDriveStorage implements PersonalDrivePort {
       if (!legacy)
         throw this.error(
           'DRIVE_RECONNECT_REQUIRED',
-          'The original clinic Drive connection is unavailable.',
+          apiMessage(
+            'api.messages.the_original_clinic_drive_connection_is_unavailable',
+          ),
         );
       try {
         const drive = await this.legacyDrive.getDrive(legacy);
@@ -820,10 +863,14 @@ export class PersonalDriveStorage implements PersonalDrivePort {
         ).data;
       } catch (error) {
         if (this.statusCode(error) === 404)
-          throw new NotFoundException('This Drive file is unavailable.');
+          throw new NotFoundException(
+            apiMessage('api.messages.this_drive_file_is_unavailable'),
+          );
         throw this.error(
           'LEGACY_DRIVE_UNAVAILABLE',
-          'The original clinic Drive connection is unavailable. Ask the clinic administrator to reconnect it.',
+          apiMessage(
+            'api.messages.the_original_clinic_drive_connection_is_unavailable_ask_the_clinic_administrator_to',
+          ),
         );
       }
     }
@@ -1685,7 +1732,9 @@ export class PersonalDriveStorage implements PersonalDrivePort {
     )
       throw this.error(
         'DRIVE_CONNECTION_REQUIRED',
-        'Connect your Google Drive before uploading patient files.',
+        apiMessage(
+          'api.messages.connect_your_google_drive_before_uploading_patient_files',
+        ),
       );
     return integration;
   }
@@ -1707,7 +1756,9 @@ export class PersonalDriveStorage implements PersonalDrivePort {
     )
       throw this.error(
         'DRIVE_RECONNECT_REQUIRED',
-        'The file owner needs to reconnect Google Drive.',
+        apiMessage(
+          'api.messages.the_file_owner_needs_to_reconnect_google_drive',
+        ),
       );
     return integration;
   }
@@ -1763,19 +1814,27 @@ export class PersonalDriveStorage implements PersonalDrivePort {
         });
         throw this.error(
           'DRIVE_RECONNECT_REQUIRED',
-          'The file owner needs to reconnect Google Drive.',
+          apiMessage(
+            'api.messages.the_file_owner_needs_to_reconnect_google_drive',
+          ),
         );
       }
       if (status === 404)
-        throw new NotFoundException('This Drive file is unavailable.');
+        throw new NotFoundException(
+          apiMessage('api.messages.this_drive_file_is_unavailable'),
+        );
       if (status === 403)
         throw this.error(
           'DRIVE_ACCESS_DENIED',
-          'Drive access or storage quota is unavailable. Check your Google account and retry.',
+          apiMessage(
+            'api.messages.drive_access_or_storage_quota_is_unavailable_check_your_google_account_and',
+          ),
         );
       throw this.error(
         'DRIVE_UNAVAILABLE',
-        'Google Drive is temporarily unavailable. Retry when your connection is restored.',
+        apiMessage(
+          'api.messages.google_drive_is_temporarily_unavailable_retry_when_your_connection_is_restored',
+        ),
       );
     }
   }
@@ -1790,7 +1849,7 @@ export class PersonalDriveStorage implements PersonalDrivePort {
       (typeof value.code === 'number' ? value.code : undefined)
     );
   }
-  private error(code: string, message: string) {
+  private error(code: string, message: ApiMessage) {
     return new ConflictException({ code, message });
   }
 }

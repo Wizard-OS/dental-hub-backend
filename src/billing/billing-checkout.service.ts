@@ -1,3 +1,4 @@
+import { apiMessage } from '../common/i18n/api-message';
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { createHash } from 'crypto';
 import { getEnv } from '../config/env';
@@ -63,7 +64,9 @@ export class BillingCheckoutService {
       !subscription.recurringConsentAt &&
       subscription.planCode !== MembershipPlanCode.premium;
     if (dto.promotionCode && !trialEligible)
-      throw new BadRequestException('Welcome promotion is no longer eligible');
+      throw new BadRequestException(
+        apiMessage('api.messages.welcome_promotion_is_no_longer_eligible'),
+      );
     const quote = membershipQuote(
       dto.interval,
       dto.promotionCode,
@@ -119,11 +122,13 @@ export class BillingCheckoutService {
     if (dto.paymentMethodId) {
       if (!dto.requestId || !actorId || dto.acceptRecurringBilling !== true)
         throw new BadRequestException(
-          'Request ID and recurring billing consent are required',
+          apiMessage(
+            'api.messages.request_id_and_recurring_billing_consent_are_required',
+          ),
         );
       if (dto.planCode !== MembershipPlanCode.premium)
         throw new BadRequestException(
-          'Only premium subscriptions are billable',
+          apiMessage('api.messages.only_premium_subscriptions_are_billable'),
         );
       return this.renewals.start(clinicId, actorId, {
         interval: dto.interval,
@@ -135,11 +140,15 @@ export class BillingCheckoutService {
       });
     }
     if (dto.planCode !== MembershipPlanCode.premium) {
-      throw new BadRequestException('Only premium subscriptions are billable');
+      throw new BadRequestException(
+        apiMessage('api.messages.only_premium_subscriptions_are_billable'),
+      );
     }
     if (dto.promotionCode && !dto.startTrial) {
       throw new BadRequestException(
-        'Promotions require the membership trial offer',
+        apiMessage(
+          'api.messages.promotions_require_the_membership_trial_offer',
+        ),
       );
     }
     const quote = dto.startTrial

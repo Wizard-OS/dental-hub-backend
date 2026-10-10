@@ -119,7 +119,7 @@ describe('PayPal advertised trial validation', () => {
       if (mismatch === 'discountRecurs')
         plan.billing_cycles[1].total_cycles = 0;
       await expect(provider.createSubscription(input)).rejects.toThrow(
-        'does not match',
+        'api.messages.paypal_plan_does_not_match_the_advertised_membership_offer',
       );
       expect(request).toHaveBeenCalledTimes(1);
     },
@@ -127,7 +127,7 @@ describe('PayPal advertised trial validation', () => {
   it('reports unconfigured offers without creating an unrelated legacy plan', async () => {
     delete process.env.PAYPAL_PREMIUM_YEARLY_WELCOME_TRIAL_PLAN_ID;
     await expect(provider.createSubscription(input)).rejects.toThrow(
-      'not configured',
+      'api.messages.membership_offer_is_not_configured',
     );
     expect(request).not.toHaveBeenCalled();
   });

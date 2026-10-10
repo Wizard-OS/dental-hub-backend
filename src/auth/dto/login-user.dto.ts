@@ -1,3 +1,4 @@
+import { i18nValidationMessage } from 'nestjs-i18n';
 import {
   IsEmail,
   IsString,
@@ -12,8 +13,8 @@ export class LoginUserDto {
     example: 'user@example.com',
     description: 'Correo electrónico',
   })
-  @IsString()
-  @IsEmail()
+  @IsString({ message: i18nValidationMessage('validation.isString') })
+  @IsEmail({}, { message: i18nValidationMessage('validation.isEmail') })
   email: string;
 
   @ApiProperty({
@@ -22,12 +23,11 @@ export class LoginUserDto {
     minLength: 6,
     maxLength: 50,
   })
-  @IsString()
-  @MinLength(6)
-  @MaxLength(50)
+  @IsString({ message: i18nValidationMessage('validation.isString') })
+  @MinLength(6, { message: i18nValidationMessage('validation.minLength') })
+  @MaxLength(50, { message: i18nValidationMessage('validation.maxLength') })
   @Matches(/(?:(?=.*\d)|(?=.*\W+))(?![.\n])(?=.*[A-Z])(?=.*[a-z]).*$/, {
-    message:
-      'The password must have a Uppercase, lowercase letter and a number',
+    message: i18nValidationMessage('validation.password'),
   })
   password: string;
 }

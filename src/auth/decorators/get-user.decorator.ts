@@ -1,3 +1,4 @@
+import { apiMessage } from '../../common/i18n/api-message';
 import {
   createParamDecorator,
   ExecutionContext,
@@ -12,7 +13,9 @@ export const GetUser = createParamDecorator<keyof User | undefined>(
     const user = req.user;
 
     if (!user)
-      throw new InternalServerErrorException('User not found (request)');
+      throw new InternalServerErrorException(
+        apiMessage('api.messages.user_not_found_request'),
+      );
 
     if (!data) return user;
 

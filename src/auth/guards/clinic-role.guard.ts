@@ -1,3 +1,4 @@
+import { apiMessage } from '../../common/i18n/api-message';
 import { Reflector } from '@nestjs/core';
 import {
   CanActivate,
@@ -28,7 +29,9 @@ export class ClinicRoleGuard implements CanActivate {
     if (role && roles.includes(role)) return true;
 
     throw new ForbiddenException(
-      `Clinic membership role must be one of: [${roles.join(', ')}]`,
+      apiMessage('api.messages.clinic_membership_role_must_be_one_of', {
+        roles: roles.join(', '),
+      }),
     );
   }
 }

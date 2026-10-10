@@ -1,3 +1,5 @@
+import { i18nValidationMessage } from 'nestjs-i18n';
+import { apiMessage, type ApiMessageKey } from '../../common/i18n/api-message';
 import {
   Body,
   ConflictException,
@@ -36,13 +38,16 @@ import { PersonalDriveError } from '../domain/personal-drive';
 
 class ConnectDriveDto {
   @ApiProperty()
-  @IsString()
-  @IsNotEmpty()
-  @MaxLength(4096)
+  @IsString({ message: i18nValidationMessage('validation.isString') })
+  @IsNotEmpty({ message: i18nValidationMessage('validation.isNotEmpty') })
+  @MaxLength(4096, { message: i18nValidationMessage('validation.maxLength') })
   serverAuthCode: string;
 }
 class MigrateDriveDto {
-  @ApiPropertyOptional() @IsOptional() @IsBoolean() retry?: boolean;
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean({ message: i18nValidationMessage('validation.isBoolean') })
+  retry?: boolean;
 }
 class DisconnectDriveDto {
   @ApiPropertyOptional({
@@ -50,7 +55,7 @@ class DisconnectDriveDto {
       'Confirm patient files owned by this Drive have been backed up or transferred.',
   })
   @IsOptional()
-  @IsBoolean()
+  @IsBoolean({ message: i18nValidationMessage('validation.isBoolean') })
   confirmFilesBackedUp?: boolean;
 }
 
@@ -76,7 +81,11 @@ export class PersonalDriveController {
     await this.guard(() =>
       this.drive.disconnect(user.id, dto?.confirmFilesBackedUp ?? false),
     );
-    return { message: 'Google Drive disconnected. Files remain in Drive.' };
+    return {
+      message: apiMessage(
+        'api.messages.google_drive_disconnected_files_remain_in_drive',
+      ),
+    };
   }
   @Get('migration')
   @AuthClinic()
@@ -139,9 +148,15 @@ export class PersonalDriveController {
       if (error instanceof PersonalDriveError)
         throw new ConflictException({
           code: error.code,
-          message: error.message,
+          message: apiMessage(driveErrorMessages[error.code] ?? 'api.http.409'),
         });
       throw error;
     }
   }
 }
+
+const driveErrorMessages: Record<string, ApiMessageKey> = {
+  GOOGLE_NOT_CONFIGURED: 'api.drive.GOOGLE_NOT_CONFIGURED',
+  INVALID_GOOGLE_TOKEN: 'api.drive.INVALID_GOOGLE_TOKEN',
+  DRIVE_SCOPE_REQUIRED: 'api.drive.DRIVE_SCOPE_REQUIRED',
+};

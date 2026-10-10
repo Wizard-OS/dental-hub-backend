@@ -1,3 +1,4 @@
+import { apiMessage } from '../../common/i18n/api-message';
 import { Injectable, ServiceUnavailableException } from '@nestjs/common';
 import { getEnv, getRequiredEnv } from '../../config/env';
 
@@ -12,7 +13,7 @@ export class MembershipEmailProvider {
   ) {
     if (!this.configured)
       throw new ServiceUnavailableException(
-        'Membership email is not configured',
+        apiMessage('api.messages.membership_email_is_not_configured'),
       );
     const response = await fetch('https://api.resend.com/emails', {
       method: 'POST',
@@ -30,11 +31,15 @@ export class MembershipEmailProvider {
       }),
     });
     if (!response.ok)
-      throw new ServiceUnavailableException('Membership email delivery failed');
+      throw new ServiceUnavailableException(
+        apiMessage('api.messages.membership_email_delivery_failed'),
+      );
     const result = (await response.json()) as { id?: string };
     if (!result.id)
       throw new ServiceUnavailableException(
-        'Email provider did not confirm delivery acceptance',
+        apiMessage(
+          'api.messages.email_provider_did_not_confirm_delivery_acceptance',
+        ),
       );
     return result.id;
   }

@@ -1,3 +1,4 @@
+import { i18nValidationMessage } from 'nestjs-i18n';
 import {
   IsEmail,
   IsOptional,
@@ -13,8 +14,8 @@ export class CreateUserDto {
     example: 'user@example.com',
     description: 'Correo electrónico del usuario',
   })
-  @IsString()
-  @IsEmail()
+  @IsString({ message: i18nValidationMessage('validation.isString') })
+  @IsEmail({}, { message: i18nValidationMessage('validation.isEmail') })
   email: string;
 
   @ApiProperty({
@@ -23,23 +24,22 @@ export class CreateUserDto {
     minLength: 6,
     maxLength: 50,
   })
-  @IsString()
-  @MinLength(6)
-  @MaxLength(50)
+  @IsString({ message: i18nValidationMessage('validation.isString') })
+  @MinLength(6, { message: i18nValidationMessage('validation.minLength') })
+  @MaxLength(50, { message: i18nValidationMessage('validation.maxLength') })
   @Matches(/(?:(?=.*\d)|(?=.*\W+))(?![.\n])(?=.*[A-Z])(?=.*[a-z]).*$/, {
-    message:
-      'The password must have a Uppercase, lowercase letter and a number',
+    message: i18nValidationMessage('validation.password'),
   })
   password: string;
 
   @ApiProperty({ example: 'Juan', description: 'Nombre del usuario' })
-  @IsString()
-  @MinLength(1)
+  @IsString({ message: i18nValidationMessage('validation.isString') })
+  @MinLength(1, { message: i18nValidationMessage('validation.minLength') })
   firstName: string;
 
   @ApiProperty({ example: 'Pérez', description: 'Apellido del usuario' })
-  @IsString()
-  @MinLength(1)
+  @IsString({ message: i18nValidationMessage('validation.isString') })
+  @MinLength(1, { message: i18nValidationMessage('validation.minLength') })
   lastName: string;
 
   @ApiPropertyOptional({
@@ -47,7 +47,7 @@ export class CreateUserDto {
     description: 'URL de la foto de perfil',
   })
   @IsOptional()
-  @IsString()
-  @MaxLength(2048)
+  @IsString({ message: i18nValidationMessage('validation.isString') })
+  @MaxLength(2048, { message: i18nValidationMessage('validation.maxLength') })
   profilePhotoUrl?: string;
 }

@@ -1,12 +1,13 @@
+import { i18nValidationMessage } from 'nestjs-i18n';
 import { ApiProperty } from '@nestjs/swagger';
 import { IsUUID } from 'class-validator';
 
 export class CreatePatientAssignmentDto {
   @ApiProperty({ description: 'UUID del paciente' })
-  @IsUUID()
+  @IsUUID(undefined, { message: i18nValidationMessage('validation.isUUID') })
   patientId: string;
 
   @ApiProperty({ description: 'UUID de la membresía profesional secundaria' })
-  @IsUUID()
+  @IsUUID(undefined, { message: i18nValidationMessage('validation.isUUID') })
   professionalMembershipId: string;
 }

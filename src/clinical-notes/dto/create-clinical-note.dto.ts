@@ -1,3 +1,4 @@
+import { i18nValidationMessage } from 'nestjs-i18n';
 import { Type } from 'class-transformer';
 import {
   IsArray,
@@ -13,7 +14,7 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateClinicalNoteDto {
   @ApiProperty({ description: 'UUID del registro clínico' })
-  @IsUUID()
+  @IsUUID(undefined, { message: i18nValidationMessage('validation.isUUID') })
   clinicalRecordId: string;
 
   @ApiProperty({
@@ -21,32 +22,32 @@ export class CreateClinicalNoteDto {
     description: 'Contenido de la nota clínica',
     minLength: 3,
   })
-  @IsString()
-  @MinLength(3)
+  @IsString({ message: i18nValidationMessage('validation.isString') })
+  @MinLength(3, { message: i18nValidationMessage('validation.minLength') })
   content: string;
 
   @ApiPropertyOptional({ example: 'Dolor al masticar' })
-  @IsString()
+  @IsString({ message: i18nValidationMessage('validation.isString') })
   @IsOptional()
   reason?: string;
 
   @ApiPropertyOptional({ example: 'Caries profunda pieza 36' })
-  @IsString()
+  @IsString({ message: i18nValidationMessage('validation.isString') })
   @IsOptional()
   diagnosis?: string;
 
   @ApiPropertyOptional({ example: 'Restauración temporal' })
-  @IsString()
+  @IsString({ message: i18nValidationMessage('validation.isString') })
   @IsOptional()
   procedure?: string;
 
   @ApiPropertyOptional({ example: 'Control en 7 días' })
-  @IsString()
+  @IsString({ message: i18nValidationMessage('validation.isString') })
   @IsOptional()
   indications?: string;
 
   @ApiPropertyOptional({ example: 'Paciente tolera bien el procedimiento' })
-  @IsString()
+  @IsString({ message: i18nValidationMessage('validation.isString') })
   @IsOptional()
   observations?: string;
 
@@ -54,15 +55,18 @@ export class CreateClinicalNoteDto {
     example: ['36'],
     description: 'Piezas dentales asociadas a la evolución',
   })
-  @IsArray()
-  @IsString({ each: true })
+  @IsArray({ message: i18nValidationMessage('validation.isArray') })
+  @IsString({
+    each: true,
+    message: i18nValidationMessage('validation.isString'),
+  })
   @IsOptional()
   toothCodes?: string[];
   @ApiPropertyOptional({ example: 'Control de ortodoncia' })
   @IsOptional()
-  @IsString()
-  @MinLength(1)
-  @MaxLength(200)
+  @IsString({ message: i18nValidationMessage('validation.isString') })
+  @MinLength(1, { message: i18nValidationMessage('validation.minLength') })
+  @MaxLength(200, { message: i18nValidationMessage('validation.maxLength') })
   title?: string;
 
   @ApiPropertyOptional({
@@ -71,6 +75,6 @@ export class CreateClinicalNoteDto {
   })
   @ValidateIf((_, value) => value !== undefined)
   @Type(() => Date)
-  @IsDate()
+  @IsDate({ message: i18nValidationMessage('validation.isDate') })
   occurredAt?: Date;
 }

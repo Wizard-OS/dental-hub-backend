@@ -1,3 +1,4 @@
+import { apiMessage } from '../common/i18n/api-message';
 import { BadRequestException, Injectable } from '@nestjs/common';
 import {
   AppointmentAvailabilitySettingsDto,
@@ -50,7 +51,9 @@ export class AppointmentSettingsPolicy {
 
     if (start.date !== end.date) {
       throw new BadRequestException(
-        'Appointment must start and end on the same local day',
+        apiMessage(
+          'api.messages.appointment_must_start_and_end_on_the_same_local_day',
+        ),
       );
     }
 
@@ -59,7 +62,9 @@ export class AppointmentSettingsPolicy {
     );
 
     if (specialDate?.isClosed) {
-      throw new BadRequestException('Appointment falls on a closed date');
+      throw new BadRequestException(
+        apiMessage('api.messages.appointment_falls_on_a_closed_date'),
+      );
     }
 
     const workingWindow = specialDate
@@ -77,7 +82,9 @@ export class AppointmentSettingsPolicy {
       !workingWindow.startTime ||
       !workingWindow.endTime
     ) {
-      throw new BadRequestException('Appointment falls outside working hours');
+      throw new BadRequestException(
+        apiMessage('api.messages.appointment_falls_outside_working_hours'),
+      );
     }
 
     const startMinutes = start.minutes;
@@ -86,7 +93,9 @@ export class AppointmentSettingsPolicy {
     const closeMinutes = this.timeToMinutes(workingWindow.endTime);
 
     if (startMinutes < openMinutes || endMinutes > closeMinutes) {
-      throw new BadRequestException('Appointment falls outside working hours');
+      throw new BadRequestException(
+        apiMessage('api.messages.appointment_falls_outside_working_hours'),
+      );
     }
 
     for (const pause of availability.settings.availability.breaks ?? []) {
@@ -95,7 +104,9 @@ export class AppointmentSettingsPolicy {
       const breakStart = this.timeToMinutes(pause.startTime);
       const breakEnd = this.timeToMinutes(pause.endTime);
       if (startMinutes < breakEnd && endMinutes > breakStart) {
-        throw new BadRequestException('Appointment overlaps a schedule break');
+        throw new BadRequestException(
+          apiMessage('api.messages.appointment_overlaps_a_schedule_break'),
+        );
       }
     }
   }
@@ -269,7 +280,9 @@ export class AppointmentSettingsPolicy {
     for (const day of settings.availability.weekly ?? []) {
       if (!day.isOpen) continue;
       if (!day.startTime || !day.endTime) {
-        throw new BadRequestException('open working days need start and end');
+        throw new BadRequestException(
+          apiMessage('api.messages.open_working_days_need_start_and_end'),
+        );
       }
       this.assertTimeRange(day.startTime, day.endTime, 'working day');
     }
@@ -281,14 +294,16 @@ export class AppointmentSettingsPolicy {
     const specialDates = new Set<string>();
     for (const specialDate of settings.availability.specialDates ?? []) {
       if (specialDates.has(specialDate.date)) {
-        throw new BadRequestException('specialDates contains duplicated dates');
+        throw new BadRequestException(
+          apiMessage('api.messages.specialdates_contains_duplicated_dates'),
+        );
       }
       specialDates.add(specialDate.date);
 
       if (!specialDate.isClosed) {
         if (!specialDate.startTime || !specialDate.endTime) {
           throw new BadRequestException(
-            'open special dates need start and end',
+            apiMessage('api.messages.open_special_dates_need_start_and_end'),
           );
         }
         this.assertTimeRange(
@@ -306,7 +321,9 @@ export class AppointmentSettingsPolicy {
         settings.confirmation.requestBeforeMinutes
     ) {
       throw new BadRequestException(
-        'confirmation response deadline must be closer to the appointment than the request time',
+        apiMessage(
+          'api.messages.confirmation_response_deadline_must_be_closer_to_the_appointment_than_the_request',
+        ),
       );
     }
   }
@@ -483,7 +500,9 @@ export class AppointmentSettingsPolicy {
     const byDay = new Map<number, AppointmentWorkingDayDto>();
     for (const day of base ?? []) {
       if (byDay.has(day.dayOfWeek)) {
-        throw new BadRequestException('weekly contains duplicated days');
+        throw new BadRequestException(
+          apiMessage('api.messages.weekly_contains_duplicated_days'),
+        );
       }
       byDay.set(day.dayOfWeek, day);
     }
@@ -491,7 +510,9 @@ export class AppointmentSettingsPolicy {
     const patchedDays = new Set<number>();
     for (const day of patch ?? []) {
       if (patchedDays.has(day.dayOfWeek)) {
-        throw new BadRequestException('weekly contains duplicated days');
+        throw new BadRequestException(
+          apiMessage('api.messages.weekly_contains_duplicated_days'),
+        );
       }
       patchedDays.add(day.dayOfWeek);
       byDay.set(day.dayOfWeek, day);
@@ -508,7 +529,9 @@ export class AppointmentSettingsPolicy {
     const byDay = new Map<number, AppointmentWorkingDayDto>();
     for (const day of weekly ?? []) {
       if (byDay.has(day.dayOfWeek)) {
-        throw new BadRequestException('weekly contains duplicated days');
+        throw new BadRequestException(
+          apiMessage('api.messages.weekly_contains_duplicated_days'),
+        );
       }
       byDay.set(day.dayOfWeek, day);
     }
@@ -536,7 +559,9 @@ export class AppointmentSettingsPolicy {
   private assertTimeRange(startTime: string, endTime: string, label: string) {
     if (this.timeToMinutes(startTime) >= this.timeToMinutes(endTime)) {
       throw new BadRequestException(
-        `${label} startTime must be before endTime`,
+        apiMessage('api.messages.schedule_start_must_precede_end', {
+          label: label,
+        }),
       );
     }
   }

@@ -1,3 +1,4 @@
+import { i18nValidationMessage } from 'nestjs-i18n';
 import { ApiProperty } from '@nestjs/swagger';
 import { IsEnum } from 'class-validator';
 
@@ -9,6 +10,8 @@ export class UpdateBackofficeSupportRequestDto {
     example: SupportRequestStatus.IN_PROGRESS,
     description: 'Nuevo estado de la solicitud',
   })
-  @IsEnum(SupportRequestStatus)
+  @IsEnum(SupportRequestStatus, {
+    message: i18nValidationMessage('validation.isEnum'),
+  })
   status: SupportRequestStatus;
 }

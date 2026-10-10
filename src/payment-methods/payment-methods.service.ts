@@ -1,3 +1,4 @@
+import { apiMessage, type ApiMessage } from '../common/i18n/api-message';
 import {
   BadRequestException,
   Injectable,
@@ -44,14 +45,19 @@ export class PaymentMethodsService {
   }
 
   async findOne(userId: string, id: string): Promise<PaymentMethod> {
-    if (!isUUID(id)) throw new BadRequestException('Invalid payment method id');
+    if (!isUUID(id))
+      throw new BadRequestException(
+        apiMessage('api.messages.invalid_payment_method_id'),
+      );
 
     const method = await this.paymentMethodRepository.findOne({
       where: { id, userId },
     });
 
     if (!method) {
-      throw new NotFoundException(`Payment method with id ${id} not found`);
+      throw new NotFoundException(
+        apiMessage('api.messages.payment_method_with_id_not_found', { id: id }),
+      );
     }
 
     return method;
@@ -67,7 +73,7 @@ export class PaymentMethodsService {
     return await this.paymentMethodRepository.save(method);
   }
 
-  async remove(userId: string, id: string): Promise<{ message: string }> {
+  async remove(userId: string, id: string): Promise<{ message: ApiMessage }> {
     const method = await this.findOne(userId, id);
     const wasDefault = method.isDefault;
 
@@ -84,7 +90,9 @@ export class PaymentMethodsService {
       }
     }
 
-    return { message: `Payment method ${id} removed` };
+    return {
+      message: apiMessage('api.messages.payment_method_removed', { id: id }),
+    };
   }
 
   async setDefault(userId: string, id: string): Promise<PaymentMethod> {

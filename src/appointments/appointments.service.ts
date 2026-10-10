@@ -1,3 +1,4 @@
+import { apiMessage } from '../common/i18n/api-message';
 import {
   BadRequestException,
   ForbiddenException,
@@ -151,7 +152,9 @@ export class AppointmentsService {
       !this.patientAccessService.canViewAllPatients(context) &&
       queryDto.professionalMembershipId !== context.membershipId
     ) {
-      throw new ForbiddenException('Cannot view this professional agenda');
+      throw new ForbiddenException(
+        apiMessage('api.messages.cannot_view_this_professional_agenda'),
+      );
     }
 
     await this.assertMembershipInClinic(
@@ -202,7 +205,10 @@ export class AppointmentsService {
   }
 
   async findOne(context: ClinicAccessContext, id: string) {
-    if (!isUUID(id)) throw new BadRequestException('Invalid appointment id');
+    if (!isUUID(id))
+      throw new BadRequestException(
+        apiMessage('api.messages.invalid_appointment_id'),
+      );
 
     const appointment = await this.appointmentRepository.findOne({
       where: { id, clinicId: context.clinicId },
@@ -214,7 +220,9 @@ export class AppointmentsService {
     });
 
     if (!appointment) {
-      throw new NotFoundException(`Appointment with id ${id} not found`);
+      throw new NotFoundException(
+        apiMessage('api.messages.appointment_with_id_not_found', { id: id }),
+      );
     }
 
     await this.patientAccessService.assertPatientAccessible(
@@ -301,7 +309,9 @@ export class AppointmentsService {
     this.patientAccessService.assertCanManagePatients(context);
     const appointment = await this.findOne(context, id);
     await this.appointmentRepository.remove(appointment);
-    return { message: `Appointment ${id} removed` };
+    return {
+      message: apiMessage('api.messages.appointment_removed', { id: id }),
+    };
   }
 
   async createType(clinicId: string, dto: CreateAppointmentTypeDto) {
@@ -343,11 +353,16 @@ export class AppointmentsService {
 
   async findType(clinicId: string, id: string) {
     if (!isUUID(id))
-      throw new BadRequestException('Invalid appointment type id');
+      throw new BadRequestException(
+        apiMessage('api.messages.invalid_appointment_type_id'),
+      );
     const type = await this.appointmentTypeRepository.findOne({
       where: { id, clinicId },
     });
-    if (!type) throw new NotFoundException('Appointment type not found');
+    if (!type)
+      throw new NotFoundException(
+        apiMessage('api.messages.appointment_type_not_found'),
+      );
     return type;
   }
 
@@ -357,14 +372,20 @@ export class AppointmentsService {
     dto: UpdateAppointmentTypeDto,
   ) {
     if (!isUUID(id))
-      throw new BadRequestException('Invalid appointment type id');
+      throw new BadRequestException(
+        apiMessage('api.messages.invalid_appointment_type_id'),
+      );
 
     const appointmentType = await this.appointmentTypeRepository.findOne({
       where: { id, clinicId },
     });
 
     if (!appointmentType) {
-      throw new NotFoundException(`Appointment type with id ${id} not found`);
+      throw new NotFoundException(
+        apiMessage('api.messages.appointment_type_with_id_not_found', {
+          id: id,
+        }),
+      );
     }
 
     if (dto.clinicId) this.ensureClinicScope(clinicId, dto.clinicId);
@@ -375,14 +396,20 @@ export class AppointmentsService {
 
   async removeType(clinicId: string, id: string) {
     if (!isUUID(id))
-      throw new BadRequestException('Invalid appointment type id');
+      throw new BadRequestException(
+        apiMessage('api.messages.invalid_appointment_type_id'),
+      );
 
     const appointmentType = await this.appointmentTypeRepository.findOne({
       where: { id, clinicId },
     });
 
     if (!appointmentType) {
-      throw new NotFoundException(`Appointment type with id ${id} not found`);
+      throw new NotFoundException(
+        apiMessage('api.messages.appointment_type_with_id_not_found', {
+          id: id,
+        }),
+      );
     }
 
     appointmentType.isActive = false;
@@ -392,14 +419,16 @@ export class AppointmentsService {
   private ensureClinicScope(headerClinicId: string, bodyClinicId?: string) {
     if (bodyClinicId && headerClinicId !== bodyClinicId) {
       throw new BadRequestException(
-        'clinicId does not match x-clinic-id scope',
+        apiMessage('api.messages.clinicid_does_not_match_x_clinic_id_scope'),
       );
     }
   }
 
   private validateTimeWindow(startTime: Date, endTime: Date) {
     if (new Date(startTime) >= new Date(endTime)) {
-      throw new BadRequestException('startTime must be before endTime');
+      throw new BadRequestException(
+        apiMessage('api.messages.starttime_must_be_before_endtime'),
+      );
     }
   }
 
@@ -411,7 +440,9 @@ export class AppointmentsService {
 
     if (!patient) {
       throw new BadRequestException(
-        'Patient does not belong to the requested clinic',
+        apiMessage(
+          'api.messages.patient_does_not_belong_to_the_requested_clinic',
+        ),
       );
     }
   }
@@ -429,7 +460,9 @@ export class AppointmentsService {
 
     if (!membership) {
       throw new BadRequestException(
-        'Professional membership does not belong to the requested clinic',
+        apiMessage(
+          'api.messages.professional_membership_does_not_belong_to_the_requested_clinic',
+        ),
       );
     }
   }
@@ -448,7 +481,9 @@ export class AppointmentsService {
 
     if (!membership) {
       throw new BadRequestException(
-        'Dentist/user does not belong to the requested clinic',
+        apiMessage(
+          'api.messages.dentist_user_does_not_belong_to_the_requested_clinic',
+        ),
       );
     }
   }
@@ -466,7 +501,9 @@ export class AppointmentsService {
 
     if (!appointmentType) {
       throw new BadRequestException(
-        'Appointment type does not belong to the requested clinic',
+        apiMessage(
+          'api.messages.appointment_type_does_not_belong_to_the_requested_clinic',
+        ),
       );
     }
   }
@@ -484,13 +521,17 @@ export class AppointmentsService {
 
       if (!membership) {
         throw new BadRequestException(
-          'Professional membership does not belong to the requested clinic',
+          apiMessage(
+            'api.messages.professional_membership_does_not_belong_to_the_requested_clinic',
+          ),
         );
       }
 
       if (dentistId && membership.userId !== dentistId) {
         throw new BadRequestException(
-          'dentistId does not match professionalMembershipId',
+          apiMessage(
+            'api.messages.dentistid_does_not_match_professionalmembershipid',
+          ),
         );
       }
 
@@ -505,7 +546,9 @@ export class AppointmentsService {
 
       if (!membership) {
         throw new BadRequestException(
-          'Dentist/user does not have an active membership in the requested clinic',
+          apiMessage(
+            'api.messages.dentist_user_does_not_have_an_active_membership_in_the_requested_clinic',
+          ),
         );
       }
 
@@ -513,7 +556,9 @@ export class AppointmentsService {
     }
 
     throw new BadRequestException(
-      'professionalMembershipId or dentistId is required to validate availability',
+      apiMessage(
+        'api.messages.professionalmembershipid_or_dentistid_is_required_to_validate_availability',
+      ),
     );
   }
 
@@ -564,7 +609,7 @@ export class AppointmentsService {
 
     if (overlap) {
       throw new BadRequestException(
-        'Appointment overlaps with an existing slot',
+        apiMessage('api.messages.appointment_overlaps_with_an_existing_slot'),
       );
     }
   }
@@ -574,15 +619,19 @@ export class AppointmentsService {
 
     if (databaseError.code === '23P01') {
       throw new BadRequestException(
-        'Appointment overlaps with an existing slot',
+        apiMessage('api.messages.appointment_overlaps_with_an_existing_slot'),
       );
     }
 
     if (databaseError.code === '23505') {
-      throw new BadRequestException(databaseError.detail);
+      throw new BadRequestException(
+        apiMessage('api.messages.duplicate_record'),
+      );
     }
 
-    throw new InternalServerErrorException('Please check server logs');
+    throw new InternalServerErrorException(
+      apiMessage('api.messages.please_check_server_logs'),
+    );
   }
 
   private databaseError(error: unknown): {

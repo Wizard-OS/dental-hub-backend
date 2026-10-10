@@ -1,3 +1,4 @@
+import { apiMessage } from '../common/i18n/api-message';
 import {
   BadRequestException,
   Injectable,
@@ -39,7 +40,7 @@ export class PatientsService {
       context.clinicId !== createPatientDto.clinicId
     ) {
       throw new BadRequestException(
-        'clinicId does not match x-clinic-id scope',
+        apiMessage('api.messages.clinicid_does_not_match_x_clinic_id_scope'),
       );
     }
 
@@ -121,7 +122,10 @@ export class PatientsService {
 
     if (!patient)
       throw new NotFoundException(
-        `Patient with id, email, document, phone, firstName or lastName "${term}" not found`,
+        apiMessage(
+          'api.messages.patient_with_id_email_document_phone_firstname_or_lastname_not_found',
+          { term: term },
+        ),
       );
 
     await this.patientAccessService.assertPatientAccessible(
@@ -150,7 +154,7 @@ export class PatientsService {
       updatePatientDto.clinicId !== context.clinicId
     ) {
       throw new BadRequestException(
-        'clinicId does not match x-clinic-id scope',
+        apiMessage('api.messages.clinicid_does_not_match_x_clinic_id_scope'),
       );
     }
 
@@ -166,7 +170,7 @@ export class PatientsService {
     this.patientAccessService.assertCanManagePatients(context);
     const patient = await this.findOne(context, id);
     await this.patientRepository.softRemove(patient);
-    return { message: `Patient ${id} archived` };
+    return { message: apiMessage('api.messages.patient_archived', { id: id }) };
   }
 
   async reactivate(context: ClinicAccessContext, id: string) {
@@ -178,7 +182,9 @@ export class PatientsService {
     });
 
     if (!patient) {
-      throw new NotFoundException(`Patient with id "${id}" not found`);
+      throw new NotFoundException(
+        apiMessage('api.messages.patient_with_id_not_found', { id: id }),
+      );
     }
 
     if (!patient.deletedAt) {
@@ -192,12 +198,16 @@ export class PatientsService {
 
   private handleDBErrors(error: unknown): never {
     if (error instanceof Object && 'code' in error && error.code === '23505') {
-      throw new BadRequestException((error as Record<string, unknown>).detail);
+      throw new BadRequestException(
+        apiMessage('api.messages.duplicate_record'),
+      );
     }
 
     console.log(error);
 
-    throw new InternalServerErrorException('Please check server logs');
+    throw new InternalServerErrorException(
+      apiMessage('api.messages.please_check_server_logs'),
+    );
   }
 
   private assertProfilePhotoManagedSeparately(
@@ -205,7 +215,9 @@ export class PatientsService {
   ) {
     if (dto.profilePhotoFileId || dto.profilePhotoUrl) {
       throw new BadRequestException(
-        'Profile photo must be uploaded through /patients/:patientId/profile-photo',
+        apiMessage(
+          'api.messages.profile_photo_must_be_uploaded_through_patients_patientid_profile_photo',
+        ),
       );
     }
   }

@@ -1,3 +1,4 @@
+import { apiMessage } from '../common/i18n/api-message';
 import {
   BadRequestException,
   Injectable,
@@ -80,7 +81,9 @@ export class PatientAssignmentsService {
     });
 
     if (!assignment) {
-      throw new NotFoundException(`Patient assignment ${id} not found`);
+      throw new NotFoundException(
+        apiMessage('api.messages.patient_assignment_not_found', { id: id }),
+      );
     }
 
     await this.assertMembershipInClinic(revokedByMembershipId, clinicId);
@@ -100,7 +103,9 @@ export class PatientAssignmentsService {
 
     if (!patient) {
       throw new BadRequestException(
-        'Patient does not belong to the requested clinic',
+        apiMessage(
+          'api.messages.patient_does_not_belong_to_the_requested_clinic',
+        ),
       );
     }
   }
@@ -122,7 +127,9 @@ export class PatientAssignmentsService {
 
     if (!membership) {
       throw new BadRequestException(
-        'Membership does not belong to the requested clinic',
+        apiMessage(
+          'api.messages.membership_does_not_belong_to_the_requested_clinic',
+        ),
       );
     }
   }
@@ -144,7 +151,9 @@ export class PatientAssignmentsService {
 
     if (!membership) {
       throw new BadRequestException(
-        'Professional membership does not belong to the requested clinic',
+        apiMessage(
+          'api.messages.professional_membership_does_not_belong_to_the_requested_clinic',
+        ),
       );
     }
 
@@ -156,7 +165,9 @@ export class PatientAssignmentsService {
       ].includes(membership.role)
     ) {
       throw new BadRequestException(
-        'Patient assignments are only for secondary professional profiles',
+        apiMessage(
+          'api.messages.patient_assignments_are_only_for_secondary_professional_profiles',
+        ),
       );
     }
   }

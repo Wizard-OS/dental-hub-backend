@@ -1,3 +1,4 @@
+import { apiMessage } from '../../common/i18n/api-message';
 import {
   BadRequestException,
   Injectable,
@@ -37,7 +38,9 @@ export class LocalStorageProvider implements StorageProvider {
     const filePath = path.resolve(uploadDir, file.storedName);
 
     if (!filePath.startsWith(`${uploadDir}${path.sep}`)) {
-      throw new BadRequestException('Invalid stored file path');
+      throw new BadRequestException(
+        apiMessage('api.messages.invalid_stored_file_path'),
+      );
     }
 
     try {
@@ -52,7 +55,7 @@ export class LocalStorageProvider implements StorageProvider {
       }
 
       throw new InternalServerErrorException(
-        'Could not delete stored patient file',
+        apiMessage('api.messages.could_not_delete_stored_patient_file'),
       );
     }
   }

@@ -1,3 +1,4 @@
+import { apiMessage } from '../../common/i18n/api-message';
 import {
   BadRequestException,
   CanActivate,
@@ -24,14 +25,18 @@ export class ClinicScopeGuard implements CanActivate {
     const user = req.user;
 
     if (!user) {
-      throw new UnauthorizedException('Authenticated user not found');
+      throw new UnauthorizedException(
+        apiMessage('api.messages.authenticated_user_not_found'),
+      );
     }
 
     const clinicId = req.headers['x-clinic-id'];
 
     if (!clinicId || Array.isArray(clinicId) || !isUUID(clinicId)) {
       throw new BadRequestException(
-        'x-clinic-id header with valid UUID is required',
+        apiMessage(
+          'api.messages.x_clinic_id_header_with_valid_uuid_is_required',
+        ),
       );
     }
 
@@ -47,7 +52,9 @@ export class ClinicScopeGuard implements CanActivate {
 
     if (!membership) {
       throw new UnauthorizedException(
-        'User does not have active membership for the requested clinic',
+        apiMessage(
+          'api.messages.user_does_not_have_active_membership_for_the_requested_clinic',
+        ),
       );
     }
 

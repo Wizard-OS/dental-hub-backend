@@ -1,3 +1,4 @@
+import { i18nValidationMessage } from 'nestjs-i18n';
 import { IsEnum, IsObject, IsOptional, IsUUID } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
@@ -8,14 +9,14 @@ export class CreateClinicMembershipDto {
     example: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
     description: 'UUID de la clínica',
   })
-  @IsUUID()
+  @IsUUID(undefined, { message: i18nValidationMessage('validation.isUUID') })
   clinicId: string;
 
   @ApiProperty({
     example: 'f1e2d3c4-b5a6-7890-abcd-ef1234567890',
     description: 'UUID del usuario',
   })
-  @IsUUID()
+  @IsUUID(undefined, { message: i18nValidationMessage('validation.isUUID') })
   userId: string;
 
   @ApiProperty({
@@ -23,7 +24,9 @@ export class CreateClinicMembershipDto {
     example: ClinicMembershipRole.odontologist,
     description: 'Rol en la clínica',
   })
-  @IsEnum(ClinicMembershipRole)
+  @IsEnum(ClinicMembershipRole, {
+    message: i18nValidationMessage('validation.isEnum'),
+  })
   role: ClinicMembershipRole;
 
   @ApiPropertyOptional({
@@ -35,7 +38,7 @@ export class CreateClinicMembershipDto {
     },
     description: 'Permisos granulares personalizados en JSON',
   })
-  @IsObject()
+  @IsObject({ message: i18nValidationMessage('validation.isObject') })
   @IsOptional()
   permissionsJson?: Record<string, boolean>;
 }

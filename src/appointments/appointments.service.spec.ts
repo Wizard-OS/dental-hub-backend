@@ -153,7 +153,9 @@ describe('AppointmentsService availability validation', () => {
         context,
         baseDto('2026-09-21T12:30:00.000Z', '2026-09-21T13:00:00.000Z'),
       ),
-    ).rejects.toThrow('Appointment overlaps with an existing slot');
+    ).rejects.toThrow(
+      'api.messages.appointment_overlaps_with_an_existing_slot',
+    );
   });
 
   it('rejects appointments outside working hours', async () => {

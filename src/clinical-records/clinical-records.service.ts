@@ -1,3 +1,4 @@
+import { apiMessage } from '../common/i18n/api-message';
 import {
   BadRequestException,
   Injectable,
@@ -41,7 +42,9 @@ export class ClinicalRecordsService {
 
     if (existing) {
       throw new BadRequestException(
-        `Clinical record already exists for patient ${dto.patientId}`,
+        apiMessage('api.messages.clinical_record_already_exists_for_patient', {
+          patientId: dto.patientId,
+        }),
       );
     }
 
@@ -80,14 +83,19 @@ export class ClinicalRecordsService {
       where: { patientId },
       relations: { patient: true },
     });
-    if (!record) throw new NotFoundException('Clinical record not found');
+    if (!record)
+      throw new NotFoundException(
+        apiMessage('api.messages.clinical_record_not_found'),
+      );
     this.patientAccessService.sanitizePatient(record.patient, context);
     return record;
   }
 
   async findOne(context: ClinicAccessContext, id: string) {
     if (!isUUID(id)) {
-      throw new BadRequestException('Invalid clinical record id');
+      throw new BadRequestException(
+        apiMessage('api.messages.invalid_clinical_record_id'),
+      );
     }
 
     const record = await this.clinicalRecordRepository
@@ -101,7 +109,11 @@ export class ClinicalRecordsService {
       .getOne();
 
     if (!record) {
-      throw new NotFoundException(`Clinical record with id ${id} not found`);
+      throw new NotFoundException(
+        apiMessage('api.messages.clinical_record_with_id_not_found', {
+          id: id,
+        }),
+      );
     }
 
     await this.patientAccessService.assertPatientAccessible(
@@ -123,7 +135,9 @@ export class ClinicalRecordsService {
 
     if (dto.patientId && dto.patientId !== record.patientId) {
       throw new BadRequestException(
-        'Cannot move a clinical record to another patient',
+        apiMessage(
+          'api.messages.cannot_move_a_clinical_record_to_another_patient',
+        ),
       );
     }
 
@@ -135,7 +149,9 @@ export class ClinicalRecordsService {
     this.patientAccessService.assertCanManageClinical(context);
     const record = await this.findOne(context, id);
     await this.clinicalRecordRepository.remove(record);
-    return { message: `Clinical record ${id} removed` };
+    return {
+      message: apiMessage('api.messages.clinical_record_removed', { id: id }),
+    };
   }
 
   private async assertPatientInClinic(patientId: string, clinicId: string) {
@@ -146,7 +162,9 @@ export class ClinicalRecordsService {
 
     if (!patient) {
       throw new BadRequestException(
-        'Patient does not belong to the requested clinic',
+        apiMessage(
+          'api.messages.patient_does_not_belong_to_the_requested_clinic',
+        ),
       );
     }
   }

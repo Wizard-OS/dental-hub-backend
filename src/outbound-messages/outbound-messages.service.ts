@@ -1,3 +1,4 @@
+import { apiMessage } from '../common/i18n/api-message';
 import {
   BadRequestException,
   Injectable,
@@ -38,7 +39,7 @@ export class OutboundMessagesService {
   ) {
     if (dto.clinicId && dto.clinicId !== clinicId) {
       throw new BadRequestException(
-        'clinicId does not match x-clinic-id scope',
+        apiMessage('api.messages.clinicid_does_not_match_x_clinic_id_scope'),
       );
     }
 
@@ -83,14 +84,20 @@ export class OutboundMessagesService {
 
   async findOne(clinicId: string, id: string) {
     if (!isUUID(id))
-      throw new BadRequestException('Invalid outbound message id');
+      throw new BadRequestException(
+        apiMessage('api.messages.invalid_outbound_message_id'),
+      );
 
     const outboundMessage = await this.outboundMessageRepository.findOne({
       where: { id, clinicId },
     });
 
     if (!outboundMessage) {
-      throw new NotFoundException(`Outbound message with id ${id} not found`);
+      throw new NotFoundException(
+        apiMessage('api.messages.outbound_message_with_id_not_found', {
+          id: id,
+        }),
+      );
     }
 
     return outboundMessage;
@@ -101,7 +108,7 @@ export class OutboundMessagesService {
 
     if (dto.clinicId && dto.clinicId !== clinicId) {
       throw new BadRequestException(
-        'clinicId does not match x-clinic-id scope',
+        apiMessage('api.messages.clinicid_does_not_match_x_clinic_id_scope'),
       );
     }
 
@@ -125,7 +132,11 @@ export class OutboundMessagesService {
     const outboundMessage = await this.findOne(clinicId, id);
     outboundMessage.status = OutboundMessageStatus.CANCELLED;
     await this.outboundMessageRepository.save(outboundMessage);
-    return { message: `Outbound message ${id} cancelled` };
+    return {
+      message: apiMessage('api.messages.outbound_message_cancelled', {
+        id: id,
+      }),
+    };
   }
 
   private async assertPatientInClinic(
@@ -143,7 +154,9 @@ export class OutboundMessagesService {
 
     if (!patient) {
       throw new BadRequestException(
-        'Patient does not belong to the requested clinic',
+        apiMessage(
+          'api.messages.patient_does_not_belong_to_the_requested_clinic',
+        ),
       );
     }
   }
@@ -163,7 +176,9 @@ export class OutboundMessagesService {
 
     if (!appointment) {
       throw new BadRequestException(
-        'Appointment does not belong to the requested clinic',
+        apiMessage(
+          'api.messages.appointment_does_not_belong_to_the_requested_clinic',
+        ),
       );
     }
   }
@@ -183,7 +198,9 @@ export class OutboundMessagesService {
 
     if (!template) {
       throw new BadRequestException(
-        'Message template does not belong to the requested clinic',
+        apiMessage(
+          'api.messages.message_template_does_not_belong_to_the_requested_clinic',
+        ),
       );
     }
   }

@@ -1,3 +1,4 @@
+import { apiMessage } from '../common/i18n/api-message';
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { MembershipService } from '../membership/membership.service';
 import { BillingProvider } from '../membership/interfaces/billing-provider.enum';
@@ -24,7 +25,9 @@ export class BillingSubscriptionService {
         providerSubscriptionId !== subscription.providerSubscriptionId
       )
         throw new BadRequestException(
-          'Subscription does not belong to this clinic',
+          apiMessage(
+            'api.messages.subscription_does_not_belong_to_this_clinic',
+          ),
         );
       return this.renewals.processClinic(clinicId);
     }
@@ -35,7 +38,9 @@ export class BillingSubscriptionService {
       subscription.billingProvider !== BillingProvider.paypal
     ) {
       throw new BadRequestException(
-        'No matching PayPal subscription for this clinic',
+        apiMessage(
+          'api.messages.no_matching_paypal_subscription_for_this_clinic',
+        ),
       );
     }
     const details = await this.paypalProvider.getSubscription(id);
@@ -44,7 +49,9 @@ export class BillingSubscriptionService {
       details.providerPlanId !== subscription.providerPlanId
     ) {
       throw new BadRequestException(
-        'Provider subscription does not match this clinic and plan',
+        apiMessage(
+          'api.messages.provider_subscription_does_not_match_this_clinic_and_plan',
+        ),
       );
     }
     // Reuse the verified-provider synchronization path; no client-supplied status or amounts.
@@ -69,13 +76,17 @@ export class BillingSubscriptionService {
       !subscription.providerSubscriptionId ||
       subscription.billingProvider !== BillingProvider.paypal
     ) {
-      throw new BadRequestException('No PayPal subscription to cancel');
+      throw new BadRequestException(
+        apiMessage('api.messages.no_paypal_subscription_to_cancel'),
+      );
     }
     const details = await this.paypalProvider.getSubscription(
       subscription.providerSubscriptionId,
     );
     if (details.clinicId !== clinicId)
-      throw new BadRequestException('Subscription ownership mismatch');
+      throw new BadRequestException(
+        apiMessage('api.messages.subscription_ownership_mismatch'),
+      );
     if (details.providerStatus !== 'CANCELLED') {
       await this.paypalProvider.cancelSubscription(
         subscription.providerSubscriptionId,

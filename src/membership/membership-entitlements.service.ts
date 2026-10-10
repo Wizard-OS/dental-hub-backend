@@ -1,3 +1,4 @@
+import { apiMessage, type ApiMessage } from '../common/i18n/api-message';
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -147,7 +148,7 @@ export class MembershipEntitlementsService {
     this.assertLimitAvailable(
       limits.totalUsers,
       usage.totalUsers,
-      'User limit reached for current membership',
+      apiMessage('api.messages.user_limit_reached_for_current_membership'),
     );
   }
 
@@ -155,7 +156,9 @@ export class MembershipEntitlementsService {
     this.assertLimitAvailable(
       limits.professionalUsers,
       usage.professionalUsers,
-      'Professional limit reached for current membership',
+      apiMessage(
+        'api.messages.professional_limit_reached_for_current_membership',
+      ),
     );
   }
 
@@ -169,7 +172,7 @@ export class MembershipEntitlementsService {
       usage.storageBytes + incomingBytes > limits.storageBytes
     ) {
       throw new BadRequestException(
-        'Storage limit reached for current membership',
+        apiMessage('api.messages.storage_limit_reached_for_current_membership'),
       );
     }
   }
@@ -177,7 +180,7 @@ export class MembershipEntitlementsService {
   private assertLimitAvailable(
     limit: LimitValue,
     currentUsage: number,
-    message: string,
+    message: ApiMessage,
   ) {
     if (limit != null && currentUsage >= limit) {
       throw new BadRequestException(message);

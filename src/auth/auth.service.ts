@@ -1,3 +1,4 @@
+import { apiMessage, type ApiMessage } from '../common/i18n/api-message';
 import { UserStorageIntegration } from '../storage/entities/user-storage-integration.entity';
 import { StorageIntegrationStatus } from '../storage/interfaces/storage-integration-status.enum';
 import {
@@ -108,10 +109,14 @@ export class AuthService {
     });
 
     if (!user || !user.isActive)
-      throw new UnauthorizedException('Credentials are not valid');
+      throw new UnauthorizedException(
+        apiMessage('api.messages.credentials_are_not_valid'),
+      );
 
     if (!user.password || !this.passwordHasher.compare(password, user.password))
-      throw new UnauthorizedException('Credentials are not valid');
+      throw new UnauthorizedException(
+        apiMessage('api.messages.credentials_are_not_valid'),
+      );
 
     const session = await this.userSessionsService.createSession(
       user.id,
@@ -132,8 +137,10 @@ export class AuthService {
       select: { id: true, email: true },
     });
 
-    const genericResponse: { message: string; devOtp?: string } = {
-      message: 'If the email exists, a password reset code has been sent',
+    const genericResponse: { message: ApiMessage; devOtp?: string } = {
+      message: apiMessage(
+        'api.messages.if_the_email_exists_a_password_reset_code_has_been_sent',
+      ),
     };
 
     if (!user) {
@@ -172,7 +179,7 @@ export class AuthService {
       verifyOtpDto.otp,
     );
 
-    return { message: 'OTP verified successfully' };
+    return { message: apiMessage('api.messages.otp_verified_successfully') };
   }
 
   async resetPassword(resetPasswordDto: ResetPasswordDto) {
@@ -190,7 +197,7 @@ export class AuthService {
       passwordResetOtpLockedUntil: null,
     });
 
-    return { message: 'Password reset successfully' };
+    return { message: apiMessage('api.messages.password_reset_successfully') };
   }
 
   async updateProfilePhoto(
@@ -199,7 +206,9 @@ export class AuthService {
     baseUrl: string,
   ) {
     if (!file) {
-      throw new BadRequestException('No file uploaded');
+      throw new BadRequestException(
+        apiMessage('api.messages.no_file_uploaded'),
+      );
     }
 
     try {
@@ -217,7 +226,9 @@ export class AuthService {
     });
 
     if (!updatedUser) {
-      throw new InternalServerErrorException('User not found');
+      throw new InternalServerErrorException(
+        apiMessage('api.messages.user_not_found'),
+      );
     }
 
     return this.buildAuthResponse(
@@ -235,7 +246,9 @@ export class AuthService {
         where: { email: email.toLowerCase().trim() },
       });
       if (existing && existing.id !== user.id) {
-        throw new BadRequestException('Email already in use');
+        throw new BadRequestException(
+          apiMessage('api.messages.email_already_in_use'),
+        );
       }
     }
 
@@ -244,7 +257,9 @@ export class AuthService {
         where: { id: professionalSpecialtyId, isActive: true },
       });
       if (!specialty) {
-        throw new BadRequestException('Professional specialty is not valid');
+        throw new BadRequestException(
+          apiMessage('api.messages.professional_specialty_is_not_valid'),
+        );
       }
     }
 
@@ -260,7 +275,9 @@ export class AuthService {
     });
 
     if (!updatedUser) {
-      throw new InternalServerErrorException('User not found after update');
+      throw new InternalServerErrorException(
+        apiMessage('api.messages.user_not_found_after_update'),
+      );
     }
 
     return this.buildAuthResponse(
@@ -278,14 +295,18 @@ export class AuthService {
     });
 
     if (!userWithPassword) {
-      throw new InternalServerErrorException('User not found');
+      throw new InternalServerErrorException(
+        apiMessage('api.messages.user_not_found'),
+      );
     }
 
     if (
       !userWithPassword.password ||
       !this.passwordHasher.compare(currentPassword, userWithPassword.password)
     ) {
-      throw new UnauthorizedException('Current password is incorrect');
+      throw new UnauthorizedException(
+        apiMessage('api.messages.current_password_is_incorrect'),
+      );
     }
 
     await this.userRepository.update(user.id, {
@@ -293,7 +314,7 @@ export class AuthService {
     });
 
     return {
-      message: 'Password changed successfully',
+      message: apiMessage('api.messages.password_changed_successfully'),
       token: this.getJwtToken({
         id: user.id,
         sessionId: this.requireCurrentSessionId(user),
@@ -307,7 +328,9 @@ export class AuthService {
     });
 
     if (!fullUser) {
-      throw new InternalServerErrorException('User not found');
+      throw new InternalServerErrorException(
+        apiMessage('api.messages.user_not_found'),
+      );
     }
 
     return this.buildAuthResponse(fullUser, this.requireCurrentSessionId(user));
@@ -352,7 +375,7 @@ export class AuthService {
       currentSessionId,
     );
 
-    return { message: 'Account deleted successfully' };
+    return { message: apiMessage('api.messages.account_deleted_successfully') };
   }
 
   private getJwtToken(payload: JwtPayload) {
@@ -379,18 +402,24 @@ export class AuthService {
       !user.passwordResetOtpExpiresAt ||
       user.passwordResetOtpUsedAt
     ) {
-      throw new BadRequestException('Invalid or expired OTP');
+      throw new BadRequestException(
+        apiMessage('api.messages.invalid_or_expired_otp'),
+      );
     }
 
     if (
       user.passwordResetOtpLockedUntil &&
       user.passwordResetOtpLockedUntil.getTime() > Date.now()
     ) {
-      throw new BadRequestException('Invalid or expired OTP');
+      throw new BadRequestException(
+        apiMessage('api.messages.invalid_or_expired_otp'),
+      );
     }
 
     if (user.passwordResetOtpExpiresAt.getTime() <= Date.now()) {
-      throw new BadRequestException('Invalid or expired OTP');
+      throw new BadRequestException(
+        apiMessage('api.messages.invalid_or_expired_otp'),
+      );
     }
 
     if (!this.passwordHasher.compare(otp, user.passwordResetOtpHash)) {
@@ -400,7 +429,9 @@ export class AuthService {
           user.passwordResetOtpAttemptCount,
         ),
       );
-      throw new BadRequestException('Invalid or expired OTP');
+      throw new BadRequestException(
+        apiMessage('api.messages.invalid_or_expired_otp'),
+      );
     }
 
     if (user.passwordResetOtpAttemptCount) {
@@ -433,7 +464,9 @@ export class AuthService {
 
   private requireCurrentSessionId(user: User) {
     if (!user.currentSessionId) {
-      throw new UnauthorizedException('Session not valid');
+      throw new UnauthorizedException(
+        apiMessage('api.messages.session_not_valid'),
+      );
     }
 
     return user.currentSessionId;
@@ -467,15 +500,15 @@ export class AuthService {
       'code' in error &&
       error.code === '23505'
     ) {
-      const detail =
-        'detail' in error && typeof error.detail === 'string'
-          ? error.detail
-          : undefined;
-      throw new BadRequestException(detail);
+      throw new BadRequestException(
+        apiMessage('api.messages.duplicate_record'),
+      );
     }
 
     console.log(error);
 
-    throw new InternalServerErrorException('Please check server logs');
+    throw new InternalServerErrorException(
+      apiMessage('api.messages.please_check_server_logs'),
+    );
   }
 }

@@ -1,3 +1,4 @@
+import { apiMessage } from '../common/i18n/api-message';
 import { Injectable } from '@nestjs/common';
 import { DataSource, Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -76,7 +77,7 @@ export class SeedService {
     await this.insertPatientFiles(patients, memberships);
 
     return {
-      message: 'SEED EXECUTED',
+      message: apiMessage('api.messages.seed_executed'),
       summary: {
         clinics: clinics.size,
         users: users.size,

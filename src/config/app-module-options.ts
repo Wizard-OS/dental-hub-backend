@@ -30,10 +30,11 @@ export function createI18nOptions() {
 
   return {
     fallbackLanguage: 'en',
+    fallbacks: { 'en-*': 'en', 'es-*': 'es' },
     loader: I18nJsonLoader,
     loaderOptions: {
       path: i18nPath,
-      watch: true,
+      watch: getEnv('NODE_ENV') === 'development',
     },
     resolvers: [
       { use: QueryResolver, options: ['lang'] },

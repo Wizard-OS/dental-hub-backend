@@ -1,3 +1,4 @@
+import { apiMessage } from '../common/i18n/api-message';
 import {
   BadRequestException,
   ConflictException,
@@ -71,7 +72,9 @@ export class PatientFilesService {
     dto: CreatePatientFileDto,
   ) {
     if (!file) {
-      throw new BadRequestException('No file uploaded');
+      throw new BadRequestException(
+        apiMessage('api.messages.no_file_uploaded'),
+      );
     }
 
     return this.withUploadCleanup(
@@ -230,7 +233,9 @@ export class PatientFilesService {
     baseUrl: string,
   ) {
     if (!file) {
-      throw new BadRequestException('No file uploaded');
+      throw new BadRequestException(
+        apiMessage('api.messages.no_file_uploaded'),
+      );
     }
 
     return this.withUploadCleanup(
@@ -276,7 +281,11 @@ export class PatientFilesService {
 
         if (!result.affected) {
           await this.compensateStoredFile(savedFile, context.clinicId);
-          throw new NotFoundException(`Patient ${patientId} not found`);
+          throw new NotFoundException(
+            apiMessage('api.messages.patient_not_found', {
+              patientId: patientId,
+            }),
+          );
         }
 
         return savedFile;
@@ -354,7 +363,9 @@ export class PatientFilesService {
       .getOne();
 
     if (!patientFile) {
-      throw new NotFoundException(`Patient file ${id} not found`);
+      throw new NotFoundException(
+        apiMessage('api.messages.patient_file_not_found', { id: id }),
+      );
     }
 
     await this.patientAccessService.assertPatientAccessible(
@@ -379,7 +390,9 @@ export class PatientFilesService {
     };
     const originalName = dto.originalName?.trim();
     if (originalName && /[\\/]/.test(originalName)) {
-      throw new BadRequestException('File name must not contain a path');
+      throw new BadRequestException(
+        apiMessage('api.messages.file_name_must_not_contain_a_path'),
+      );
     }
 
     if (patientFile.storageProvider === StorageProviderType.GOOGLE_DRIVE) {
@@ -435,7 +448,9 @@ export class PatientFilesService {
     this.patientAccessService.assertCanManageClinical(context);
     const patientFile = await this.findOne(context, id);
     if (patientFile.storageProvider !== StorageProviderType.GOOGLE_DRIVE) {
-      throw new BadRequestException('Only Google Drive files can be restored');
+      throw new BadRequestException(
+        apiMessage('api.messages.only_google_drive_files_can_be_restored'),
+      );
     }
 
     const updated = await this.storageService.restoreDriveFile(patientFile);
@@ -465,7 +480,9 @@ export class PatientFilesService {
   async listDriveRevisions(context: ClinicAccessContext, id: string) {
     const patientFile = await this.findOne(context, id);
     if (patientFile.storageProvider !== StorageProviderType.GOOGLE_DRIVE)
-      throw new BadRequestException('Only Google Drive files have revisions');
+      throw new BadRequestException(
+        apiMessage('api.messages.only_google_drive_files_have_revisions'),
+      );
     return this.storageService.listDriveRevisions(patientFile);
   }
 
@@ -476,7 +493,9 @@ export class PatientFilesService {
   ) {
     const patientFile = await this.findOne(context, id);
     if (patientFile.storageProvider !== StorageProviderType.GOOGLE_DRIVE)
-      throw new BadRequestException('Only Google Drive files have revisions');
+      throw new BadRequestException(
+        apiMessage('api.messages.only_google_drive_files_have_revisions'),
+      );
     return {
       stream: await this.storageService.downloadDriveRevision(
         patientFile,
@@ -491,7 +510,9 @@ export class PatientFilesService {
     const patientFile = await this.findOne(context, id);
 
     if (patientFile.storageStatus !== PatientFileStorageStatus.AVAILABLE) {
-      throw new BadRequestException('Patient file is not available');
+      throw new BadRequestException(
+        apiMessage('api.messages.patient_file_is_not_available'),
+      );
     }
 
     if (patientFile.storageProvider === StorageProviderType.GOOGLE_DRIVE) {
@@ -510,11 +531,15 @@ export class PatientFilesService {
     const filePath = path.resolve(uploadDir, patientFile.storedName);
 
     if (!filePath.startsWith(`${uploadDir}${path.sep}`)) {
-      throw new BadRequestException('Invalid stored file path');
+      throw new BadRequestException(
+        apiMessage('api.messages.invalid_stored_file_path'),
+      );
     }
 
     await fs.access(filePath).catch(() => {
-      throw new NotFoundException(`Patient file ${id} not found`);
+      throw new NotFoundException(
+        apiMessage('api.messages.patient_file_not_found', { id: id }),
+      );
     });
 
     return {
@@ -538,8 +563,9 @@ export class PatientFilesService {
     )
       throw new ConflictException({
         code: 'DRIVE_TRASH_CONFIRMATION_REQUIRED',
-        message:
-          'Confirm that this file should be moved to Google Drive Trash.',
+        message: apiMessage(
+          'api.messages.confirm_that_this_file_should_be_moved_to_google_drive_trash',
+        ),
       });
 
     await this.storageService.markUnavailable(patientFile.storageProvider, {
@@ -577,7 +603,9 @@ export class PatientFilesService {
       await this.patientFileRepository.softRemove(patientFile);
     }
 
-    return { message: `Patient file ${id} deleted` };
+    return {
+      message: apiMessage('api.messages.patient_file_deleted', { id: id }),
+    };
   }
 
   private async uploadAndSaveFile(input: {

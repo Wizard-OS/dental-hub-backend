@@ -1,3 +1,4 @@
+import { i18nValidationMessage } from 'nestjs-i18n';
 import {
   IsEmail,
   IsObject,
@@ -14,13 +15,13 @@ export class CreateClinicDto {
     example: 'Dental Clinic Center',
     description: 'Nombre de la clínica',
   })
-  @IsString()
-  @Length(2, 120)
+  @IsString({ message: i18nValidationMessage('validation.isString') })
+  @Length(2, 120, { message: i18nValidationMessage('validation.length') })
   name: string;
 
   @ApiPropertyOptional({ example: '+59824000000', description: 'Teléfono' })
-  @IsString()
-  @MaxLength(60)
+  @IsString({ message: i18nValidationMessage('validation.isString') })
+  @MaxLength(60, { message: i18nValidationMessage('validation.maxLength') })
   @IsOptional()
   phone?: string;
 
@@ -28,7 +29,7 @@ export class CreateClinicDto {
     example: 'contacto@dentalhub.com',
     description: 'Email de contacto',
   })
-  @IsEmail()
+  @IsEmail({}, { message: i18nValidationMessage('validation.isEmail') })
   @IsOptional()
   email?: string;
 
@@ -36,8 +37,8 @@ export class CreateClinicDto {
     example: 'Av. 18 de Julio 1234',
     description: 'Dirección',
   })
-  @IsString()
-  @MaxLength(240)
+  @IsString({ message: i18nValidationMessage('validation.isString') })
+  @MaxLength(240, { message: i18nValidationMessage('validation.maxLength') })
   @IsOptional()
   address?: string;
 
@@ -45,8 +46,8 @@ export class CreateClinicDto {
     example: 'https://example.com/logo.png',
     description: 'URL del logo',
   })
-  @IsString()
-  @MaxLength(2048)
+  @IsString({ message: i18nValidationMessage('validation.isString') })
+  @MaxLength(2048, { message: i18nValidationMessage('validation.maxLength') })
   @IsOptional()
   logoUrl?: string;
 
@@ -54,7 +55,7 @@ export class CreateClinicDto {
     example: 'America/Mexico_City',
     description: 'Zona horaria',
   })
-  @IsString()
+  @IsString({ message: i18nValidationMessage('validation.isString') })
   @IsOptional()
   timezone?: string;
 
@@ -62,13 +63,15 @@ export class CreateClinicDto {
     example: 'UY',
     description: 'Código ISO alpha-2 del país de la clínica',
   })
-  @IsString()
-  @Matches(/^[A-Za-z]{2}$/)
+  @IsString({ message: i18nValidationMessage('validation.isString') })
+  @Matches(/^[A-Za-z]{2}$/, {
+    message: i18nValidationMessage('validation.matches'),
+  })
   @IsOptional()
   countryCode?: string;
 
   @ApiPropertyOptional({ example: 'MXN', description: 'Moneda' })
-  @IsString()
+  @IsString({ message: i18nValidationMessage('validation.isString') })
   @IsOptional()
   currency?: string;
 
@@ -76,7 +79,7 @@ export class CreateClinicDto {
     example: { monday: [{ from: '09:00', to: '18:00' }] },
     description: 'Horarios generales de atención',
   })
-  @IsObject()
+  @IsObject({ message: i18nValidationMessage('validation.isObject') })
   @IsOptional()
   workingHoursJson?: Record<string, unknown>;
 }

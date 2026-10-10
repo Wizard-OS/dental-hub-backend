@@ -1,3 +1,4 @@
+import { apiMessage } from '../../common/i18n/api-message';
 import {
   BadRequestException,
   ConflictException,
@@ -74,10 +75,12 @@ export class MembershipRenewalsService {
   ) {
     if (!this.provider.configured)
       throw new ServiceUnavailableException(
-        'PayPal credentials are not configured',
+        apiMessage('api.messages.paypal_credentials_are_not_configured'),
       );
-    if (input.acceptRecurringBilling !== true)
-      throw new BadRequestException('Recurring billing consent is required');
+    if (!input.acceptRecurringBilling)
+      throw new BadRequestException(
+        apiMessage('api.messages.recurring_billing_consent_is_required'),
+      );
     await this.membership.ensureSubscription(clinicId);
     await withBillingLock(this.db, clinicId, async (manager) => {
       const repo = manager.getRepository(ClinicSubscription);
@@ -92,7 +95,9 @@ export class MembershipRenewalsService {
             input.startTrial !== Boolean(sub.checkoutQuote.trialDays))
         )
           throw new ConflictException(
-            'Request ID already used with different checkout options',
+            apiMessage(
+              'api.messages.request_id_already_used_with_different_checkout_options',
+            ),
           );
         return;
       }
@@ -102,7 +107,9 @@ export class MembershipRenewalsService {
           .existsBy({ clinicId, requestId: input.requestId })
       )
         throw new ConflictException(
-          'Request ID belongs to a previous enrollment',
+          apiMessage(
+            'api.messages.request_id_belongs_to_a_previous_enrollment',
+          ),
         );
       if (
         (sub.providerSubscriptionId &&
@@ -111,15 +118,19 @@ export class MembershipRenewalsService {
           )) ||
         sub.planCode === MembershipPlanCode.premium
       )
-        throw new ConflictException('A membership already exists');
+        throw new ConflictException(
+          apiMessage('api.messages.a_membership_already_exists'),
+        );
       const eligible =
         !sub.trialStartedAt && !sub.licenseIssuedAt && !sub.recurringConsentAt;
       const trial = input.startTrial ?? eligible;
       if (trial && !eligible)
-        throw new ConflictException('The clinic has already used its trial');
+        throw new ConflictException(
+          apiMessage('api.messages.the_clinic_has_already_used_its_trial'),
+        );
       if (input.promotionCode && (!eligible || !trial))
         throw new BadRequestException(
-          'Welcome promotion requires the first trial',
+          apiMessage('api.messages.welcome_promotion_requires_the_first_trial'),
         );
       const quote = membershipQuote(input.interval, input.promotionCode, trial);
       const method = await this.methods.requireMethod(
@@ -209,7 +220,9 @@ export class MembershipRenewalsService {
         .getRepository(ClinicSubscription)
         .findOneByOrFail({ clinicId });
       if (sub.billingMode !== 'vault')
-        throw new BadRequestException('Not a saved-method membership');
+        throw new BadRequestException(
+          apiMessage('api.messages.not_a_saved_method_membership'),
+        );
       sub.status = SubscriptionStatus.canceled;
       sub.planCode = MembershipPlanCode.free;
       sub.cancelAtPeriodEnd = false;
@@ -264,25 +277,35 @@ export class MembershipRenewalsService {
   ) {
     if (!this.provider.configured)
       throw new ServiceUnavailableException(
-        'PayPal credentials are not configured',
+        apiMessage('api.messages.paypal_credentials_are_not_configured'),
       );
     await withBillingLock(this.db, clinicId, async (manager) => {
       const sub = await manager
         .getRepository(ClinicSubscription)
         .findOneBy({ clinicId });
-      if (!sub) throw new NotFoundException('Membership not found');
+      if (!sub)
+        throw new NotFoundException(
+          apiMessage('api.messages.membership_not_found'),
+        );
       if (sub.billingMode !== 'vault')
-        throw new BadRequestException('Not a saved-method membership');
+        throw new BadRequestException(
+          apiMessage('api.messages.not_a_saved_method_membership'),
+        );
       const now = new Date();
       if (reconcile) {
         const charge = await manager
           .getRepository(MembershipCharge)
           .findOneBy({ id: reconcile.chargeId, clinicId });
-        if (!charge) throw new NotFoundException('Charge not found');
+        if (!charge)
+          throw new NotFoundException(
+            apiMessage('api.messages.charge_not_found'),
+          );
         const order = await this.provider.getOrder(reconcile.orderId);
         this.validateOrder(charge, order);
         if (charge.providerOrderId && charge.providerOrderId !== order.id)
-          throw new ConflictException('Charge already has a different order');
+          throw new ConflictException(
+            apiMessage('api.messages.charge_already_has_a_different_order'),
+          );
         charge.providerOrderId = order.id;
         await manager.getRepository(MembershipCharge).save(charge);
         const reconciled =
@@ -311,7 +334,9 @@ export class MembershipRenewalsService {
         !sub.providerSubscriptionId ||
         !sub.selectedPaymentMethodId
       )
-        throw new BadRequestException('Incomplete billing agreement');
+        throw new BadRequestException(
+          apiMessage('api.messages.incomplete_billing_agreement'),
+        );
       const repo = manager.getRepository(MembershipCharge);
       let charge = await repo.findOneBy({
         agreementId: sub.providerSubscriptionId,
@@ -413,7 +438,10 @@ export class MembershipRenewalsService {
       const charge = await manager
         .getRepository(MembershipCharge)
         .findOneBy({ id: chargeId, clinicId });
-      if (!charge) throw new NotFoundException('Charge not found');
+      if (!charge)
+        throw new NotFoundException(
+          apiMessage('api.messages.charge_not_found'),
+        );
       const sub = await manager
         .getRepository(ClinicSubscription)
         .findOneByOrFail({ clinicId });
@@ -421,16 +449,22 @@ export class MembershipRenewalsService {
         sub.providerSubscriptionId !== charge.agreementId ||
         !BILLABLE_STATUSES.includes(sub.status)
       )
-        throw new ConflictException('The agreement is no longer billable');
+        throw new ConflictException(
+          apiMessage('api.messages.the_agreement_is_no_longer_billable'),
+        );
       if (['paid', 'refunded'].includes(charge.status))
-        throw new ConflictException('This charge cannot be retried');
+        throw new ConflictException(
+          apiMessage('api.messages.this_charge_cannot_be_retried'),
+        );
       if (
         !charge.providerOrderId &&
         charge.firstAttemptAt &&
         Date.now() - charge.firstAttemptAt.getTime() > 5 * 3600000
       )
         throw new ConflictException(
-          'Reconcile the provider order before retrying an uncertain payment',
+          apiMessage(
+            'api.messages.reconcile_the_provider_order_before_retrying_an_uncertain_payment',
+          ),
         );
       charge.status = 'pending';
       charge.attempts = 0;
@@ -474,7 +508,9 @@ export class MembershipRenewalsService {
       unit.amount?.currency_code !== charge.currency ||
       Math.round(Number(unit.amount.value) * 100) !== charge.amount
     )
-      throw new BadRequestException('Order does not match the charge');
+      throw new BadRequestException(
+        apiMessage('api.messages.order_does_not_match_the_charge'),
+      );
   }
 
   private async settle(

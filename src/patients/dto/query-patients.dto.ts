@@ -1,3 +1,4 @@
+import { i18nValidationMessage } from 'nestjs-i18n';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { IsBooleanString, IsOptional } from 'class-validator';
 
@@ -9,7 +10,9 @@ export class QueryPatientsDto extends PaginationDto {
     description:
       'Incluye pacientes archivados. Solo disponible para roles que gestionan pacientes.',
   })
-  @IsBooleanString()
+  @IsBooleanString({
+    message: i18nValidationMessage('validation.isBooleanString'),
+  })
   @IsOptional()
   includeArchived?: string;
 }

@@ -1,3 +1,4 @@
+import { apiMessage } from '../common/i18n/api-message';
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -33,7 +34,9 @@ export class MembershipPlanAssignmentService {
 
     if (!membership) {
       throw new BadRequestException(
-        'Membership does not belong to the requested clinic',
+        apiMessage(
+          'api.messages.membership_does_not_belong_to_the_requested_clinic',
+        ),
       );
     }
 

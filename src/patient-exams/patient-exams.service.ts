@@ -1,3 +1,4 @@
+import { apiMessage } from '../common/i18n/api-message';
 import {
   BadRequestException,
   Injectable,
@@ -53,7 +54,9 @@ export class PatientExamsService {
   ) {
     await this.access.assertPatientAccessible(context, patientId);
     if (dto.from && dto.to && new Date(dto.from) > new Date(dto.to)) {
-      throw new BadRequestException('from must be before to');
+      throw new BadRequestException(
+        apiMessage('api.messages.from_must_be_before_to'),
+      );
     }
     const query = this.exams
       .createQueryBuilder('exam')
@@ -90,7 +93,10 @@ export class PatientExamsService {
       where: { id, patientId },
       relations: { files: true },
     });
-    if (!exam) throw new NotFoundException('Patient exam not found');
+    if (!exam)
+      throw new NotFoundException(
+        apiMessage('api.messages.patient_exam_not_found'),
+      );
     exam.files = exam.files.filter(
       (file) => file.storageStatus === PatientFileStorageStatus.AVAILABLE,
     );
@@ -118,7 +124,9 @@ export class PatientExamsService {
     this.access.assertCanManageClinical(context);
     const exam = await this.findOne(context, patientId, id);
     await this.exams.remove(exam);
-    return { message: `Patient exam ${id} removed` };
+    return {
+      message: apiMessage('api.messages.patient_exam_removed', { id: id }),
+    };
   }
 
   private async validateRelations(
@@ -131,7 +139,7 @@ export class PatientExamsService {
       });
       if (!note)
         throw new BadRequestException(
-          'Clinical note does not belong to patient',
+          apiMessage('api.messages.clinical_note_does_not_belong_to_patient'),
         );
     }
     if (!dto.fileIds?.length) return [];
@@ -144,7 +152,9 @@ export class PatientExamsService {
     });
     if (files.length !== dto.fileIds.length)
       throw new BadRequestException(
-        'All files must be available and belong to patient',
+        apiMessage(
+          'api.messages.all_files_must_be_available_and_belong_to_patient',
+        ),
       );
     return files;
   }

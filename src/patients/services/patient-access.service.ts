@@ -1,3 +1,4 @@
+import { apiMessage } from '../../common/i18n/api-message';
 import {
   ForbiddenException,
   Injectable,
@@ -7,9 +8,9 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Brackets, Repository, SelectQueryBuilder } from 'typeorm';
 
 import { Patient } from '../entities/patient.entity';
+import { ClinicPermission } from '../../auth/interfaces';
 import { Appointment } from '../../appointments/entities/appointment.entity';
 import { AppointmentStatus } from '../../appointments/interfaces/AppointmentStatus.enum';
-import { ClinicPermission } from '../../auth/interfaces/clinic-permission.enum';
 import { ClinicMembershipRole } from '../../clinic-memberships/interfaces/clinic-membership-role.enum';
 import {
   hasClinicPermission,
@@ -84,19 +85,25 @@ export class PatientAccessService {
 
   assertCanManagePatients(context: ClinicAccessContext) {
     if (!this.canManagePatients(context)) {
-      throw new ForbiddenException('User cannot manage patients');
+      throw new ForbiddenException(
+        apiMessage('api.messages.user_cannot_manage_patients'),
+      );
     }
   }
 
   assertCanManageClinical(context: ClinicAccessContext) {
     if (!this.canManageClinical(context)) {
-      throw new ForbiddenException('User cannot edit clinical records');
+      throw new ForbiddenException(
+        apiMessage('api.messages.user_cannot_edit_clinical_records'),
+      );
     }
   }
 
   assertCanManageFinancial(context: ClinicAccessContext) {
     if (!this.canManageFinancial(context)) {
-      throw new ForbiddenException('User cannot access financial data');
+      throw new ForbiddenException(
+        apiMessage('api.messages.user_cannot_access_financial_data'),
+      );
     }
   }
 
@@ -111,7 +118,9 @@ export class PatientAccessService {
 
     if (!patient) {
       throw new NotFoundException(
-        `Patient ${patientId} does not belong to the requested clinic`,
+        apiMessage('api.messages.patient_by_id_does_not_belong_to_clinic', {
+          patientId: patientId,
+        }),
       );
     }
 
@@ -124,7 +133,9 @@ export class PatientAccessService {
       return;
     }
 
-    throw new ForbiddenException('Patient is not assigned to this profile');
+    throw new ForbiddenException(
+      apiMessage('api.messages.patient_is_not_assigned_to_this_profile'),
+    );
   }
 
   async hasAssignedPatientAccess(

@@ -1,3 +1,4 @@
+import { i18nValidationMessage } from 'nestjs-i18n';
 import {
   IsBoolean,
   IsEnum,
@@ -11,26 +12,26 @@ import { TreatmentStatus } from '../interfaces/treatment-status.enum';
 
 export class CreateTreatmentDto {
   @ApiProperty({ example: 'Ortodoncia', description: 'Nombre del tratamiento' })
-  @IsString()
+  @IsString({ message: i18nValidationMessage('validation.isString') })
   name: string;
 
   @ApiProperty({ description: 'UUID del paciente' })
-  @IsUUID()
+  @IsUUID(undefined, { message: i18nValidationMessage('validation.isUUID') })
   patientId: string;
 
   @ApiProperty({ description: 'UUID del doctor' })
-  @IsUUID()
+  @IsUUID(undefined, { message: i18nValidationMessage('validation.isUUID') })
   doctorId: string;
 
   @ApiPropertyOptional({
     description: 'UUID de la membresía del profesional responsable',
   })
-  @IsUUID()
+  @IsUUID(undefined, { message: i18nValidationMessage('validation.isUUID') })
   @IsOptional()
   professionalMembershipId?: string;
 
   @ApiPropertyOptional({ example: '36', description: 'Pieza dental opcional' })
-  @IsString()
+  @IsString({ message: i18nValidationMessage('validation.isString') })
   @IsOptional()
   toothCode?: string;
 
@@ -38,7 +39,7 @@ export class CreateTreatmentDto {
     example: 'Tratamiento de brackets metálicos',
     description: 'Descripción',
   })
-  @IsString()
+  @IsString({ message: i18nValidationMessage('validation.isString') })
   @IsOptional()
   description?: string;
 
@@ -46,7 +47,9 @@ export class CreateTreatmentDto {
     example: '15000.00',
     description: 'Precio base (decimal string)',
   })
-  @Matches(/^\d+(\.\d{1,2})?$/)
+  @Matches(/^\d+(\.\d{1,2})?$/, {
+    message: i18nValidationMessage('validation.matches'),
+  })
   basePrice: string;
 
   @ApiPropertyOptional({
@@ -54,19 +57,21 @@ export class CreateTreatmentDto {
     example: TreatmentStatus.PROPOSED,
     description: 'Estado del plan de tratamiento',
   })
-  @IsEnum(TreatmentStatus)
+  @IsEnum(TreatmentStatus, {
+    message: i18nValidationMessage('validation.isEnum'),
+  })
   @IsOptional()
   status?: TreatmentStatus;
 
   @ApiPropertyOptional({
     description: 'UUID del presupuesto/factura relacionado',
   })
-  @IsUUID()
+  @IsUUID(undefined, { message: i18nValidationMessage('validation.isUUID') })
   @IsOptional()
   invoiceId?: string;
 
   @ApiPropertyOptional({ example: true, description: '¿Activo?' })
-  @IsBoolean()
+  @IsBoolean({ message: i18nValidationMessage('validation.isBoolean') })
   @IsOptional()
   isActive?: boolean;
 }

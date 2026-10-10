@@ -52,7 +52,7 @@ describe('Membership email delivery adapter', () => {
         subject: 'Trial',
         text: 'Reminder',
       }),
-    ).rejects.toThrow('not configured');
+    ).rejects.toThrow('api.messages.membership_email_is_not_configured');
     expect(fetchMock).not.toHaveBeenCalled();
   });
 });

@@ -1,3 +1,4 @@
+import { i18nValidationMessage } from 'nestjs-i18n';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsEnum,
@@ -18,7 +19,7 @@ export class CreateBillingCheckoutDto {
     description: 'Saved membership method; omit for legacy hosted checkout',
   })
   @IsOptional()
-  @IsUUID()
+  @IsUUID(undefined, { message: i18nValidationMessage('validation.isUUID') })
   paymentMethodId?: string;
 
   @ApiPropertyOptional({
@@ -26,34 +27,38 @@ export class CreateBillingCheckoutDto {
     description: 'Required for saved-method checkout; preserve across retries',
   })
   @IsOptional()
-  @IsUUID()
+  @IsUUID(undefined, { message: i18nValidationMessage('validation.isUUID') })
   requestId?: string;
 
   @ApiPropertyOptional({
     description: 'Required for saved-method recurring billing',
   })
   @IsOptional()
-  @Equals(true)
+  @Equals(true, { message: i18nValidationMessage('validation.equals') })
   acceptRecurringBilling?: true;
 
   @ApiProperty({ enum: MembershipPlanCode })
-  @IsEnum(MembershipPlanCode)
+  @IsEnum(MembershipPlanCode, {
+    message: i18nValidationMessage('validation.isEnum'),
+  })
   planCode: MembershipPlanCode;
 
   @ApiProperty({ enum: BillingInterval })
-  @IsEnum(BillingInterval)
+  @IsEnum(BillingInterval, {
+    message: i18nValidationMessage('validation.isEnum'),
+  })
   interval: BillingInterval;
   @ApiPropertyOptional({
     default: false,
     description: 'Use the 14-day membership offer',
   })
   @IsOptional()
-  @IsBoolean()
+  @IsBoolean({ message: i18nValidationMessage('validation.isBoolean') })
   startTrial?: boolean;
 
   @ApiPropertyOptional({ example: 'BIENVENIDA10', nullable: true })
   @IsOptional()
-  @IsString()
-  @MaxLength(64)
+  @IsString({ message: i18nValidationMessage('validation.isString') })
+  @MaxLength(64, { message: i18nValidationMessage('validation.maxLength') })
   promotionCode?: string | null;
 }

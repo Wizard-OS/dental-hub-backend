@@ -1,3 +1,4 @@
+import { apiMessage } from '../common/i18n/api-message';
 import { ConflictException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -31,7 +32,9 @@ export class StorageService {
     if (!uploader)
       throw new ConflictException({
         code: 'UPLOAD_IDENTITY_REQUIRED',
-        message: 'The uploader membership is unavailable.',
+        message: apiMessage(
+          'api.messages.the_uploader_membership_is_unavailable',
+        ),
       });
     return this.personalDrive.upload(input, uploader.userId);
   }
@@ -47,7 +50,9 @@ export class StorageService {
     if (!uploader)
       throw new ConflictException({
         code: 'UPLOAD_IDENTITY_REQUIRED',
-        message: 'The uploader membership is unavailable.',
+        message: apiMessage(
+          'api.messages.the_uploader_membership_is_unavailable',
+        ),
       });
     return this.personalDrive.importFromDrive(input, uploader.userId);
   }

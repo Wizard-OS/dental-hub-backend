@@ -1,3 +1,4 @@
+import { apiMessage } from '../common/i18n/api-message';
 import {
   BadRequestException,
   Injectable,
@@ -83,7 +84,9 @@ export class ClinicsService {
 
   async findOneForUser(userId: string, id: string) {
     if (!isUUID(id)) {
-      throw new BadRequestException('Invalid clinic id');
+      throw new BadRequestException(
+        apiMessage('api.messages.invalid_clinic_id'),
+      );
     }
 
     const membership = await this.clinicMembershipRepository.findOne({
@@ -97,7 +100,9 @@ export class ClinicsService {
     });
 
     if (!membership) {
-      throw new NotFoundException(`Clinic with id ${id} not found`);
+      throw new NotFoundException(
+        apiMessage('api.messages.clinic_with_id_not_found', { id: id }),
+      );
     }
 
     return {
@@ -110,13 +115,18 @@ export class ClinicsService {
 
   async findOne(id: string) {
     if (!isUUID(id)) {
-      throw new BadRequestException('Invalid clinic id');
+      throw new BadRequestException(
+        apiMessage('api.messages.invalid_clinic_id'),
+      );
     }
 
     const clinic = await this.clinicRepository.findOne({
       where: { id, isActive: true },
     });
-    if (!clinic) throw new NotFoundException(`Clinic with id ${id} not found`);
+    if (!clinic)
+      throw new NotFoundException(
+        apiMessage('api.messages.clinic_with_id_not_found', { id: id }),
+      );
 
     return clinic;
   }
@@ -195,7 +205,7 @@ export class ClinicsService {
   private ensureClinicScope(scopedClinicId: string, id: string) {
     if (scopedClinicId !== id) {
       throw new BadRequestException(
-        'Clinic id does not match x-clinic-id scope',
+        apiMessage('api.messages.clinic_id_does_not_match_x_clinic_id_scope'),
       );
     }
   }
@@ -228,9 +238,13 @@ export class ClinicsService {
 
   private handleDBErrors(error: unknown): never {
     if (error instanceof Object && 'code' in error && error.code === '23505') {
-      throw new BadRequestException((error as Record<string, unknown>).detail);
+      throw new BadRequestException(
+        apiMessage('api.messages.duplicate_record'),
+      );
     }
 
-    throw new InternalServerErrorException('Please check server logs');
+    throw new InternalServerErrorException(
+      apiMessage('api.messages.please_check_server_logs'),
+    );
   }
 }

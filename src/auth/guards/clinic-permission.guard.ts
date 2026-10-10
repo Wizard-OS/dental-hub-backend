@@ -1,3 +1,4 @@
+import { apiMessage } from '../../common/i18n/api-message';
 import { Reflector } from '@nestjs/core';
 import {
   CanActivate,
@@ -34,7 +35,9 @@ export class ClinicPermissionGuard implements CanActivate {
     if (allowed) return true;
 
     throw new ForbiddenException(
-      `Clinic permissions required: [${permissions.join(', ')}]`,
+      apiMessage('api.messages.clinic_permissions_required', {
+        permissions: permissions.join(', '),
+      }),
     );
   }
 }

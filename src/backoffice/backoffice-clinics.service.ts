@@ -1,3 +1,4 @@
+import { apiMessage, type ApiMessage } from '../common/i18n/api-message';
 import {
   BadRequestException,
   Injectable,
@@ -121,7 +122,7 @@ export class BackofficeClinicsService {
   }
 
   async findClinic(id: string): Promise<unknown> {
-    this.assertUuid(id, 'Invalid clinic id');
+    this.assertUuid(id, apiMessage('api.messages.invalid_clinic_id'));
 
     const clinic = await this.clinicRepository.findOne({
       where: { id },
@@ -131,7 +132,9 @@ export class BackofficeClinicsService {
     });
 
     if (!clinic) {
-      throw new NotFoundException(`Clinic with id ${id} not found`);
+      throw new NotFoundException(
+        apiMessage('api.messages.clinic_with_id_not_found', { id: id }),
+      );
     }
 
     const [
@@ -193,11 +196,13 @@ export class BackofficeClinicsService {
   }
 
   async updateClinic(id: string, dto: UpdateBackofficeClinicDto) {
-    this.assertUuid(id, 'Invalid clinic id');
+    this.assertUuid(id, apiMessage('api.messages.invalid_clinic_id'));
 
     const clinic = await this.clinicRepository.findOne({ where: { id } });
     if (!clinic) {
-      throw new NotFoundException(`Clinic with id ${id} not found`);
+      throw new NotFoundException(
+        apiMessage('api.messages.clinic_with_id_not_found', { id: id }),
+      );
     }
 
     Object.assign(clinic, dto);
@@ -208,7 +213,7 @@ export class BackofficeClinicsService {
     id: string,
     dto: UpdateBackofficeSubscriptionDto,
   ): Promise<unknown> {
-    this.assertUuid(id, 'Invalid clinic id');
+    this.assertUuid(id, apiMessage('api.messages.invalid_clinic_id'));
 
     const clinic = await this.clinicRepository.findOne({
       where: { id },
@@ -216,7 +221,9 @@ export class BackofficeClinicsService {
     });
 
     if (!clinic) {
-      throw new NotFoundException(`Clinic with id ${id} not found`);
+      throw new NotFoundException(
+        apiMessage('api.messages.clinic_with_id_not_found', { id: id }),
+      );
     }
 
     return await this.membershipService.assignManualFromBackoffice(
@@ -272,7 +279,7 @@ export class BackofficeClinicsService {
     };
   }
 
-  private assertUuid(value: string, message: string) {
+  private assertUuid(value: string, message: ApiMessage) {
     if (!isUUID(value)) {
       throw new BadRequestException(message);
     }

@@ -1,3 +1,4 @@
+import { apiMessage, type ApiMessage } from '../common/i18n/api-message';
 import {
   BadRequestException,
   Injectable,
@@ -61,7 +62,7 @@ export class BackofficeSupportRequestsService {
     id: string,
     dto: UpdateBackofficeSupportRequestDto,
   ) {
-    this.assertUuid(id, 'Invalid support request id');
+    this.assertUuid(id, apiMessage('api.messages.invalid_support_request_id'));
 
     const request = await this.supportRequestRepository.findOne({
       where: { id },
@@ -69,14 +70,18 @@ export class BackofficeSupportRequestsService {
     });
 
     if (!request) {
-      throw new NotFoundException(`Support request with id ${id} not found`);
+      throw new NotFoundException(
+        apiMessage('api.messages.support_request_with_id_not_found', {
+          id: id,
+        }),
+      );
     }
 
     request.status = dto.status;
     return await this.supportRequestRepository.save(request);
   }
 
-  private assertUuid(value: string, message: string) {
+  private assertUuid(value: string, message: ApiMessage) {
     if (!isUUID(value)) {
       throw new BadRequestException(message);
     }

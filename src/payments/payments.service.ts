@@ -1,3 +1,4 @@
+import { apiMessage } from '../common/i18n/api-message';
 import {
   BadRequestException,
   Injectable,
@@ -45,7 +46,9 @@ export class PaymentsService {
 
     if (nextPaidAmount > Number(invoice.totalAmount)) {
       throw new BadRequestException(
-        'Payment amount exceeds pending invoice balance',
+        apiMessage(
+          'api.messages.payment_amount_exceeds_pending_invoice_balance',
+        ),
       );
     }
 
@@ -73,7 +76,10 @@ export class PaymentsService {
   }
 
   async findOne(clinicId: string, id: string) {
-    if (!isUUID(id)) throw new BadRequestException('Invalid payment id');
+    if (!isUUID(id))
+      throw new BadRequestException(
+        apiMessage('api.messages.invalid_payment_id'),
+      );
 
     const payment = await this.paymentRepository
       .createQueryBuilder('payment')
@@ -83,7 +89,9 @@ export class PaymentsService {
       .getOne();
 
     if (!payment) {
-      throw new NotFoundException(`Payment with id ${id} not found`);
+      throw new NotFoundException(
+        apiMessage('api.messages.payment_with_id_not_found', { id: id }),
+      );
     }
 
     return payment;
@@ -92,7 +100,9 @@ export class PaymentsService {
   async update(clinicId: string, id: string, dto: UpdatePaymentDto) {
     const payment = await this.findOne(clinicId, id);
     if (payment.voidedAt) {
-      throw new BadRequestException('Voided payments cannot be updated');
+      throw new BadRequestException(
+        apiMessage('api.messages.voided_payments_cannot_be_updated'),
+      );
     }
 
     const previousInvoiceId = payment.invoiceId;
@@ -121,7 +131,9 @@ export class PaymentsService {
 
     if (paidWithoutCurrent + nextAmount > Number(invoice.totalAmount)) {
       throw new BadRequestException(
-        'Payment amount exceeds pending invoice balance',
+        apiMessage(
+          'api.messages.payment_amount_exceeds_pending_invoice_balance',
+        ),
       );
     }
 
@@ -158,7 +170,9 @@ export class PaymentsService {
     });
 
     if (!invoice) {
-      throw new BadRequestException('Invoice does not belong to clinic scope');
+      throw new BadRequestException(
+        apiMessage('api.messages.invoice_does_not_belong_to_clinic_scope'),
+      );
     }
 
     return invoice;
@@ -172,7 +186,9 @@ export class PaymentsService {
   ) {
     if (patientId !== invoice.patientId) {
       throw new BadRequestException(
-        'Payment patient does not match invoice patient',
+        apiMessage(
+          'api.messages.payment_patient_does_not_match_invoice_patient',
+        ),
       );
     }
 
@@ -180,7 +196,9 @@ export class PaymentsService {
 
     if (invoice.treatmentId && treatmentId !== invoice.treatmentId) {
       throw new BadRequestException(
-        'Payment treatment does not match invoice treatment',
+        apiMessage(
+          'api.messages.payment_treatment_does_not_match_invoice_treatment',
+        ),
       );
     }
 
@@ -196,7 +214,9 @@ export class PaymentsService {
 
     if (!treatment) {
       throw new BadRequestException(
-        'Payment treatment does not belong to invoice patient and clinic scope',
+        apiMessage(
+          'api.messages.payment_treatment_does_not_belong_to_invoice_patient_and_clinic_scope',
+        ),
       );
     }
   }

@@ -1,3 +1,4 @@
+import { apiMessage } from '../common/i18n/api-message';
 import {
   BadRequestException,
   Injectable,
@@ -32,7 +33,9 @@ export class BillingWebhookService {
     );
 
     if (!verification.verified) {
-      throw new UnauthorizedException('Invalid PayPal webhook signature');
+      throw new UnauthorizedException(
+        apiMessage('api.messages.invalid_paypal_webhook_signature'),
+      );
     }
 
     const event = this.asWebhookPayload(payload);
@@ -41,7 +44,9 @@ export class BillingWebhookService {
     const eventType = event.event_type;
 
     if (!eventId || !eventType) {
-      throw new BadRequestException('Invalid PayPal webhook payload');
+      throw new BadRequestException(
+        apiMessage('api.messages.invalid_paypal_webhook_payload'),
+      );
     }
 
     const providerSubscriptionId =
@@ -98,7 +103,9 @@ export class BillingWebhookService {
 
   private asWebhookPayload(payload: unknown): ProviderWebhookPayload {
     if (!payload || typeof payload !== 'object') {
-      throw new BadRequestException('Webhook payload must be an object');
+      throw new BadRequestException(
+        apiMessage('api.messages.webhook_payload_must_be_an_object'),
+      );
     }
 
     return payload;

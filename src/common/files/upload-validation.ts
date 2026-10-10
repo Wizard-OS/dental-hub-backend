@@ -1,3 +1,4 @@
+import { apiMessage } from '../i18n/api-message';
 import { BadRequestException } from '@nestjs/common';
 import { promises as fs } from 'fs';
 import * as path from 'path';
@@ -22,7 +23,9 @@ export async function validateAndNormalizeUploadedFile(
   const detected = await detectFileType(file.path);
 
   if (!detected || !allowedKinds.includes(detected.kind)) {
-    throw new BadRequestException('File type is not allowed');
+    throw new BadRequestException(
+      apiMessage('api.messages.file_type_is_not_allowed'),
+    );
   }
 
   await normalizeStoredFileName(file, detected.extension);

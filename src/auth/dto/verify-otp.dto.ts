@@ -1,3 +1,4 @@
+import { i18nValidationMessage } from 'nestjs-i18n';
 import { IsEmail, IsString, Matches } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
@@ -6,15 +7,15 @@ export class VerifyOtpDto {
     example: 'user@example.com',
     description: 'Correo electrónico del usuario',
   })
-  @IsString()
-  @IsEmail()
+  @IsString({ message: i18nValidationMessage('validation.isString') })
+  @IsEmail({}, { message: i18nValidationMessage('validation.isEmail') })
   email: string;
 
   @ApiProperty({
     example: '123456',
     description: 'Código OTP de 6 dígitos',
   })
-  @IsString()
-  @Matches(/^\d{6}$/, { message: 'OTP must be a 6-digit code' })
+  @IsString({ message: i18nValidationMessage('validation.isString') })
+  @Matches(/^\d{6}$/, { message: i18nValidationMessage('validation.otp') })
   otp: string;
 }

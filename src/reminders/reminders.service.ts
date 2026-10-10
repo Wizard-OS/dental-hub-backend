@@ -1,3 +1,4 @@
+import { apiMessage } from '../common/i18n/api-message';
 import {
   BadRequestException,
   Injectable,
@@ -57,7 +58,10 @@ export class RemindersService {
   }
 
   async findOne(clinicId: string, id: string) {
-    if (!isUUID(id)) throw new BadRequestException('Invalid reminder id');
+    if (!isUUID(id))
+      throw new BadRequestException(
+        apiMessage('api.messages.invalid_reminder_id'),
+      );
 
     const reminder = await this.reminderRepository
       .createQueryBuilder('reminder')
@@ -67,7 +71,9 @@ export class RemindersService {
       .getOne();
 
     if (!reminder) {
-      throw new NotFoundException(`Reminder with id ${id} not found`);
+      throw new NotFoundException(
+        apiMessage('api.messages.reminder_with_id_not_found', { id: id }),
+      );
     }
 
     return reminder;
@@ -101,7 +107,9 @@ export class RemindersService {
     const reminder = await this.findOne(clinicId, id);
     reminder.status = ReminderStatus.CANCELLED;
     await this.reminderRepository.save(reminder);
-    return { message: `Reminder ${id} cancelled` };
+    return {
+      message: apiMessage('api.messages.reminder_cancelled', { id: id }),
+    };
   }
 
   private async assertAppointmentInClinic(
@@ -115,7 +123,9 @@ export class RemindersService {
 
     if (!appointment) {
       throw new BadRequestException(
-        'Appointment does not belong to the requested clinic',
+        apiMessage(
+          'api.messages.appointment_does_not_belong_to_the_requested_clinic',
+        ),
       );
     }
   }
@@ -128,7 +138,9 @@ export class RemindersService {
 
     if (!template) {
       throw new BadRequestException(
-        'Message template does not belong to the requested clinic',
+        apiMessage(
+          'api.messages.message_template_does_not_belong_to_the_requested_clinic',
+        ),
       );
     }
   }

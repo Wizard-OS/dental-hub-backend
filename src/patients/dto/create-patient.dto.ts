@@ -1,3 +1,4 @@
+import { i18nValidationMessage } from 'nestjs-i18n';
 import {
   IsDateString,
   IsEmail,
@@ -17,7 +18,7 @@ export class CreatePatientDto {
     description:
       'UUID de la clínica. Opcional/deprecado en endpoints con x-clinic-id.',
   })
-  @IsUUID()
+  @IsUUID(undefined, { message: i18nValidationMessage('validation.isUUID') })
   @IsOptional()
   clinicId?: string;
 
@@ -26,23 +27,23 @@ export class CreatePatientDto {
     description: 'Email del paciente',
   })
   @IsOptional()
-  @IsEmail()
+  @IsEmail({}, { message: i18nValidationMessage('validation.isEmail') })
   email?: string;
 
   @ApiProperty({ example: 'María', description: 'Nombre del paciente' })
-  @IsString()
+  @IsString({ message: i18nValidationMessage('validation.isString') })
   firstName: string;
 
   @ApiProperty({ example: 'López', description: 'Apellido del paciente' })
-  @IsString()
+  @IsString({ message: i18nValidationMessage('validation.isString') })
   lastName: string;
 
   @ApiPropertyOptional({
     example: 'UY-12345678',
     description: 'Documento o identificación del paciente',
   })
-  @IsString()
-  @MaxLength(80)
+  @IsString({ message: i18nValidationMessage('validation.isString') })
+  @MaxLength(80, { message: i18nValidationMessage('validation.maxLength') })
   @IsOptional()
   documentId?: string;
 
@@ -50,7 +51,10 @@ export class CreatePatientDto {
     example: '1990-05-15',
     description: 'Fecha de nacimiento (ISO 8601)',
   })
-  @IsDateString()
+  @IsDateString(
+    {},
+    { message: i18nValidationMessage('validation.isDateString') },
+  )
   birthDate: Date;
 
   @ApiProperty({
@@ -58,16 +62,14 @@ export class CreatePatientDto {
     example: Gender.FEMALE,
     description: 'Género del paciente',
   })
-  @IsEnum(Gender, {
-    message: 'gender must be a valid enum value',
-  })
+  @IsEnum(Gender, { message: i18nValidationMessage('validation.gender') })
   gender: Gender;
 
   @ApiPropertyOptional({
     example: 'Av. Principal 123',
     description: 'Dirección',
   })
-  @IsString()
+  @IsString({ message: i18nValidationMessage('validation.isString') })
   @IsOptional()
   address: string;
 
@@ -75,8 +77,8 @@ export class CreatePatientDto {
     example: 'Arquitecto',
     description: 'Profesión del paciente',
   })
-  @IsString()
-  @MaxLength(120)
+  @IsString({ message: i18nValidationMessage('validation.isString') })
+  @MaxLength(120, { message: i18nValidationMessage('validation.maxLength') })
   @IsOptional()
   profession?: string;
 
@@ -84,8 +86,8 @@ export class CreatePatientDto {
     example: 'Av. Principal',
     description: 'Calle de la dirección del paciente',
   })
-  @IsString()
-  @MaxLength(180)
+  @IsString({ message: i18nValidationMessage('validation.isString') })
+  @MaxLength(180, { message: i18nValidationMessage('validation.maxLength') })
   @IsOptional()
   streetAddress?: string;
 
@@ -93,8 +95,8 @@ export class CreatePatientDto {
     example: '1234',
     description: 'Número de puerta o domicilio',
   })
-  @IsString()
-  @MaxLength(40)
+  @IsString({ message: i18nValidationMessage('validation.isString') })
+  @MaxLength(40, { message: i18nValidationMessage('validation.maxLength') })
   @IsOptional()
   addressNumber?: string;
 
@@ -102,8 +104,8 @@ export class CreatePatientDto {
     example: 'Pocitos',
     description: 'Barrio del paciente',
   })
-  @IsString()
-  @MaxLength(120)
+  @IsString({ message: i18nValidationMessage('validation.isString') })
+  @MaxLength(120, { message: i18nValidationMessage('validation.maxLength') })
   @IsOptional()
   neighborhood?: string;
 
@@ -111,8 +113,8 @@ export class CreatePatientDto {
     example: 'Montevideo',
     description: 'Localidad o ciudad del paciente',
   })
-  @IsString()
-  @MaxLength(120)
+  @IsString({ message: i18nValidationMessage('validation.isString') })
+  @MaxLength(120, { message: i18nValidationMessage('validation.maxLength') })
   @IsOptional()
   city?: string;
 
@@ -120,8 +122,8 @@ export class CreatePatientDto {
     example: '11300',
     description: 'Código postal del paciente',
   })
-  @IsString()
-  @MaxLength(40)
+  @IsString({ message: i18nValidationMessage('validation.isString') })
+  @MaxLength(40, { message: i18nValidationMessage('validation.maxLength') })
   @IsOptional()
   postalCode?: string;
 
@@ -129,7 +131,7 @@ export class CreatePatientDto {
     example: '+5491112345678',
     description: 'Teléfono',
   })
-  @IsString()
+  @IsString({ message: i18nValidationMessage('validation.isString') })
   @IsOptional()
   phone: string;
 
@@ -138,7 +140,7 @@ export class CreatePatientDto {
     description:
       'UUID del archivo usado como foto de perfil. Se administra con el endpoint de foto.',
   })
-  @IsUUID()
+  @IsUUID(undefined, { message: i18nValidationMessage('validation.isUUID') })
   @IsOptional()
   profilePhotoFileId?: string;
 
@@ -147,7 +149,7 @@ export class CreatePatientDto {
     description:
       'URL de la foto de perfil. Se administra con el endpoint de foto.',
   })
-  @IsString()
+  @IsString({ message: i18nValidationMessage('validation.isString') })
   @IsOptional()
   profilePhotoUrl?: string;
 
@@ -155,7 +157,7 @@ export class CreatePatientDto {
     example: 'Laura López +59891111111',
     description: 'Contacto de emergencia',
   })
-  @IsString()
+  @IsString({ message: i18nValidationMessage('validation.isString') })
   @IsOptional()
   emergencyContact?: string;
 
@@ -163,7 +165,7 @@ export class CreatePatientDto {
     example: 'Prefiere turnos por la mañana',
     description: 'Observaciones generales',
   })
-  @IsString()
+  @IsString({ message: i18nValidationMessage('validation.isString') })
   @IsOptional()
   observations?: string;
 
@@ -171,7 +173,7 @@ export class CreatePatientDto {
     example: 'Hipertensión controlada',
     description: 'Antecedentes médicos básicos',
   })
-  @IsString()
+  @IsString({ message: i18nValidationMessage('validation.isString') })
   @IsOptional()
   medicalHistory?: string;
 
@@ -179,7 +181,7 @@ export class CreatePatientDto {
     example: 'Bruxismo nocturno',
     description: 'Antecedentes odontológicos básicos',
   })
-  @IsString()
+  @IsString({ message: i18nValidationMessage('validation.isString') })
   @IsOptional()
   dentalHistory?: string;
 }

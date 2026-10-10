@@ -1,3 +1,4 @@
+import { apiMessage } from '../../common/i18n/api-message';
 import { Reflector } from '@nestjs/core';
 import {
   CanActivate,
@@ -29,7 +30,8 @@ export class UserRoleGuard implements CanActivate {
     const req = context.switchToHttp().getRequest<AuthenticatedRequest>();
     const user = req.user;
 
-    if (!user) throw new BadRequestException('User not found');
+    if (!user)
+      throw new BadRequestException(apiMessage('api.messages.user_not_found'));
 
     for (const role of user.roles) {
       if (validRoles.includes(role)) {
@@ -38,7 +40,10 @@ export class UserRoleGuard implements CanActivate {
     }
 
     throw new ForbiddenException(
-      `User ${user.firstName} need a valid role: [${validRoles}]`,
+      apiMessage('api.messages.user_need_a_valid_role', {
+        userName: user.firstName,
+        validRoles: validRoles.join(','),
+      }),
     );
   }
 }

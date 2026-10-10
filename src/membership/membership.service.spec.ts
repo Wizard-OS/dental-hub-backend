@@ -126,7 +126,7 @@ describe('Provider trial entitlement', () => {
         providerSubscriptionId: 'I-123',
         clinicId: 'another-clinic',
       }),
-    ).rejects.toThrow('another clinic');
+    ).rejects.toThrow('api.messages.subscription_belongs_to_another_clinic');
     expect(repository.save).not.toHaveBeenCalled();
   });
   it('does not regress an activated subscription on a repeated begin event', async () => {
@@ -162,7 +162,9 @@ describe('Provider trial entitlement', () => {
         ...input,
         fingerprint: 'other-options',
       }),
-    ).rejects.toThrow('checkout is already pending');
+    ).rejects.toThrow(
+      'api.messages.a_checkout_is_already_pending_retry_the_original_checkout_options',
+    );
     expect(outboundMessageCreate).not.toHaveBeenCalled();
   });
 

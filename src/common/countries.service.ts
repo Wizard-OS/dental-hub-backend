@@ -1,3 +1,4 @@
+import { apiMessage } from './i18n/api-message';
 import {
   Injectable,
   InternalServerErrorException,
@@ -100,7 +101,9 @@ export class CountriesService {
         throw error;
       }
 
-      throw new ServiceUnavailableException('Country metadata is unavailable');
+      throw new ServiceUnavailableException(
+        apiMessage('api.messages.country_metadata_is_unavailable'),
+      );
     }
   }
 
@@ -138,7 +141,9 @@ export class CountriesService {
 
     const country = response.data?.objects?.[0];
     if (!country) {
-      throw new ServiceUnavailableException('Country metadata is unavailable');
+      throw new ServiceUnavailableException(
+        apiMessage('api.messages.country_metadata_is_unavailable'),
+      );
     }
 
     return this.mapCountry(country);
@@ -159,9 +164,9 @@ export class CountriesService {
     const payload = (await response.json()) as RestCountriesResponse;
 
     if (!response.ok) {
-      const message =
-        payload.errors?.[0]?.message ?? 'Country metadata is unavailable';
-      throw new ServiceUnavailableException(message);
+      throw new ServiceUnavailableException(
+        apiMessage('api.messages.country_metadata_is_unavailable'),
+      );
     }
 
     return payload;
@@ -172,7 +177,9 @@ export class CountriesService {
 
     if (!apiKey) {
       throw new ServiceUnavailableException(
-        'REST_COUNTRIES_API_KEY is required to fetch country metadata',
+        apiMessage(
+          'api.messages.rest_countries_api_key_is_required_to_fetch_country_metadata',
+        ),
       );
     }
 
@@ -193,7 +200,9 @@ export class CountriesService {
 
     if (!countryCode || !countryName) {
       throw new InternalServerErrorException(
-        'Rest Countries response is missing country identifiers',
+        apiMessage(
+          'api.messages.rest_countries_response_is_missing_country_identifiers',
+        ),
       );
     }
 

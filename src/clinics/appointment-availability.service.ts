@@ -1,3 +1,4 @@
+import { apiMessage } from '../common/i18n/api-message';
 import {
   BadRequestException,
   ForbiddenException,
@@ -217,20 +218,27 @@ export class AppointmentAvailabilityService {
 
   private async findClinic(id: string) {
     if (!isUUID(id)) {
-      throw new BadRequestException('Invalid clinic id');
+      throw new BadRequestException(
+        apiMessage('api.messages.invalid_clinic_id'),
+      );
     }
 
     const clinic = await this.clinicRepository.findOne({
       where: { id, isActive: true },
     });
-    if (!clinic) throw new NotFoundException(`Clinic with id ${id} not found`);
+    if (!clinic)
+      throw new NotFoundException(
+        apiMessage('api.messages.clinic_with_id_not_found', { id: id }),
+      );
 
     return clinic;
   }
 
   private async findActiveMembership(clinicId: string, membershipId: string) {
     if (!isUUID(membershipId)) {
-      throw new BadRequestException('Invalid clinic membership id');
+      throw new BadRequestException(
+        apiMessage('api.messages.invalid_clinic_membership_id'),
+      );
     }
 
     const membership = await this.clinicMembershipRepository.findOne({
@@ -238,7 +246,9 @@ export class AppointmentAvailabilityService {
     });
 
     if (!membership) {
-      throw new NotFoundException('Professional membership not found');
+      throw new NotFoundException(
+        apiMessage('api.messages.professional_membership_not_found'),
+      );
     }
 
     return membership;
@@ -247,7 +257,7 @@ export class AppointmentAvailabilityService {
   private ensureClinicScope(scopedClinicId: string, id: string) {
     if (scopedClinicId !== id) {
       throw new BadRequestException(
-        'Clinic id does not match x-clinic-id scope',
+        apiMessage('api.messages.clinic_id_does_not_match_x_clinic_id_scope'),
       );
     }
   }
@@ -263,7 +273,9 @@ export class AppointmentAvailabilityService {
       return;
     }
 
-    throw new ForbiddenException('Cannot view this professional schedule');
+    throw new ForbiddenException(
+      apiMessage('api.messages.cannot_view_this_professional_schedule'),
+    );
   }
 
   private assertCanEditProfessionalSchedule(
@@ -277,7 +289,9 @@ export class AppointmentAvailabilityService {
       return;
     }
 
-    throw new ForbiddenException('Cannot edit this professional schedule');
+    throw new ForbiddenException(
+      apiMessage('api.messages.cannot_edit_this_professional_schedule'),
+    );
   }
 
   private canManageSchedule(context: ClinicScheduleContext) {

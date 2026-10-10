@@ -1,3 +1,4 @@
+import { apiMessage } from '../common/i18n/api-message';
 import { BadRequestException, Injectable } from '@nestjs/common';
 import {
   createCipheriv,
@@ -30,7 +31,9 @@ export class TokenEncryptionService {
     const [iv, tag, encrypted] = value.split('.');
 
     if (!iv || !tag || !encrypted) {
-      throw new BadRequestException('Invalid encrypted integration token');
+      throw new BadRequestException(
+        apiMessage('api.messages.invalid_encrypted_integration_token'),
+      );
     }
 
     const decipher = createDecipheriv(
@@ -51,7 +54,9 @@ export class TokenEncryptionService {
 
     if (!secret) {
       throw new BadRequestException(
-        'INTEGRATION_TOKEN_ENCRYPTION_KEY is required for storage integrations',
+        apiMessage(
+          'api.messages.integration_token_encryption_key_is_required_for_storage_integrations',
+        ),
       );
     }
 

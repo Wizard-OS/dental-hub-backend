@@ -2,6 +2,7 @@ import { NotFoundException, UnauthorizedException } from '@nestjs/common';
 
 import { UserSession } from './entities/user-session.entity';
 import { UserSessionsService } from './user-sessions.service';
+import { apiMessage } from '../common/i18n/api-message';
 
 describe('UserSessionsService', () => {
   const userId = 'user-1';
@@ -113,7 +114,7 @@ describe('UserSessionsService', () => {
     });
 
     await expect(service.revokeSession(userId, session.id)).resolves.toEqual({
-      message: 'Session revoked successfully',
+      message: apiMessage('api.messages.session_revoked_successfully'),
     });
     expect(session.isRevoked).toBe(true);
     expect(session.revokedAt).toBeInstanceOf(Date);

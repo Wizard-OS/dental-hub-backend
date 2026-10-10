@@ -1,3 +1,4 @@
+import { apiMessage } from '../common/i18n/api-message';
 import {
   BadRequestException,
   Injectable,
@@ -250,11 +251,19 @@ export class OdontogramService {
     });
 
     if (!entry) {
-      throw new NotFoundException(`Odontogram entry ${entryId} not found`);
+      throw new NotFoundException(
+        apiMessage('api.messages.odontogram_entry_not_found', {
+          entryId: entryId,
+        }),
+      );
     }
 
     await this.odontogramRepository.remove(entry);
-    return { message: `Odontogram entry ${entryId} deleted` };
+    return {
+      message: apiMessage('api.messages.odontogram_entry_deleted', {
+        entryId: entryId,
+      }),
+    };
   }
 
   async generatePdf(
@@ -307,12 +316,16 @@ export class OdontogramService {
     const unique = new Set(resolved);
 
     if (unique.size !== resolved.length) {
-      throw new BadRequestException('Duplicate tooth surfaces are not allowed');
+      throw new BadRequestException(
+        apiMessage('api.messages.duplicate_tooth_surfaces_are_not_allowed'),
+      );
     }
 
     if (unique.has(ToothSurface.FULL) && unique.size > 1) {
       throw new BadRequestException(
-        'Full tooth surface cannot be combined with partial surfaces',
+        apiMessage(
+          'api.messages.full_tooth_surface_cannot_be_combined_with_partial_surfaces',
+        ),
       );
     }
 
@@ -321,7 +334,9 @@ export class OdontogramService {
 
   private assertAdultToothCode(toothCode: string) {
     if (!ADULT_TOOTH_CODE_SET.has(toothCode)) {
-      throw new BadRequestException('Invalid adult tooth code');
+      throw new BadRequestException(
+        apiMessage('api.messages.invalid_adult_tooth_code'),
+      );
     }
   }
 
@@ -343,7 +358,9 @@ export class OdontogramService {
 
     if (!patient) {
       throw new NotFoundException(
-        `Patient ${patientId} does not belong to the requested clinic`,
+        apiMessage('api.messages.patient_by_id_does_not_belong_to_clinic', {
+          patientId: patientId,
+        }),
       );
     }
 
@@ -373,7 +390,9 @@ export class OdontogramService {
 
     if (!note) {
       throw new BadRequestException(
-        'Clinical note does not belong to patient and clinic scope',
+        apiMessage(
+          'api.messages.clinical_note_does_not_belong_to_patient_and_clinic_scope',
+        ),
       );
     }
   }
@@ -393,7 +412,9 @@ export class OdontogramService {
 
     if (!treatment) {
       throw new BadRequestException(
-        'Treatment does not belong to patient and clinic scope',
+        apiMessage(
+          'api.messages.treatment_does_not_belong_to_patient_and_clinic_scope',
+        ),
       );
     }
   }

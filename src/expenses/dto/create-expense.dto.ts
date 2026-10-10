@@ -1,3 +1,4 @@
+import { i18nValidationMessage } from 'nestjs-i18n';
 import {
   IsDateString,
   IsEnum,
@@ -15,7 +16,7 @@ export class CreateExpenseDto {
     description:
       'UUID de la clínica. Opcional/deprecado en endpoints con x-clinic-id.',
   })
-  @IsUUID()
+  @IsUUID(undefined, { message: i18nValidationMessage('validation.isUUID') })
   @IsOptional()
   clinicId?: string;
 
@@ -24,32 +25,39 @@ export class CreateExpenseDto {
     example: ExpenseCategory.SUPPLIES,
     description: 'Categoría del gasto',
   })
-  @IsEnum(ExpenseCategory)
+  @IsEnum(ExpenseCategory, {
+    message: i18nValidationMessage('validation.isEnum'),
+  })
   category: ExpenseCategory;
 
   @ApiProperty({ example: '250.00', description: 'Monto (decimal string)' })
-  @Matches(/^\d+(\.\d{1,2})?$/)
+  @Matches(/^\d+(\.\d{1,2})?$/, {
+    message: i18nValidationMessage('validation.matches'),
+  })
   amount: string;
 
   @ApiProperty({
     example: '2026-04-10',
     description: 'Fecha del gasto (ISO 8601)',
   })
-  @IsDateString()
+  @IsDateString(
+    {},
+    { message: i18nValidationMessage('validation.isDateString') },
+  )
   spentAt: Date;
 
   @ApiPropertyOptional({
     example: 'Material de limpieza',
     description: 'Notas',
   })
-  @IsString()
+  @IsString({ message: i18nValidationMessage('validation.isString') })
   @IsOptional()
   notes?: string;
 
   @ApiPropertyOptional({
     description: 'UUID de la membresía que registró el gasto',
   })
-  @IsUUID()
+  @IsUUID(undefined, { message: i18nValidationMessage('validation.isUUID') })
   @IsOptional()
   recordedByMembershipId?: string;
 }

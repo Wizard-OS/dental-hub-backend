@@ -1,3 +1,4 @@
+import { i18nValidationMessage } from 'nestjs-i18n';
 import { Type } from 'class-transformer';
 import {
   ArrayMaxSize,
@@ -19,57 +20,67 @@ import { PatientExamCategory } from '../entities/patient-exam.entity';
 
 export class ExamMeasurementDto {
   @ApiProperty({ example: 'SNA' })
-  @IsString()
-  @Matches(/\S/)
-  @MaxLength(120)
+  @IsString({ message: i18nValidationMessage('validation.isString') })
+  @Matches(/\S/, { message: i18nValidationMessage('validation.matches') })
+  @MaxLength(120, { message: i18nValidationMessage('validation.maxLength') })
   name: string;
 
   @ApiProperty({ example: 82 })
-  @IsNumber({ allowNaN: false, allowInfinity: false })
+  @IsNumber(
+    { allowNaN: false, allowInfinity: false },
+    { message: i18nValidationMessage('validation.isNumber') },
+  )
   value: number;
 
   @ApiPropertyOptional({ example: 'degrees' })
   @IsOptional()
-  @IsString()
+  @IsString({ message: i18nValidationMessage('validation.isString') })
   unit?: string;
 
   @ApiPropertyOptional({ example: '82 ± 2' })
   @IsOptional()
-  @IsString()
+  @IsString({ message: i18nValidationMessage('validation.isString') })
   reference?: string;
 }
 
 export class CreatePatientExamDto {
   @ApiProperty({ example: 'Mediciones cefalométricas' })
-  @IsString()
-  @Matches(/\S/)
-  @MaxLength(200)
+  @IsString({ message: i18nValidationMessage('validation.isString') })
+  @Matches(/\S/, { message: i18nValidationMessage('validation.matches') })
+  @MaxLength(200, { message: i18nValidationMessage('validation.maxLength') })
   title: string;
 
   @ApiProperty({ enum: PatientExamCategory })
-  @IsEnum(PatientExamCategory)
+  @IsEnum(PatientExamCategory, {
+    message: i18nValidationMessage('validation.isEnum'),
+  })
   category: PatientExamCategory;
 
   @ApiProperty({ example: '2026-09-02T12:30:00Z' })
   @Type(() => Date)
-  @IsDate()
+  @IsDate({ message: i18nValidationMessage('validation.isDate') })
   performedAt: Date;
 
   @ApiPropertyOptional({ nullable: true })
   @IsOptional()
-  @IsString()
+  @IsString({ message: i18nValidationMessage('validation.isString') })
   description?: string | null;
 
   @ApiPropertyOptional({ nullable: true })
   @IsOptional()
-  @IsUUID()
+  @IsUUID(undefined, { message: i18nValidationMessage('validation.isUUID') })
   clinicalNoteId?: string | null;
 
   @ApiPropertyOptional({ type: [ExamMeasurementDto] })
   @ValidateIf((_, value) => value !== undefined)
-  @IsArray()
-  @ArrayMaxSize(200)
-  @ValidateNested({ each: true })
+  @IsArray({ message: i18nValidationMessage('validation.isArray') })
+  @ArrayMaxSize(200, {
+    message: i18nValidationMessage('validation.arrayMaxSize'),
+  })
+  @ValidateNested({
+    each: true,
+    message: i18nValidationMessage('validation.nestedValidation'),
+  })
   @Type(() => ExamMeasurementDto)
   measurements?: ExamMeasurementDto[];
 
@@ -79,10 +90,17 @@ export class CreatePatientExamDto {
       'Archivos existentes del mismo paciente; [] elimina las asociaciones',
   })
   @ValidateIf((_, value) => value !== undefined)
-  @IsArray()
-  @ArrayMaxSize(100)
-  @ArrayUnique()
-  @IsUUID('all', { each: true })
+  @IsArray({ message: i18nValidationMessage('validation.isArray') })
+  @ArrayMaxSize(100, {
+    message: i18nValidationMessage('validation.arrayMaxSize'),
+  })
+  @ArrayUnique(undefined, {
+    message: i18nValidationMessage('validation.arrayUnique'),
+  })
+  @IsUUID('all', {
+    each: true,
+    message: i18nValidationMessage('validation.isUUID'),
+  })
   fileIds?: string[];
 }
 

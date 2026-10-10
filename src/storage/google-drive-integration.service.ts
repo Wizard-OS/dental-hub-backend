@@ -1,3 +1,4 @@
+import { apiMessage } from '../common/i18n/api-message';
 import {
   BadRequestException,
   Injectable,
@@ -74,7 +75,9 @@ export class GoogleDriveIntegrationService {
 
   buildOAuthUrl(clinicId: string, redirectUri?: string) {
     if (!redirectUri) {
-      throw new BadRequestException('redirectUri query param is required');
+      throw new BadRequestException(
+        apiMessage('api.messages.redirecturi_query_param_is_required'),
+      );
     }
 
     return {
@@ -140,7 +143,11 @@ export class GoogleDriveIntegrationService {
     });
 
     if (!integration) {
-      return { message: 'Google Drive integration already disconnected' };
+      return {
+        message: apiMessage(
+          'api.messages.google_drive_integration_already_disconnected',
+        ),
+      };
     }
 
     integration.status = StorageIntegrationStatus.DISCONNECTED;
@@ -154,7 +161,9 @@ export class GoogleDriveIntegrationService {
     };
     await this.integrationRepository.save(integration);
 
-    return { message: 'Google Drive integration disconnected' };
+    return {
+      message: apiMessage('api.messages.google_drive_integration_disconnected'),
+    };
   }
 
   async sync(clinicId: string) {
@@ -169,7 +178,7 @@ export class GoogleDriveIntegrationService {
 
     if (!integration) {
       throw new BadRequestException(
-        'Google Drive integration is not connected',
+        apiMessage('api.messages.google_drive_integration_is_not_connected'),
       );
     }
 
@@ -423,7 +432,9 @@ export class GoogleDriveIntegrationService {
 
   private snapshotDriveFile(file: drive_v3.Schema$File): DriveFileSnapshot {
     if (!file.id || !file.name || !file.mimeType) {
-      throw new BadRequestException('Invalid Google Drive file metadata');
+      throw new BadRequestException(
+        apiMessage('api.messages.invalid_google_drive_file_metadata'),
+      );
     }
 
     return {
@@ -457,7 +468,9 @@ export class GoogleDriveIntegrationService {
     });
 
     if (!clinic)
-      throw new NotFoundException(`Clinic with id ${clinicId} not found`);
+      throw new NotFoundException(
+        apiMessage('api.messages.clinic_with_id_not_found', { id: clinicId }),
+      );
     return clinic;
   }
 

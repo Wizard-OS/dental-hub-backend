@@ -1,3 +1,4 @@
+import { i18nValidationMessage } from 'nestjs-i18n';
 import {
   IsEnum,
   IsInt,
@@ -17,7 +18,9 @@ export class CreatePaymentMethodDto {
     example: PaymentMethodType.CARD,
     description: 'Tipo de método de pago',
   })
-  @IsEnum(PaymentMethodType)
+  @IsEnum(PaymentMethodType, {
+    message: i18nValidationMessage('validation.isEnum'),
+  })
   type: PaymentMethodType;
 
   @ApiProperty({
@@ -26,9 +29,9 @@ export class CreatePaymentMethodDto {
     minLength: 1,
     maxLength: 100,
   })
-  @IsString()
-  @MinLength(1)
-  @MaxLength(100)
+  @IsString({ message: i18nValidationMessage('validation.isString') })
+  @MinLength(1, { message: i18nValidationMessage('validation.minLength') })
+  @MaxLength(100, { message: i18nValidationMessage('validation.maxLength') })
   label: string;
 
   @ApiPropertyOptional({
@@ -37,8 +40,8 @@ export class CreatePaymentMethodDto {
     maxLength: 4,
   })
   @IsOptional()
-  @IsString()
-  @MaxLength(4)
+  @IsString({ message: i18nValidationMessage('validation.isString') })
+  @MaxLength(4, { message: i18nValidationMessage('validation.maxLength') })
   last4?: string;
 
   @ApiPropertyOptional({
@@ -48,9 +51,9 @@ export class CreatePaymentMethodDto {
     maximum: 12,
   })
   @IsOptional()
-  @IsInt()
-  @Min(1)
-  @Max(12)
+  @IsInt({ message: i18nValidationMessage('validation.isInt') })
+  @Min(1, { message: i18nValidationMessage('validation.min') })
+  @Max(12, { message: i18nValidationMessage('validation.max') })
   expiryMonth?: number;
 
   @ApiPropertyOptional({
@@ -60,8 +63,8 @@ export class CreatePaymentMethodDto {
     maximum: 2100,
   })
   @IsOptional()
-  @IsInt()
-  @Min(2024)
-  @Max(2100)
+  @IsInt({ message: i18nValidationMessage('validation.isInt') })
+  @Min(2024, { message: i18nValidationMessage('validation.min') })
+  @Max(2100, { message: i18nValidationMessage('validation.max') })
   expiryYear?: number;
 }

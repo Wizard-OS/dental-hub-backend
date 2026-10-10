@@ -1,3 +1,4 @@
+import { apiMessage, type ApiMessage } from '../i18n/api-message';
 import { BadRequestException } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
@@ -15,7 +16,7 @@ interface UploadInterceptorOptions {
   directory: 'patient-files' | 'profile-photos';
   maxSizeMb: number;
   allowDocuments?: boolean;
-  imageOnlyMessage?: string;
+  imageOnlyMessage?: ApiMessage;
   filename: (request: Express.Request, file: Express.Multer.File) => string;
 }
 
@@ -46,7 +47,8 @@ export function createUploadInterceptor(options: UploadInterceptorOptions) {
 
       return cb(
         new BadRequestException(
-          options.imageOnlyMessage ?? 'File type is not allowed',
+          options.imageOnlyMessage ??
+            apiMessage('api.messages.file_type_is_not_allowed'),
         ),
         false,
       );

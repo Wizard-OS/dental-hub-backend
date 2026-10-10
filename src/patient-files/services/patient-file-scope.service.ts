@@ -1,3 +1,4 @@
+import { apiMessage } from '../../common/i18n/api-message';
 import {
   BadRequestException,
   Injectable,
@@ -38,7 +39,9 @@ export class PatientFileScopeService {
 
     if (!patient) {
       throw new NotFoundException(
-        `Patient ${patientId} does not belong to the requested clinic`,
+        apiMessage('api.messages.patient_by_id_does_not_belong_to_clinic', {
+          patientId: patientId,
+        }),
       );
     }
 
@@ -89,7 +92,9 @@ export class PatientFileScopeService {
 
     if (!appointment) {
       throw new BadRequestException(
-        'Appointment does not belong to patient and clinic scope',
+        apiMessage(
+          'api.messages.appointment_does_not_belong_to_patient_and_clinic_scope',
+        ),
       );
     }
   }
@@ -110,7 +115,9 @@ export class PatientFileScopeService {
 
     if (!note) {
       throw new BadRequestException(
-        'Clinical note does not belong to patient and clinic scope',
+        apiMessage(
+          'api.messages.clinical_note_does_not_belong_to_patient_and_clinic_scope',
+        ),
       );
     }
   }
@@ -130,7 +137,9 @@ export class PatientFileScopeService {
 
     if (!treatment) {
       throw new BadRequestException(
-        'Treatment does not belong to patient and clinic scope',
+        apiMessage(
+          'api.messages.treatment_does_not_belong_to_patient_and_clinic_scope',
+        ),
       );
     }
   }

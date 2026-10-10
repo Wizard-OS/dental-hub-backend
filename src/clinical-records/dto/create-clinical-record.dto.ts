@@ -1,16 +1,17 @@
+import { i18nValidationMessage } from 'nestjs-i18n';
 import { IsIn, IsOptional, IsString, IsUUID } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateClinicalRecordDto {
   @ApiProperty({ description: 'UUID del paciente' })
-  @IsUUID()
+  @IsUUID(undefined, { message: i18nValidationMessage('validation.isUUID') })
   patientId: string;
 
   @ApiPropertyOptional({
     example: 'Penicilina',
     description: 'Alergias conocidas',
   })
-  @IsString()
+  @IsString({ message: i18nValidationMessage('validation.isString') })
   @IsOptional()
   allergies?: string;
 
@@ -18,7 +19,7 @@ export class CreateClinicalRecordDto {
     example: 'Diabetes tipo 2',
     description: 'Enfermedades crónicas',
   })
-  @IsString()
+  @IsString({ message: i18nValidationMessage('validation.isString') })
   @IsOptional()
   chronicDiseases?: string;
 
@@ -26,7 +27,7 @@ export class CreateClinicalRecordDto {
     example: 'Cirugías previas sin complicaciones',
     description: 'Antecedentes médicos generales',
   })
-  @IsString()
+  @IsString({ message: i18nValidationMessage('validation.isString') })
   @IsOptional()
   medicalHistory?: string;
 
@@ -34,7 +35,7 @@ export class CreateClinicalRecordDto {
     example: 'Tratamiento de conducto en pieza 11',
     description: 'Antecedentes odontológicos',
   })
-  @IsString()
+  @IsString({ message: i18nValidationMessage('validation.isString') })
   @IsOptional()
   dentalHistory?: string;
 
@@ -42,7 +43,7 @@ export class CreateClinicalRecordDto {
     example: 'Paciente ansioso en consulta',
     description: 'Observaciones clínicas generales',
   })
-  @IsString()
+  @IsString({ message: i18nValidationMessage('validation.isString') })
   @IsOptional()
   observations?: string;
   @ApiPropertyOptional({
@@ -50,7 +51,9 @@ export class CreateClinicalRecordDto {
     nullable: true,
   })
   @IsOptional()
-  @IsIn(['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'])
+  @IsIn(['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'], {
+    message: i18nValidationMessage('validation.isIn'),
+  })
   bloodType?: string | null;
 
   @ApiPropertyOptional({
@@ -58,16 +61,16 @@ export class CreateClinicalRecordDto {
     nullable: true,
   })
   @IsOptional()
-  @IsString()
+  @IsString({ message: i18nValidationMessage('validation.isString') })
   healthInsurance?: string | null;
 
   @ApiPropertyOptional({ description: 'Medicación habitual', nullable: true })
   @IsOptional()
-  @IsString()
+  @IsString({ message: i18nValidationMessage('validation.isString') })
   currentMedication?: string | null;
 
   @ApiPropertyOptional({ description: 'Hábitos del paciente', nullable: true })
   @IsOptional()
-  @IsString()
+  @IsString({ message: i18nValidationMessage('validation.isString') })
   habits?: string | null;
 }

@@ -1,3 +1,4 @@
+import { i18nValidationMessage } from 'nestjs-i18n';
 import { IsEnum, IsObject, IsOptional, IsUUID } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
@@ -9,22 +10,22 @@ export class CreateOutboundMessageDto {
     description:
       'UUID de la clínica. Opcional/deprecado en endpoints con x-clinic-id.',
   })
-  @IsUUID()
+  @IsUUID(undefined, { message: i18nValidationMessage('validation.isUUID') })
   @IsOptional()
   clinicId?: string;
 
   @ApiPropertyOptional({ description: 'UUID del paciente' })
-  @IsUUID()
+  @IsUUID(undefined, { message: i18nValidationMessage('validation.isUUID') })
   @IsOptional()
   patientId?: string;
 
   @ApiPropertyOptional({ description: 'UUID de la cita' })
-  @IsUUID()
+  @IsUUID(undefined, { message: i18nValidationMessage('validation.isUUID') })
   @IsOptional()
   appointmentId?: string;
 
   @ApiPropertyOptional({ description: 'UUID de la plantilla de mensaje' })
-  @IsUUID()
+  @IsUUID(undefined, { message: i18nValidationMessage('validation.isUUID') })
   @IsOptional()
   templateId?: string;
 
@@ -33,14 +34,16 @@ export class CreateOutboundMessageDto {
     example: NotificationChannel.EMAIL,
     description: 'Canal de envío',
   })
-  @IsEnum(NotificationChannel)
+  @IsEnum(NotificationChannel, {
+    message: i18nValidationMessage('validation.isEnum'),
+  })
   channel: NotificationChannel;
 
   @ApiPropertyOptional({
     example: { name: 'Juan' },
     description: 'Payload JSON del mensaje',
   })
-  @IsObject()
+  @IsObject({ message: i18nValidationMessage('validation.isObject') })
   @IsOptional()
   payloadJson?: Record<string, unknown>;
 
@@ -49,7 +52,9 @@ export class CreateOutboundMessageDto {
     example: OutboundMessageStatus.QUEUED,
     description: 'Estado del mensaje',
   })
-  @IsEnum(OutboundMessageStatus)
+  @IsEnum(OutboundMessageStatus, {
+    message: i18nValidationMessage('validation.isEnum'),
+  })
   @IsOptional()
   status?: OutboundMessageStatus;
 }

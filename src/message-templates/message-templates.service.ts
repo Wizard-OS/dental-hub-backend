@@ -1,3 +1,4 @@
+import { apiMessage } from '../common/i18n/api-message';
 import {
   BadRequestException,
   Injectable,
@@ -22,7 +23,7 @@ export class MessageTemplatesService {
   async create(clinicId: string, dto: CreateMessageTemplateDto) {
     if (dto.clinicId && dto.clinicId !== clinicId) {
       throw new BadRequestException(
-        'clinicId does not match x-clinic-id scope',
+        apiMessage('api.messages.clinicid_does_not_match_x_clinic_id_scope'),
       );
     }
 
@@ -44,14 +45,20 @@ export class MessageTemplatesService {
 
   async findOne(clinicId: string, id: string) {
     if (!isUUID(id))
-      throw new BadRequestException('Invalid message template id');
+      throw new BadRequestException(
+        apiMessage('api.messages.invalid_message_template_id'),
+      );
 
     const template = await this.messageTemplateRepository.findOne({
       where: { id, clinicId },
     });
 
     if (!template) {
-      throw new NotFoundException(`Message template with id ${id} not found`);
+      throw new NotFoundException(
+        apiMessage('api.messages.message_template_with_id_not_found', {
+          id: id,
+        }),
+      );
     }
 
     return template;
@@ -62,7 +69,7 @@ export class MessageTemplatesService {
 
     if (dto.clinicId && dto.clinicId !== clinicId) {
       throw new BadRequestException(
-        'clinicId does not match x-clinic-id scope',
+        apiMessage('api.messages.clinicid_does_not_match_x_clinic_id_scope'),
       );
     }
 
@@ -74,6 +81,8 @@ export class MessageTemplatesService {
     const template = await this.findOne(clinicId, id);
     template.status = MessageTemplateStatus.INACTIVE;
     await this.messageTemplateRepository.save(template);
-    return { message: `Message template ${id} archived` };
+    return {
+      message: apiMessage('api.messages.message_template_archived', { id: id }),
+    };
   }
 }

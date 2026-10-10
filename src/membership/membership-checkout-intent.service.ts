@@ -1,3 +1,4 @@
+import { apiMessage } from '../common/i18n/api-message';
 import {
   BadRequestException,
   ConflictException,
@@ -42,7 +43,9 @@ export class MembershipCheckoutIntentService {
           subscription.providerSubscriptionId
         ) {
           throw new ConflictException(
-            'A checkout is already pending; retry the original checkout options',
+            apiMessage(
+              'api.messages.a_checkout_is_already_pending_retry_the_original_checkout_options',
+            ),
           );
         }
 
@@ -60,7 +63,9 @@ export class MembershipCheckoutIntentService {
         subscription.planCode === MembershipPlanCode.premium
       ) {
         throw new BadRequestException(
-          'A subscription already exists; confirm, restore or cancel it first',
+          apiMessage(
+            'api.messages.a_subscription_already_exists_confirm_restore_or_cancel_it_first',
+          ),
         );
       }
 
@@ -70,7 +75,9 @@ export class MembershipCheckoutIntentService {
           subscription.licenseIssuedAt ||
           subscription.recurringConsentAt)
       ) {
-        throw new BadRequestException('The clinic has already used its trial');
+        throw new BadRequestException(
+          apiMessage('api.messages.the_clinic_has_already_used_its_trial'),
+        );
       }
 
       const requestId = createHash('sha256')

@@ -1,3 +1,4 @@
+import { i18nValidationMessage } from 'nestjs-i18n';
 import {
   IsEnum,
   IsOptional,
@@ -16,7 +17,7 @@ export class CreateMessageTemplateDto {
     description:
       'UUID de la clínica. Opcional/deprecado en endpoints con x-clinic-id.',
   })
-  @IsUUID()
+  @IsUUID(undefined, { message: i18nValidationMessage('validation.isUUID') })
   @IsOptional()
   clinicId?: string;
 
@@ -25,7 +26,9 @@ export class CreateMessageTemplateDto {
     example: NotificationChannel.EMAIL,
     description: 'Canal de notificación',
   })
-  @IsEnum(NotificationChannel)
+  @IsEnum(NotificationChannel, {
+    message: i18nValidationMessage('validation.isEnum'),
+  })
   channel: NotificationChannel;
 
   @ApiProperty({
@@ -34,9 +37,9 @@ export class CreateMessageTemplateDto {
     minLength: 2,
     maxLength: 100,
   })
-  @IsString()
-  @MinLength(2)
-  @MaxLength(100)
+  @IsString({ message: i18nValidationMessage('validation.isString') })
+  @MinLength(2, { message: i18nValidationMessage('validation.minLength') })
+  @MaxLength(100, { message: i18nValidationMessage('validation.maxLength') })
   name: string;
 
   @ApiProperty({
@@ -44,8 +47,8 @@ export class CreateMessageTemplateDto {
     description: 'Cuerpo de la plantilla',
     minLength: 3,
   })
-  @IsString()
-  @MinLength(3)
+  @IsString({ message: i18nValidationMessage('validation.isString') })
+  @MinLength(3, { message: i18nValidationMessage('validation.minLength') })
   body: string;
 
   @ApiPropertyOptional({
@@ -53,7 +56,9 @@ export class CreateMessageTemplateDto {
     example: MessageTemplateStatus.ACTIVE,
     description: 'Estado de la plantilla',
   })
-  @IsEnum(MessageTemplateStatus)
+  @IsEnum(MessageTemplateStatus, {
+    message: i18nValidationMessage('validation.isEnum'),
+  })
   @IsOptional()
   status?: MessageTemplateStatus;
 }

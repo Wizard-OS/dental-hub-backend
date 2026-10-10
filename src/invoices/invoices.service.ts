@@ -1,3 +1,4 @@
+import { apiMessage } from '../common/i18n/api-message';
 import {
   BadRequestException,
   Injectable,
@@ -91,7 +92,10 @@ export class InvoicesService {
   }
 
   async findOne(clinicId: string, id: string) {
-    if (!isUUID(id)) throw new BadRequestException('Invalid invoice id');
+    if (!isUUID(id))
+      throw new BadRequestException(
+        apiMessage('api.messages.invalid_invoice_id'),
+      );
 
     const invoice = await this.invoiceRepository.findOne({
       where: { id, clinicId },
@@ -103,7 +107,9 @@ export class InvoicesService {
     });
 
     if (!invoice) {
-      throw new NotFoundException(`Invoice with id ${id} not found`);
+      throw new NotFoundException(
+        apiMessage('api.messages.invoice_with_id_not_found', { id: id }),
+      );
     }
 
     return this.resolveInvoiceStatus(invoice);
@@ -145,7 +151,9 @@ export class InvoicesService {
     const invoice = await this.findOne(clinicId, id);
     invoice.status = InvoiceStatus.CANCELLED;
     await this.invoiceRepository.save(invoice);
-    return { message: `Invoice ${id} cancelled` };
+    return {
+      message: apiMessage('api.messages.invoice_cancelled', { id: id }),
+    };
   }
 
   async addItem(
@@ -174,7 +182,9 @@ export class InvoicesService {
     });
 
     if (!item) {
-      throw new NotFoundException(`Invoice item ${itemId} not found`);
+      throw new NotFoundException(
+        apiMessage('api.messages.invoice_item_not_found', { itemId: itemId }),
+      );
     }
 
     await this.invoiceItemRepository.remove(item);
@@ -289,7 +299,7 @@ export class InvoicesService {
   private ensureClinicScope(headerClinicId: string, bodyClinicId?: string) {
     if (bodyClinicId && headerClinicId !== bodyClinicId) {
       throw new BadRequestException(
-        'clinicId does not match x-clinic-id scope',
+        apiMessage('api.messages.clinicid_does_not_match_x_clinic_id_scope'),
       );
     }
   }
@@ -302,7 +312,9 @@ export class InvoicesService {
 
     if (!patient) {
       throw new BadRequestException(
-        'Patient does not belong to the requested clinic',
+        apiMessage(
+          'api.messages.patient_does_not_belong_to_the_requested_clinic',
+        ),
       );
     }
   }
@@ -322,16 +334,22 @@ export class InvoicesService {
 
     if (!treatment) {
       throw new BadRequestException(
-        'Treatment does not belong to patient and clinic scope',
+        apiMessage(
+          'api.messages.treatment_does_not_belong_to_patient_and_clinic_scope',
+        ),
       );
     }
   }
 
   private handleDBErrors(error: unknown): never {
     if (error instanceof Object && 'code' in error && error.code === '23505') {
-      throw new BadRequestException((error as Record<string, unknown>).detail);
+      throw new BadRequestException(
+        apiMessage('api.messages.duplicate_record'),
+      );
     }
 
-    throw new InternalServerErrorException('Please check server logs');
+    throw new InternalServerErrorException(
+      apiMessage('api.messages.please_check_server_logs'),
+    );
   }
 }

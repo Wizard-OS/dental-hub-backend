@@ -304,7 +304,7 @@ Este reset conserva el schema y vacía los datos operativos. Después, crear el 
 
 ## Internacionalización (i18n)
 
-Implementado con `nestjs-i18n` para respuestas y errores API.
+Implementado con `nestjs-i18n` para mensajes de respuestas API, errores de negocio y validación DTO.
 
 Idiomas soportados:
 
@@ -322,6 +322,10 @@ Catálogos:
 
 - `src/i18n/en/api.json`
 - `src/i18n/es/api.json`
+- `src/i18n/en/validation.json`
+- `src/i18n/es/validation.json`
+
+Los mensajes que se devuelven al cliente usan claves de catálogo y argumentos de interpolación. Las respuestas exitosas conservan `message` como texto; los errores conservan su estado HTTP y estructura. Los errores de validación se devuelven como una lista plana de mensajes.
 
 ## Pruebas E2E
 

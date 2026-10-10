@@ -1,3 +1,4 @@
+import { apiMessage } from '../common/i18n/api-message';
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { EntityManager, Repository } from 'typeorm';
@@ -420,14 +421,16 @@ export class MembershipService {
 
     if (existing) {
       if (clinicId && existing.clinicId !== clinicId) {
-        throw new BadRequestException('Subscription belongs to another clinic');
+        throw new BadRequestException(
+          apiMessage('api.messages.subscription_belongs_to_another_clinic'),
+        );
       }
       return existing;
     }
 
     if (!clinicId) {
       throw new BadRequestException(
-        'Subscription not found for provider event',
+        apiMessage('api.messages.subscription_not_found_for_provider_event'),
       );
     }
 

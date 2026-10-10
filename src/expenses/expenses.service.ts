@@ -1,3 +1,4 @@
+import { apiMessage } from '../common/i18n/api-message';
 import {
   BadRequestException,
   Injectable,
@@ -21,7 +22,7 @@ export class ExpensesService {
   async create(clinicId: string, dto: CreateExpenseDto) {
     if (dto.clinicId && dto.clinicId !== clinicId) {
       throw new BadRequestException(
-        'clinicId does not match x-clinic-id scope',
+        apiMessage('api.messages.clinicid_does_not_match_x_clinic_id_scope'),
       );
     }
 
@@ -44,14 +45,19 @@ export class ExpensesService {
   }
 
   async findOne(clinicId: string, id: string) {
-    if (!isUUID(id)) throw new BadRequestException('Invalid expense id');
+    if (!isUUID(id))
+      throw new BadRequestException(
+        apiMessage('api.messages.invalid_expense_id'),
+      );
 
     const expense = await this.expenseRepository.findOne({
       where: { id, clinicId },
     });
 
     if (!expense) {
-      throw new NotFoundException(`Expense with id ${id} not found`);
+      throw new NotFoundException(
+        apiMessage('api.messages.expense_with_id_not_found', { id: id }),
+      );
     }
 
     return expense;
@@ -62,7 +68,7 @@ export class ExpensesService {
 
     if (dto.clinicId && dto.clinicId !== clinicId) {
       throw new BadRequestException(
-        'clinicId does not match x-clinic-id scope',
+        apiMessage('api.messages.clinicid_does_not_match_x_clinic_id_scope'),
       );
     }
 
@@ -78,7 +84,7 @@ export class ExpensesService {
   async remove(clinicId: string, id: string) {
     const expense = await this.findOne(clinicId, id);
     await this.expenseRepository.remove(expense);
-    return { message: `Expense ${id} removed` };
+    return { message: apiMessage('api.messages.expense_removed', { id: id }) };
   }
 
   async getTotals(clinicId: string, from?: string, to?: string) {

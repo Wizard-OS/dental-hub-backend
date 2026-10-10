@@ -1,3 +1,4 @@
+import { apiMessage, type ApiMessage } from '../common/i18n/api-message';
 import {
   BadRequestException,
   Injectable,
@@ -67,7 +68,7 @@ export class BackofficeUsersService {
   }
 
   async findUser(id: string) {
-    this.assertUuid(id, 'Invalid user id');
+    this.assertUuid(id, apiMessage('api.messages.invalid_user_id'));
 
     const user = await this.userRepository.findOne({
       where: { id },
@@ -77,7 +78,9 @@ export class BackofficeUsersService {
     });
 
     if (!user) {
-      throw new NotFoundException(`User with id ${id} not found`);
+      throw new NotFoundException(
+        apiMessage('api.messages.user_with_id_not_found', { id: id }),
+      );
     }
 
     const [sessions, supportRequests] = await Promise.all([
@@ -101,11 +104,13 @@ export class BackofficeUsersService {
   }
 
   async updateUser(id: string, dto: UpdateBackofficeUserDto) {
-    this.assertUuid(id, 'Invalid user id');
+    this.assertUuid(id, apiMessage('api.messages.invalid_user_id'));
 
     const user = await this.userRepository.findOne({ where: { id } });
     if (!user) {
-      throw new NotFoundException(`User with id ${id} not found`);
+      throw new NotFoundException(
+        apiMessage('api.messages.user_with_id_not_found', { id: id }),
+      );
     }
 
     if (dto.roles && !dto.roles.includes(ValidRoles.user)) {
@@ -116,7 +121,7 @@ export class BackofficeUsersService {
     return await this.userRepository.save(user);
   }
 
-  private assertUuid(value: string, message: string) {
+  private assertUuid(value: string, message: ApiMessage) {
     if (!isUUID(value)) {
       throw new BadRequestException(message);
     }

@@ -1,4 +1,5 @@
-import { INestApplication, ValidationPipe } from '@nestjs/common';
+import { INestApplication } from '@nestjs/common';
+import { I18nValidationPipe } from 'nestjs-i18n';
 import { Test } from '@nestjs/testing';
 import { DataSource } from 'typeorm';
 import request from 'supertest';
@@ -14,7 +15,6 @@ import { MembershipRemindersService } from '../src/billing/notifications/members
 import { MembershipRenewalsService } from '../src/billing/vault/membership-renewals.service';
 import { ClinicSubscription } from '../src/membership/entities/clinic-subscription.entity';
 import { MembershipCharge } from '../src/billing/entities/membership-charge.entity';
-import { SubscriptionStatus } from '../src/membership/interfaces/subscription-status.enum';
 import { MembershipPaymentMethod } from '../src/billing/entities/membership-payment-method.entity';
 
 class FakeVault {
@@ -30,12 +30,7 @@ class FakeVault {
   createCalls = 0;
   failCaptureOnce = false;
   createSetup = jest.fn(
-    async (
-      clinicId: string,
-      type: string,
-      key: string,
-      customerId?: string,
-    ) => {
+    (clinicId: string, type: string, key: string, customerId?: string) => {
       if (this.setupsByKey.has(key)) return this.setupsByKey.get(key)!;
       const result: VaultResource = {
         id: `SETUP${this.setups.size}`,
@@ -60,8 +55,9 @@ class FakeVault {
       return result;
     },
   );
-  getSetup = async (id: string) => this.setups.get(id)!;
-  exchangeSetup = jest.fn(async (id: string, key: string) => {
+
+  getSetup = (id: string) => this.setups.get(id)!;
+  exchangeSetup = jest.fn((id: string, key: string) => {
     if (this.tokensByKey.has(key)) return this.tokensByKey.get(key)!;
     const setup = this.setups.get(id)!;
     const result = { ...setup, id: `TOKEN${this.tokens.size}` };
@@ -69,15 +65,18 @@ class FakeVault {
     this.tokensByKey.set(key, result);
     return result;
   });
-  getToken = async (id: string) => {
+
+  getToken = (id: string) => {
     const token = this.tokens.get(id);
     if (!token) throw new Error('Token revoked');
     return token;
   };
-  deleteToken = jest.fn(async (id: string) => {
+
+  deleteToken = jest.fn((id: string) => {
     this.tokens.delete(id);
   });
-  createOrder = jest.fn(async (input: { chargeId: string; amount: number }) => {
+
+  createOrder = jest.fn((input: { chargeId: string; amount: number }) => {
     if (this.ordersByKey.has(input.chargeId))
       return structuredClone(this.ordersByKey.get(input.chargeId)!);
     this.createCalls += 1;
@@ -99,8 +98,10 @@ class FakeVault {
     this.ordersByKey.set(input.chargeId, order);
     return structuredClone(order);
   });
-  getOrder = async (id: string) => structuredClone(this.orders.get(id)!);
-  captureOrder = jest.fn(async (id: string) => {
+
+  getOrder = (id: string) => structuredClone(this.orders.get(id)!);
+
+  captureOrder = jest.fn((id: string) => {
     const order = this.orders.get(id)!;
     if (order.status !== 'COMPLETED') {
       this.captureCalls += 1;
@@ -136,7 +137,13 @@ describe('Membership screens: saved methods, reminders and recurring billing (is
   let payload: Record<string, unknown>;
   let renewals: MembershipRenewalsService;
   let reminders: MembershipRemindersService;
-  const email = { configured: true, send: jest.fn(async () => 'EMAIL-1') };
+  const email = {
+    configured: true,
+    send: jest.fn((...args: [string, unknown]) => {
+      void args;
+      return Promise.resolve('EMAIL-1');
+    }),
+  };
   const auth = (
     method: 'get' | 'post' | 'patch' | 'delete',
     path: string,
@@ -157,7 +164,10 @@ describe('Membership screens: saved methods, reminders and recurring billing (is
       .compile();
     app = module.createNestApplication();
     app.useGlobalPipes(
-      new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }),
+      new I18nValidationPipe({
+        whitelist: true,
+        forbidNonWhitelisted: true,
+      }),
     );
     await app.init();
     await app.listen(0);
@@ -255,8 +265,10 @@ describe('Membership screens: saved methods, reminders and recurring billing (is
       ),
     );
     const list = await auth('get', '/membership/payment-methods').expect(200);
-    expect(list.body.methods.filter((m) => m.isDefault)).toHaveLength(1);
-    expect(list.body.methods).toHaveLength(2);
+    const paymentMethods = (list.body as { methods: { isDefault: boolean }[] })
+      .methods;
+    expect(paymentMethods.filter((method) => method.isDefault)).toHaveLength(1);
+    expect(paymentMethods).toHaveLength(2);
     expect(JSON.stringify(list.body)).not.toContain('TOKEN');
     await auth('patch', '/membership/payment-methods/default', otherClinicId)
       .send({ paymentMethodId: cardId })
@@ -294,7 +306,10 @@ describe('Membership screens: saved methods, reminders and recurring billing (is
     const methods = await auth('get', '/membership/payment-methods').expect(
       200,
     );
-    expect(methods.body.methods.find((m) => m.id === cardId).isDefault).toBe(
+    const savedMethods = (
+      methods.body as { methods: { id: string; isDefault: boolean }[] }
+    ).methods;
+    expect(savedMethods.find((method) => method.id === cardId)?.isDefault).toBe(
       true,
     );
     expect(vault.createOrder).not.toHaveBeenCalled();

@@ -16,7 +16,6 @@ describe('Phase 1 Flow (e2e)', () => {
   let assistantUserId: string;
   let clinicId: string;
   let membershipId: string;
-  let doctorMembershipId: string;
   let assistantMembershipId: string;
   let patientId: string;
   let patientDocumentId: string;
@@ -118,15 +117,23 @@ describe('Phase 1 Flow (e2e)', () => {
       .set('x-clinic-id', clinicId)
       .expect(200);
 
-    const ownerMembership = membershipsResponse.body.find(
+    const memberships = membershipsResponse.body as {
+      userId: string;
+      role: string;
+      id: string;
+    }[];
+    const ownerMembership = memberships.find(
       (membership: { userId: string; role: string }) =>
         membership.userId === adminUserId && membership.role === 'owner',
     );
 
     expect(ownerMembership).toBeDefined();
+    if (!ownerMembership) {
+      throw new Error('Expected owner membership to be present');
+    }
     membershipId = ownerMembership.id;
 
-    const doctorMembershipResponse = await request(app.getHttpServer())
+    await request(app.getHttpServer())
       .post('/clinic-memberships')
       .set('Authorization', `Bearer ${adminToken}`)
       .set('x-clinic-id', clinicId)
@@ -136,9 +143,6 @@ describe('Phase 1 Flow (e2e)', () => {
         role: 'odontologist',
       })
       .expect(201);
-
-    doctorMembershipId = doctorMembershipResponse.body.id;
-
     await request(app.getHttpServer())
       .patch('/membership/manual')
       .set('Authorization', `Bearer ${adminToken}`)
@@ -582,15 +586,16 @@ describe('Phase 1 Flow (e2e)', () => {
       })
       .expect(200);
 
-    expect(surfaceUpdate.body.entries).toHaveLength(2);
+    const updatedEntries = surfaceUpdate.body.entries as {
+      actionGroupId: string;
+      surface: string;
+      status: string;
+    }[];
+    expect(updatedEntries).toHaveLength(2);
     expect(
-      new Set(
-        surfaceUpdate.body.entries.map(
-          (entry: { actionGroupId: string }) => entry.actionGroupId,
-        ),
-      ).size,
+      new Set(updatedEntries.map((entry) => entry.actionGroupId)).size,
     ).toBe(1);
-    expect(surfaceUpdate.body.entries).toEqual(
+    expect(updatedEntries).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ surface: 'vestibular', status: 'restored' }),
         expect.objectContaining({ surface: 'occlusal', status: 'restored' }),

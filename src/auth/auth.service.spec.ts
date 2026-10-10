@@ -2,6 +2,7 @@ import { BadRequestException, UnauthorizedException } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 
 import { AuthService } from './auth.service';
+import { apiMessage } from '../common/i18n/api-message';
 import { User } from './entities/user.entity';
 import { ValidRoles } from './interfaces';
 import { PasswordHasherService } from './services/password-hasher.service';
@@ -32,6 +33,8 @@ describe('AuthService password reset', () => {
       id: userId,
       email,
       password: bcrypt.hashSync('OldPass1', 10),
+      googleSubject: null,
+      googleEmail: null,
       firstName: 'Ana',
       lastName: 'Silva',
       isActive: true,
@@ -39,6 +42,7 @@ describe('AuthService password reset', () => {
       appointments: [],
       clinicalNotes: [],
       memberships: [],
+      passwordResetOtpAttemptCount: 0,
       createdAt: new Date(),
       updatedAt: new Date(),
       checkFieldsBeforeInsert: jest.fn(),
@@ -123,7 +127,9 @@ describe('AuthService password reset', () => {
     await expect(
       service.forgotPassword({ email: 'missing@dentalhub.test' }),
     ).resolves.toEqual({
-      message: 'If the email exists, a password reset code has been sent',
+      message: apiMessage(
+        'api.messages.if_the_email_exists_a_password_reset_code_has_been_sent',
+      ),
     });
   });
 
@@ -133,7 +139,7 @@ describe('AuthService password reset', () => {
 
     expect(otp).toMatch(/^\d{6}$/);
     await expect(service.verifyOtp({ email, otp: otp! })).resolves.toEqual({
-      message: 'OTP verified successfully',
+      message: apiMessage('api.messages.otp_verified_successfully'),
     });
     await expect(
       service.login({ email, password: 'OldPass1' }),
@@ -150,7 +156,9 @@ describe('AuthService password reset', () => {
 
     await expect(
       service.resetPassword({ email, otp, newPassword: 'NewPass1' }),
-    ).resolves.toEqual({ message: 'Password reset successfully' });
+    ).resolves.toEqual({
+      message: apiMessage('api.messages.password_reset_successfully'),
+    });
 
     await expect(service.verifyOtp({ email, otp })).rejects.toBeInstanceOf(
       BadRequestException,
@@ -170,7 +178,9 @@ describe('AuthService password reset', () => {
 
     await expect(
       service.resetPassword({ email, otp, newPassword: 'NewPass1' }),
-    ).resolves.toEqual({ message: 'Password reset successfully' });
+    ).resolves.toEqual({
+      message: apiMessage('api.messages.password_reset_successfully'),
+    });
     await expect(
       service.login({ email, password: 'NewPass1' }),
     ).resolves.toMatchObject({ email, token: 'jwt-token' });
@@ -207,7 +217,9 @@ describe('AuthService password reset', () => {
     process.env.ENABLE_DEV_OTP = 'false';
 
     await expect(service.forgotPassword({ email })).resolves.toEqual({
-      message: 'If the email exists, a password reset code has been sent',
+      message: apiMessage(
+        'api.messages.if_the_email_exists_a_password_reset_code_has_been_sent',
+      ),
     });
   });
 

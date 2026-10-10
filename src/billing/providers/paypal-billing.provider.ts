@@ -1,3 +1,4 @@
+import { apiMessage } from '../../common/i18n/api-message';
 import {
   BadRequestException,
   Injectable,
@@ -63,7 +64,9 @@ export class PayPalBillingProvider implements BillingProviderAdapter {
     input: CreateProviderSubscriptionInput,
   ): Promise<CreatedProviderSubscription> {
     if (input.planCode !== MembershipPlanCode.premium) {
-      throw new BadRequestException('Only premium subscriptions are billable');
+      throw new BadRequestException(
+        apiMessage('api.messages.only_premium_subscriptions_are_billable'),
+      );
     }
 
     const providerPlanId = input.startTrial
@@ -71,7 +74,7 @@ export class PayPalBillingProvider implements BillingProviderAdapter {
       : this.getPlanId(input.interval);
     if (!providerPlanId)
       throw new ServiceUnavailableException(
-        'Membership offer is not configured',
+        apiMessage('api.messages.membership_offer_is_not_configured'),
       );
     if (input.startTrial) await this.validateOfferPlan(providerPlanId, input);
 
@@ -97,7 +100,9 @@ export class PayPalBillingProvider implements BillingProviderAdapter {
     );
 
     if (!subscription.id) {
-      throw new BadRequestException('PayPal did not return a subscription id');
+      throw new BadRequestException(
+        apiMessage('api.messages.paypal_did_not_return_a_subscription_id'),
+      );
     }
 
     const approvalUrl = subscription.links?.find(
@@ -105,7 +110,9 @@ export class PayPalBillingProvider implements BillingProviderAdapter {
     )?.href;
 
     if (!approvalUrl) {
-      throw new BadRequestException('PayPal did not return an approval URL');
+      throw new BadRequestException(
+        apiMessage('api.messages.paypal_did_not_return_an_approval_url'),
+      );
     }
 
     return {
@@ -169,7 +176,9 @@ export class PayPalBillingProvider implements BillingProviderAdapter {
       })
     ) {
       throw new ServiceUnavailableException(
-        'PayPal plan does not match the advertised membership offer',
+        apiMessage(
+          'api.messages.paypal_plan_does_not_match_the_advertised_membership_offer',
+        ),
       );
     }
   }
@@ -256,7 +265,7 @@ export class PayPalBillingProvider implements BillingProviderAdapter {
   ): Promise<T> {
     if (!getEnv('PAYPAL_CLIENT_ID') || !getEnv('PAYPAL_CLIENT_SECRET')) {
       throw new ServiceUnavailableException(
-        'PayPal credentials are not configured',
+        apiMessage('api.messages.paypal_credentials_are_not_configured'),
       );
     }
     const accessToken = await this.getAccessToken();
@@ -300,13 +309,17 @@ export class PayPalBillingProvider implements BillingProviderAdapter {
 
     if (!response.ok) {
       this.logger.error(`PayPal OAuth failed with status ${response.status}`);
-      throw new BadRequestException('PayPal authentication failed');
+      throw new BadRequestException(
+        apiMessage('api.messages.paypal_authentication_failed'),
+      );
     }
 
     const body = (await response.json()) as { access_token?: string };
 
     if (!body.access_token) {
-      throw new BadRequestException('PayPal did not return an access token');
+      throw new BadRequestException(
+        apiMessage('api.messages.paypal_did_not_return_an_access_token'),
+      );
     }
 
     return body.access_token;
@@ -322,7 +335,11 @@ export class PayPalBillingProvider implements BillingProviderAdapter {
     const value = headers[name];
 
     if (!value || Array.isArray(value)) {
-      throw new BadRequestException(`Missing PayPal webhook header ${name}`);
+      throw new BadRequestException(
+        apiMessage('api.messages.missing_paypal_webhook_header', {
+          name: name,
+        }),
+      );
     }
 
     return value;

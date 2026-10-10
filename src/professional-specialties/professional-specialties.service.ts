@@ -1,3 +1,4 @@
+import { apiMessage } from '../common/i18n/api-message';
 import {
   BadRequestException,
   Injectable,
@@ -32,7 +33,9 @@ export class ProfessionalSpecialtiesService {
       where: { code },
     });
     if (existing) {
-      throw new BadRequestException('Professional specialty already exists');
+      throw new BadRequestException(
+        apiMessage('api.messages.professional_specialty_already_exists'),
+      );
     }
 
     const specialty = this.specialtyRepository.create({
@@ -63,7 +66,9 @@ export class ProfessionalSpecialtiesService {
       where: { id, isActive: true },
     });
     if (!specialty) {
-      throw new BadRequestException('Professional specialty is not valid');
+      throw new BadRequestException(
+        apiMessage('api.messages.professional_specialty_is_not_valid'),
+      );
     }
     return specialty;
   }
@@ -71,7 +76,9 @@ export class ProfessionalSpecialtiesService {
   private async findOne(id: string) {
     const specialty = await this.specialtyRepository.findOne({ where: { id } });
     if (!specialty) {
-      throw new NotFoundException('Professional specialty not found');
+      throw new NotFoundException(
+        apiMessage('api.messages.professional_specialty_not_found'),
+      );
     }
     return specialty;
   }

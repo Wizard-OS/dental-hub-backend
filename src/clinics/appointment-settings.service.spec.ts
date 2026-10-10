@@ -8,7 +8,12 @@ import { ClinicMembershipRole } from '../clinic-memberships/interfaces/clinic-me
 describe('ClinicsService appointment settings', () => {
   const professionalMembershipId = '9e9b76d6-d03a-4abf-a607-f46ffbc70148';
   const otherMembershipId = '407ff4cc-af76-4cc1-a2a3-86f93952214b';
-  const clinic = {
+  const clinic: {
+    id: string;
+    isActive: boolean;
+    timezone: string;
+    workingHoursJson: unknown;
+  } = {
     id: '69d0cbe5-f7e6-4928-99a9-cdf15c986b4f',
     isActive: true,
     timezone: 'America/Montevideo',

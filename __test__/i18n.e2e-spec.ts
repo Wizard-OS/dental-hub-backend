@@ -5,6 +5,7 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 
 import { AppModule } from '../src/app.module';
+import { I18nValidationPipe } from 'nestjs-i18n';
 import { I18nHttpExceptionFilter } from '../src/common/filters/i18n-http-exception.filter';
 import { I18nResponseInterceptor } from '../src/common/interceptors/i18n-response.interceptor';
 
@@ -19,6 +20,9 @@ describe('i18n responses (e2e)', () => {
     }).compile();
 
     app = moduleFixture.createNestApplication();
+    app.useGlobalPipes(
+      new I18nValidationPipe({ whitelist: true, forbidNonWhitelisted: true }),
+    );
     app.useGlobalFilters(app.get(I18nHttpExceptionFilter));
     app.useGlobalInterceptors(app.get(I18nResponseInterceptor));
     await app.init();
@@ -55,7 +59,7 @@ describe('i18n responses (e2e)', () => {
       })
       .expect(401);
 
-    expect(response.body.message).toBe('Credenciales inválidas (email)');
+    expect(response.body.message).toBe('Credenciales inválidas');
   });
 
   it('translates auth error to English using x-lang header', async () => {
@@ -68,7 +72,7 @@ describe('i18n responses (e2e)', () => {
       })
       .expect(401);
 
-    expect(response.body.message).toBe('Credentials are not valid (email)');
+    expect(response.body.message).toBe('Credentials are not valid');
   });
 
   it('prioritizes lang query over x-lang header in protected endpoints', async () => {
@@ -79,7 +83,7 @@ describe('i18n responses (e2e)', () => {
       .set('x-lang', 'en')
       .expect(400);
 
-    expect(response.body.message).toBe('ID de appointment inválido');
+    expect(response.body.message).toBe('El ID de la cita no es válido');
   });
 
   it('falls back to English when unsupported language is requested', async () => {
@@ -91,6 +95,6 @@ describe('i18n responses (e2e)', () => {
       })
       .expect(401);
 
-    expect(response.body.message).toBe('Credentials are not valid (email)');
+    expect(response.body.message).toBe('Credentials are not valid');
   });
 });

@@ -1,3 +1,4 @@
+import { i18nValidationMessage } from 'nestjs-i18n';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsBooleanString,
@@ -8,12 +9,14 @@ import {
 export class QueryAppointmentTypesDto {
   @ApiPropertyOptional({ description: 'Buscar por nombre' })
   @IsOptional()
-  @IsString()
-  @MaxLength(120)
+  @IsString({ message: i18nValidationMessage('validation.isString') })
+  @MaxLength(120, { message: i18nValidationMessage('validation.maxLength') })
   search?: string;
 
   @ApiPropertyOptional({ default: 'false' })
   @IsOptional()
-  @IsBooleanString()
+  @IsBooleanString({
+    message: i18nValidationMessage('validation.isBooleanString'),
+  })
   includeInactive?: string;
 }

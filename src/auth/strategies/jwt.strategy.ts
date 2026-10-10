@@ -1,3 +1,4 @@
+import { apiMessage } from '../../common/i18n/api-message';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 
 import { ConfigService } from '@nestjs/config';
@@ -36,15 +37,22 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     const { id, sessionId } = payload;
 
     if (!sessionId) {
-      throw new UnauthorizedException('Session not valid');
+      throw new UnauthorizedException(
+        apiMessage('api.messages.session_not_valid'),
+      );
     }
 
     const user = await this.userRepository.findOneBy({ id });
 
-    if (!user) throw new UnauthorizedException('Token not valid');
+    if (!user)
+      throw new UnauthorizedException(
+        apiMessage('api.messages.token_not_valid'),
+      );
 
     if (!user.isActive)
-      throw new UnauthorizedException('User is inactive, talk with an admin');
+      throw new UnauthorizedException(
+        apiMessage('api.messages.user_is_inactive_talk_with_an_admin'),
+      );
 
     await this.userSessionsService.assertActiveSession(user.id, sessionId);
     await this.userSessionsService.updateLastActive(sessionId);
