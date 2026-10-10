@@ -31,6 +31,16 @@ describe('PersonalDrive connection identity', () => {
     });
     expect(port.connect).toHaveBeenCalledWith('user-a', authorization);
   });
+  it('forwards the signed-in Google ID token to the exchange adapter', async () => {
+    await drive.connect('user-a', 'code', 'google-id-token');
+
+    expect(port.exchangeCode).toHaveBeenCalledWith('code', 'google-id-token');
+  });
+  it('allows older clients when the code exchange provides the ID token', async () => {
+    await drive.connect('user-a', 'code');
+
+    expect(port.exchangeCode).toHaveBeenCalledWith('code', undefined);
+  });
   it('rejects consent that omits file permission', async () => {
     port.exchangeCode.mockResolvedValue({
       ...authorization,

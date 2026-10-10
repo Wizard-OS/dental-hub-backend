@@ -5,6 +5,7 @@ const { Readable } = require('node:stream');
 const { createHash } = require('node:crypto');
 const fs = require('node:fs/promises');
 const path = require('node:path');
+const { OAuth2Client } = require('google-auth-library');
 const { StorageService } = require('../dist/storage/storage.service');
 const {
   PersonalDriveStorage,
@@ -72,7 +73,7 @@ function personal(options = {}) {
     encrypt: (x) => 'encrypted-' + x,
     decrypt: (x) => x.replace('encrypted-', ''),
   };
-  const verifier = {
+  const verifier = options.verifier ?? {
     verify: async () => ({ subject: 'subject-a', email: 'a@example.test' }),
   };
   const provider = {
@@ -99,6 +100,134 @@ function personal(options = {}) {
   service.drive = mock.fn(async () => options.drive);
   return { service, integrations, credentials, files, patients };
 }
+
+async function withCodeExchange(tokens, action) {
+  const originalGetToken = OAuth2Client.prototype.getToken;
+  const originalClientId = process.env.GOOGLE_DRIVE_CLIENT_ID;
+  const originalClientSecret = process.env.GOOGLE_DRIVE_CLIENT_SECRET;
+  process.env.GOOGLE_DRIVE_CLIENT_ID = 'test-client-id';
+  process.env.GOOGLE_DRIVE_CLIENT_SECRET = 'test-client-secret';
+  OAuth2Client.prototype.getToken = async () => ({ tokens });
+  try {
+    await action();
+  } finally {
+    OAuth2Client.prototype.getToken = originalGetToken;
+    if (originalClientId === undefined)
+      delete process.env.GOOGLE_DRIVE_CLIENT_ID;
+    else process.env.GOOGLE_DRIVE_CLIENT_ID = originalClientId;
+    if (originalClientSecret === undefined)
+      delete process.env.GOOGLE_DRIVE_CLIENT_SECRET;
+    else process.env.GOOGLE_DRIVE_CLIENT_SECRET = originalClientSecret;
+  }
+}
+
+test('uses the supplied ID token when code exchange omits one', async () => {
+  await withCodeExchange(
+    { access_token: 'access-token', refresh_token: 'refresh-token' },
+    async () => {
+      const verifiedTokens = [];
+      const { service } = personal({
+        verifier: {
+          verify: async (idToken) => {
+            verifiedTokens.push(idToken);
+            return { subject: 'subject-a', email: 'a@example.test' };
+          },
+        },
+      });
+      const authorization = await service.exchangeCode(
+        'server-code',
+        'supplied-id-token',
+      );
+      assert.equal(authorization.subject, 'subject-a');
+      assert.equal(authorization.accessToken, 'access-token');
+      assert.deepEqual(verifiedTokens, ['supplied-id-token']);
+    },
+  );
+});
+
+test('supports older clients when code exchange returns an ID token', async () => {
+  await withCodeExchange(
+    {
+      id_token: 'exchange-id-token',
+      access_token: 'access-token',
+      refresh_token: 'refresh-token',
+    },
+    async () => {
+      const verifiedTokens = [];
+      const { service } = personal({
+        verifier: {
+          verify: async (idToken) => {
+            verifiedTokens.push(idToken);
+            return { subject: 'subject-a', email: 'a@example.test' };
+          },
+        },
+      });
+      const authorization = await service.exchangeCode('server-code');
+      assert.equal(authorization.subject, 'subject-a');
+      assert.deepEqual(verifiedTokens, ['exchange-id-token']);
+    },
+  );
+});
+
+test('rejects an invalid supplied ID token', async () => {
+  await withCodeExchange({ access_token: 'access-token' }, async () => {
+    const { service } = personal({
+      verifier: {
+        verify: async () => {
+          throw new Error('invalid ID token');
+        },
+      },
+    });
+    await assert.rejects(
+      service.exchangeCode('server-code', 'invalid-id-token'),
+      /invalid ID token/,
+    );
+  });
+});
+
+test('rejects mismatched supplied and exchanged ID-token identities', async () => {
+  await withCodeExchange(
+    {
+      id_token: 'exchange-id-token',
+      access_token: 'access-token',
+    },
+    async () => {
+      const { service } = personal({
+        verifier: {
+          verify: async (idToken) => ({
+            subject:
+              idToken === 'supplied-id-token' ? 'subject-a' : 'subject-b',
+            email: 'a@example.test',
+          }),
+        },
+      });
+      await assert.rejects(
+        service.exchangeCode('server-code', 'supplied-id-token'),
+        (error) => error.getResponse().code === 'DRIVE_ACCOUNT_MISMATCH',
+      );
+    },
+  );
+});
+
+test('requires a usable access token and a verified identity', async () => {
+  await withCodeExchange(
+    { id_token: 'exchange-id-token', access_token: ' ' },
+    async () => {
+      const { service } = personal();
+      await assert.rejects(
+        service.exchangeCode('server-code'),
+        (error) => error.getResponse().code === 'DRIVE_RECONNECT_REQUIRED',
+      );
+    },
+  );
+  await withCodeExchange({ access_token: 'access-token' }, async () => {
+    const { service } = personal();
+    await assert.rejects(
+      service.exchangeCode('server-code'),
+      (error) => error.getResponse().code === 'DRIVE_RECONNECT_REQUIRED',
+    );
+  });
+});
 
 test('uploads resolve the authenticated uploader, independently of clinic Drive', async () => {
   const personalUpload = mock.fn(async (input, userId) => ({

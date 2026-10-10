@@ -42,6 +42,15 @@ class ConnectDriveDto {
   @IsNotEmpty({ message: i18nValidationMessage('validation.isNotEmpty') })
   @MaxLength(4096, { message: i18nValidationMessage('validation.maxLength') })
   serverAuthCode: string;
+
+  @ApiPropertyOptional({
+    description: 'ID token from the signed-in Google account.',
+  })
+  @IsOptional()
+  @IsString({ message: i18nValidationMessage('validation.isString') })
+  @IsNotEmpty({ message: i18nValidationMessage('validation.isNotEmpty') })
+  @MaxLength(4096, { message: i18nValidationMessage('validation.maxLength') })
+  idToken?: string;
 }
 class MigrateDriveDto {
   @ApiPropertyOptional()
@@ -73,7 +82,9 @@ export class PersonalDriveController {
   @Auth()
   @Throttle({ default: { limit: 5, ttl: 60_000 } })
   connect(@GetUser() user: User, @Body() dto: ConnectDriveDto) {
-    return this.guard(() => this.drive.connect(user.id, dto.serverAuthCode));
+    return this.guard(() =>
+      this.drive.connect(user.id, dto.serverAuthCode, dto.idToken),
+    );
   }
   @Delete('disconnect')
   @Auth()

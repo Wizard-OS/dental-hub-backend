@@ -7,7 +7,7 @@ import {
 } from '../domain/personal-drive';
 
 export interface PersonalDrivePort {
-  exchangeCode(code: string): Promise<DriveAuthorization>;
+  exchangeCode(code: string, idToken?: string): Promise<DriveAuthorization>;
   connect(
     userId: string,
     authorization: DriveAuthorization,
@@ -42,8 +42,8 @@ export interface PersonalDrivePort {
 export class PersonalDrive {
   constructor(private readonly port: PersonalDrivePort) {}
 
-  async connect(userId: string, serverAuthCode: string) {
-    const authorization = await this.port.exchangeCode(serverAuthCode);
+  async connect(userId: string, serverAuthCode: string, idToken?: string) {
+    const authorization = await this.port.exchangeCode(serverAuthCode, idToken);
     if (
       !authorization.scope
         .split(' ')

@@ -94,7 +94,10 @@ export class PersonalDriveStorage implements PersonalDrivePort {
     );
   }
 
-  async exchangeCode(code: string): Promise<DriveAuthorization> {
+  async exchangeCode(
+    code: string,
+    idToken?: string,
+  ): Promise<DriveAuthorization> {
     const { tokens } = await this.oauth()
       .getToken(code)
       .catch((error: unknown) => {
@@ -106,7 +109,8 @@ export class PersonalDriveStorage implements PersonalDrivePort {
           ),
         );
       });
-    if (!tokens.id_token || !tokens.access_token)
+    const accessToken = tokens.access_token?.trim();
+    if (!accessToken)
       throw this.error(
         'DRIVE_RECONNECT_REQUIRED',
         apiMessage(
@@ -114,12 +118,48 @@ export class PersonalDriveStorage implements PersonalDrivePort {
         ),
       );
 
-    const identity = await this.verifier.verify(tokens.id_token);
+    const suppliedIdToken = idToken?.trim();
+    const exchangeIdToken = tokens.id_token?.trim();
+    const suppliedIdentity = suppliedIdToken
+      ? await this.verifier.verify(suppliedIdToken)
+      : undefined;
+    const exchangeIdentity = exchangeIdToken
+      ? await this.verifier.verify(exchangeIdToken)
+      : undefined;
+
+    if (!suppliedIdentity && !exchangeIdentity)
+      throw this.error(
+        'DRIVE_RECONNECT_REQUIRED',
+        apiMessage(
+          'api.messages.sign_in_to_google_again_and_allow_drive_access',
+        ),
+      );
+
+    if (
+      suppliedIdentity &&
+      exchangeIdentity &&
+      suppliedIdentity.subject !== exchangeIdentity.subject
+    )
+      throw this.error(
+        'DRIVE_ACCOUNT_MISMATCH',
+        apiMessage(
+          'api.messages.reconnect_the_original_google_account_to_preserve_access_to_your_files',
+        ),
+      );
+
+    const identity = suppliedIdentity ?? exchangeIdentity;
+    if (!identity)
+      throw this.error(
+        'DRIVE_RECONNECT_REQUIRED',
+        apiMessage(
+          'api.messages.sign_in_to_google_again_and_allow_drive_access',
+        ),
+      );
     return {
       subject: identity.subject,
       email: identity.email,
-      accessToken: tokens.access_token,
-      refreshToken: tokens.refresh_token ?? undefined,
+      accessToken,
+      refreshToken: tokens.refresh_token?.trim() || undefined,
       expiresAt: tokens.expiry_date ?? undefined,
       scope: tokens.scope ?? '',
     };
