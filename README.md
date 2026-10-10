@@ -257,9 +257,9 @@ psql "$DATABASE_URL" -f scripts/reset-production-data.sql
 
 Este reset conserva el schema y vacía los datos operativos. Después, crear el primer usuario con `POST /api/auth/register` y la clínica inicial con `POST /api/clinics`.
 
-## Fases Implementadas
+## Funciones implementadas
 
-### Fase 1
+### Clínica, agenda y facturación
 
 - Multi-clínica: `clinics`, `clinic_memberships`
 - Scope por clínica vía `x-clinic-id`
@@ -275,7 +275,7 @@ Este reset conserva el schema y vacía los datos operativos. Después, crear el 
   - `invoice_items`
   - pagos parciales y transición de estado de factura
 
-### Fase 2
+### Historia clínica y tratamientos
 
 - Historia clínica (`clinical_records`)
 - Notas clínicas (`clinical_notes`)
@@ -284,15 +284,15 @@ Este reset conserva el schema y vacía los datos operativos. Después, crear el 
 - Regla de integridad: tratamiento y registro clínico deben pertenecer al mismo paciente
 - Validaciones de alcance por clínica en módulos clínicos
 
-### Fase 3
+### Mensajería, recordatorios y gastos
 
 - Plantillas de mensaje (`message_templates`)
 - Mensajería saliente (`outbound_messages`)
 - Recordatorios (`reminders`)
 - Gastos (`expenses`)
 - Dashboard operativo/financiero (`/common/dashboard`)
-- Migración SQL de fase 3:
-  - `src/migrations/202603050002_phase3_ops.sql`
+- Migración SQL para mensajería, recordatorios y gastos:
+  - `src/migrations/202603050002_messaging_reminders_expenses.sql`
 
 ### Hardening Multi-Tenant
 
@@ -336,9 +336,9 @@ Configuración:
 Specs implementados:
 
 - `__test__/app.e2e-spec.ts`
-- `__test__/phase1.e2e-spec.ts`
-- `__test__/phase2.e2e-spec.ts`
-- `__test__/phase3.e2e-spec.ts`
+- `__test__/clinic-care-and-billing.e2e-spec.ts`
+- `__test__/clinical-records-and-treatment.e2e-spec.ts`
+- `__test__/messaging-reminders-and-expenses.e2e-spec.ts`
 - `__test__/i18n.e2e-spec.ts`
 - `__test__/multitenancy.e2e-spec.ts`
 

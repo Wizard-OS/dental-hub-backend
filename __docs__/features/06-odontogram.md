@@ -66,8 +66,8 @@ Representar el estado dental del paciente y conectar piezas dentales con diagnos
 - Estados configurables por clinica.
 - Deteccion asistida desde imagenes.
 
-## Backlog Fase 2/Fase 3/Futuro
+## Mejoras previstas
 
-- Fase 2: odontograma infantil, historial visual y comparacion inicial/actual.
-- Fase 3: odontogramas por especialidad y auditoria avanzada.
-- Futuro: deteccion asistida y sugerencias de tratamiento.
+- Odontograma infantil, historial visual y comparación inicial/actual.
+- Odontogramas por especialidad y auditoría avanzada.
+- Detección asistida y sugerencias de tratamiento.

@@ -1,5 +1,5 @@
--- Phase 1 MVP gaps: richer clinic/patient data, odontogram, patient files,
--- structured clinical notes, treatment status, estimate statuses and voidable payments.
+-- Adds clinic and patient data, clinical documentation, treatments, billing states,
+-- odontograms, and patient files.
 
 ALTER TABLE clinics
   ADD COLUMN IF NOT EXISTS phone text,

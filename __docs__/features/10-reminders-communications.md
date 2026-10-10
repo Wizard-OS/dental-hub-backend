@@ -74,8 +74,8 @@ Reducir ausencias y mejorar seguimiento mediante recordatorios manuales o prepar
 - Preferencias por paciente.
 - Campanas inteligentes.
 
-## Backlog Fase 2/Fase 3/Futuro
+## Mejoras previstas
 
-- Fase 2: WhatsApp/SMS/email automaticos, confirmaciones y plantillas configurables.
-- Fase 3: automatizaciones por evento y preferencias de comunicacion.
-- Futuro: campanas inteligentes por riesgo, deuda o inactividad.
+- WhatsApp/SMS/email automáticos, confirmaciones y plantillas configurables.
+- Automatizaciones por evento y preferencias de comunicación.
+- Campañas inteligentes por riesgo, deuda o inactividad.

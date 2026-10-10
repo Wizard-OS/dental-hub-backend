@@ -70,8 +70,8 @@ Garantizar que cada clinica opere como tenant independiente. Ningun usuario pued
 - Auditoria avanzada.
 - Politicas enterprise.
 
-## Backlog Fase 2/Fase 3/Futuro
+## Mejoras previstas
 
-- Fase 2: permisos por modulo y registro basico de actividad.
-- Fase 3: permisos granulares por sede, profesional, modulo y accion.
-- Futuro: SSO, politicas corporativas, cumplimiento avanzado y auditoria forense.
+- Permisos por módulo y registro básico de actividad.
+- Permisos granulares por sede, profesional, módulo y acción.
+- SSO, políticas corporativas, cumplimiento avanzado y auditoría forense.

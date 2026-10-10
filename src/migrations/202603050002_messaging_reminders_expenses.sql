@@ -1,4 +1,4 @@
--- Phase 3 operational schema (message templates, outbound messages, expenses, reminders upgrades)
+-- Operational schema for message templates, outbound messages, expenses, and reminders.
 -- Idempotent migration for PostgreSQL.
 
 -- 1) Enum types

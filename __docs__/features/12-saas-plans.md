@@ -51,8 +51,8 @@ Preparar DentalHub para operar como SaaS por clinica, sin implementar facturacio
 
 - Clinicas.
 - Usuarios/memberships.
-- Reportes SaaS en Fase 3.
-- Pagos online en Fase 3.
+- Reportes SaaS avanzados.
+- Pagos online.
 
 ## Fuera de alcance MVP
 
@@ -62,8 +62,8 @@ Preparar DentalHub para operar como SaaS por clinica, sin implementar facturacio
 - Cancelacion/reactivacion.
 - Cobro online de suscripcion.
 
-## Backlog Fase 2/Fase 3/Futuro
+## Mejoras previstas
 
-- Fase 2: mostrar limites por plan y alertas de limite cercano.
-- Fase 3: suscripciones completas, prueba gratuita, super admin SaaS y pagos recurrentes.
-- Futuro: planes enterprise, marketplace y facturacion corporativa multi-sede.
+- Mostrar límites por plan y alertas de límite cercano.
+- Suscripciones completas, prueba gratuita, super admin SaaS y pagos recurrentes.
+- Planes enterprise, marketplace y facturación corporativa multi-sede.

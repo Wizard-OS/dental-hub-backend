@@ -6,7 +6,7 @@ import { App } from 'supertest/types';
 
 import { AppModule } from '../src/app.module';
 
-describe('Phase 3 Flow (e2e)', () => {
+describe('Messaging, reminders, and expenses (e2e)', () => {
   let app: INestApplication<App>;
   let adminToken: string;
   let clinicMainId: string;

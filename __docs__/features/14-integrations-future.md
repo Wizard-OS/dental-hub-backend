@@ -14,7 +14,7 @@ Ordenar el roadmap de integraciones y capacidades avanzadas sin inflar el MVP.
 - Administrador.
 - Recepcion.
 - Odontologo.
-- Paciente en Fase 3.
+- Paciente del portal.
 - Equipo SaaS/soporte.
 
 ## Alcance MVP
@@ -31,11 +31,9 @@ Ordenar el roadmap de integraciones y capacidades avanzadas sin inflar el MVP.
 
 ## Criterios de aceptacion
 
-- WhatsApp/SMS/email automaticos quedan Fase 2.
-- Google Calendar queda Fase 2.
-- Pagos online y portal quedan Fase 3.
-- Teleconsulta queda Fase 3.
-- IA, contabilidad y marketplace quedan Futuro.
+- Automatización por WhatsApp/SMS/email y Google Calendar se vinculan con comunicaciones y agenda.
+- Pagos online, portal del paciente y teleconsulta se vinculan con servicios para pacientes.
+- IA, contabilidad y marketplace se consideran líneas de exploración futura.
 - Ninguna integracion externa bloquea operacion MVP.
 
 ## Endpoints/modelos afectados
@@ -72,8 +70,8 @@ Ordenar el roadmap de integraciones y capacidades avanzadas sin inflar el MVP.
 - Teleconsulta.
 - IA asistiva.
 
-## Backlog Fase 2/Fase 3/Futuro
+## Mejoras previstas
 
-- Fase 2: WhatsApp/SMS/email, Google Calendar, exportaciones y formularios.
-- Fase 3: portal paciente, pagos online, teleconsulta, suscripciones y multi-sede.
-- Futuro: IA clinica/operativa, marketplace, contabilidad, SSO y analitica predictiva.
+- WhatsApp/SMS/email, Google Calendar, exportaciones y formularios.
+- Portal paciente, pagos online, teleconsulta, suscripciones y multi-sede.
+- IA clínica/operativa, marketplace, contabilidad, SSO y analítica predictiva.

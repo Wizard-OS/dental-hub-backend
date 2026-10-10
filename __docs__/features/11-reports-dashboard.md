@@ -71,8 +71,8 @@ Dar visibilidad minima de actividad, ingresos, gastos, deuda, recordatorios y tr
 - Dashboards SaaS globales.
 - Analitica predictiva.
 
-## Backlog Fase 2/Fase 3/Futuro
+## Mejoras previstas
 
-- Fase 2: reportes por profesional, metodo de pago, servicio y no asistencia.
-- Fase 3: dashboards por sede y metricas SaaS.
-- Futuro: alertas automaticas por deuda, abandono y baja ocupacion.
+- Reportes por profesional, método de pago, servicio y no asistencia.
+- Dashboards por sede y métricas SaaS.
+- Alertas automáticas por deuda, abandono y baja ocupación.

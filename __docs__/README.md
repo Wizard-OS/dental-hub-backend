@@ -13,14 +13,14 @@ El MVP usa **clinica como tenant**. La clinica activa viaja en `x-clinic-id` y e
 - **Criterios de aceptacion**: condiciones verificables por QA/producto.
 - **Endpoints/modelos afectados**: contrato tecnico esperado.
 - **Escenarios de prueba**: base para QA manual o e2e.
-- **Backlog futuro**: Fase 2, Fase 3 y Futuro.
+- **Backlog futuro**: automatización, productividad, capacidades SaaS e investigación avanzada.
 
-## Fases
+## Áreas del roadmap
 
 - **MVP**: operacion diaria de una clinica dental pequena o mediana.
-- **Fase 2**: automatizacion, productividad, reportes ampliados e integraciones simples.
-- **Fase 3**: escalabilidad SaaS, portal paciente, pagos online, multi-sede y permisos granulares.
-- **Futuro**: IA, analitica predictiva, marketplace, contabilidad y enterprise.
+- **Automatización y productividad**: reportes ampliados e integraciones simples.
+- **Capacidades SaaS y expansión**: portal paciente, pagos online, multi-sede y permisos granulares.
+- **Investigación avanzada**: IA, analitica predictiva, marketplace, contabilidad y enterprise.
 
 ## Indice de Features
 
@@ -44,4 +44,4 @@ El MVP usa **clinica como tenant**. La clinica activa viaja en `x-clinic-id` y e
 - El backend debe rechazar cualquier lectura o escritura tenant-owned si el usuario no tiene membership activa en la clinica del header.
 - Los roles globales de usuario no reemplazan el rol por clinica. Las acciones de equipo y configuracion se autorizan con `ClinicMembershipRole`.
 - Los DTOs scoped pueden aceptar `clinicId` por compatibilidad, pero `x-clinic-id` es la fuente autoritativa.
-- Todo ticket nuevo debe declarar si es MVP, Fase 2, Fase 3 o Futuro.
+- Todo ticket nuevo debe identificar el MVP o el área de producto correspondiente: automatización y productividad, capacidades SaaS y expansión, o investigación avanzada.

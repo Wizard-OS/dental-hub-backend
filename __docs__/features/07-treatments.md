@@ -72,8 +72,8 @@ Organizar procedimientos odontologicos en planes de tratamiento, registrar sesio
 - Aprobacion digital del paciente.
 - Recomendaciones asistidas.
 
-## Backlog Fase 2/Fase 3/Futuro
+## Mejoras previstas
 
-- Fase 2: etapas, plantillas y avance porcentual.
-- Fase 3: comunicacion/aprobacion del plan desde portal.
-- Futuro: recomendaciones por diagnostico y estimaciones predictivas.
+- Etapas, plantillas y avance porcentual.
+- Comunicación y aprobación del plan desde el portal.
+- Recomendaciones por diagnóstico y estimaciones predictivas.

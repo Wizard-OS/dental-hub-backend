@@ -75,8 +75,8 @@ Permitir que una clinica configure su informacion basica y administre usuarios i
 - Invitaciones por email.
 - Permisos granulares por accion.
 
-## Backlog Fase 2/Fase 3/Futuro
+## Mejoras previstas
 
-- Fase 2: horarios por profesional, boxes/sillones y permisos por modulo.
-- Fase 3: sedes, super admin SaaS, suscripciones y auditoria avanzada.
-- Futuro: jerarquias corporativas y configuraciones heredables.
+- Horarios por profesional, boxes/sillones y permisos por módulo.
+- Sedes, super admin SaaS, suscripciones y auditoría avanzada.
+- Jerarquías corporativas y configuraciones heredables.

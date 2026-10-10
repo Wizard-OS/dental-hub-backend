@@ -67,8 +67,8 @@ Almacenar archivos asociados a pacientes, atenciones, tratamientos o documentos 
 - Clasificacion automatica.
 - Compartir documentos con paciente.
 
-## Backlog Fase 2/Fase 3/Futuro
+## Mejoras previstas
 
-- Fase 2: categorias, formularios, consentimientos y exportacion.
-- Fase 3: firma digital y compartir documentos seleccionados.
-- Futuro: OCR, gestion documental avanzada y retencion legal configurable.
+- Categorías, formularios, consentimientos y exportación.
+- Firma digital y compartir documentos seleccionados.
+- OCR, gestión documental avanzada y retención legal configurable.

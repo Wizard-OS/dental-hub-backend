@@ -31,7 +31,7 @@ Permitir que pacientes realicen acciones clave sin depender siempre de recepcion
 
 - Ningun endpoint publico expone datos clinicos de paciente.
 - Las relaciones paciente-cita-invoice-pago estan listas para consultas futuras.
-- La documentacion declara portal como Fase 3.
+- El portal del paciente se plantea como capacidad futura.
 
 ## Endpoints/modelos afectados
 
@@ -46,8 +46,8 @@ Permitir que pacientes realicen acciones clave sin depender siempre de recepcion
 ## Escenarios de prueba
 
 - Verificar que endpoints actuales requieren JWT interno y/o `x-clinic-id`.
-- En Fase 3, paciente A no ve informacion de paciente B.
-- En Fase 3, paciente solo ve documentos compartidos explicitamente.
+- Cada paciente solo puede consultar su propia información.
+- El paciente solo puede consultar documentos compartidos explícitamente.
 
 ## Dependencias
 
@@ -65,8 +65,8 @@ Permitir que pacientes realicen acciones clave sin depender siempre de recepcion
 - Autogestion de datos.
 - Comunicacion bidireccional.
 
-## Backlog Fase 2/Fase 3/Futuro
+## Mejoras previstas
 
-- Fase 2: formularios o enlaces especificos sin portal completo.
-- Fase 3: citas, presupuestos, pagos online, aprobaciones y datos personales limitados.
-- Futuro: seguimiento de tratamientos, material educativo y mensajeria bidireccional.
+- Formularios o enlaces específicos sin portal completo.
+- Citas, presupuestos, pagos online, aprobaciones y datos personales limitados.
+- Seguimiento de tratamientos, material educativo y mensajería bidireccional.

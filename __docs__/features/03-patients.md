@@ -69,8 +69,8 @@ Centralizar datos administrativos, contacto y antecedentes basicos de pacientes 
 - Consentimientos digitales.
 - Segmentacion avanzada.
 
-## Backlog Fase 2/Fase 3/Futuro
+## Mejoras previstas
 
-- Fase 2: anamnesis online, etiquetas y consentimientos preconsulta.
-- Fase 3: portal del paciente y autogestion limitada de datos.
-- Futuro: scoring de riesgo, segmentacion preventiva y marketing.
+- Anamnesis online, etiquetas y consentimientos preconsulta.
+- Portal del paciente y autogestión limitada de datos.
+- Scoring de riesgo, segmentación preventiva y marketing.

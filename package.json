@@ -29,6 +29,7 @@
     "test:cov": "node --experimental-vm-modules node_modules/jest/bin/jest.js --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "node --experimental-vm-modules node_modules/jest/bin/jest.js --config __test__/jest-e2e.json",
+    "test:migrations": "node --test scripts/migration-ledger.test.mjs",
     "db:migrate:membership": "node scripts/migrate-membership.mjs",
     "test:membership:e2e": "node scripts/test-membership-e2e.mjs",
     "openapi:export": "node scripts/export-openapi.mjs",

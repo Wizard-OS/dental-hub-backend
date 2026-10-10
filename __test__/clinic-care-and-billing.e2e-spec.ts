@@ -6,7 +6,7 @@ import fs from 'fs';
 
 import { AppModule } from '../src/app.module';
 
-describe('Phase 1 Flow (e2e)', () => {
+describe('Clinic care and billing (e2e)', () => {
   let app: INestApplication<App>;
   let adminToken: string;
   let adminUserId: string;
@@ -969,7 +969,7 @@ describe('Phase 1 Flow (e2e)', () => {
     );
   });
 
-  it('returns minimum phase 1 reports', async () => {
+  it('returns minimum clinic operations reports', async () => {
     const appointmentReportFrom = '2026-09-28T00:00:00.000Z';
     const appointmentReportTo = '2026-09-29T00:00:00.000Z';
 

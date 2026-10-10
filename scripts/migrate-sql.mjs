@@ -4,6 +4,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import pg from 'pg';
+import { applyMigration, legacyMigrationAliases } from './migration-ledger.mjs';
 
 try {
   process.loadEnvFile();
@@ -68,27 +69,19 @@ try {
 
   for (const name of migrationFiles) {
     const { sql, checksum } = await readMigration(name);
-    const { rows } = await client.query(
-      `SELECT checksum FROM ${migrationsTable} WHERE name = $1`,
-      [name],
+    const result = await applyMigration(
+      client,
+      { name, sql, checksum },
+      legacyMigrationAliases[name],
     );
 
-    if (rows[0]) {
-      if (rows[0].checksum !== checksum) {
-        throw new Error(`Applied migration changed: ${name}`);
-      }
-
+    if (result === 'already-applied') {
       console.log(`Already applied: ${name}`);
-      continue;
+    } else if (result === 'renamed') {
+      console.log(`Recognized legacy migration: ${name}`);
+    } else {
+      console.log(`Applied: ${name}`);
     }
-
-    console.log(`Applying: ${name}`);
-    await client.query(sql);
-    await client.query(
-      `INSERT INTO ${migrationsTable}(name, checksum) VALUES ($1, $2)`,
-      [name, checksum],
-    );
-    console.log(`Applied: ${name}`);
   }
 
   console.log('SQL migrations complete');

@@ -75,8 +75,8 @@ Formalizar costos de tratamientos, registrar cobros manuales y consultar saldos 
 - Facturacion fiscal automatica.
 - Suscripciones SaaS.
 
-## Backlog Fase 2/Fase 3/Futuro
+## Mejoras previstas
 
-- Fase 2: recibos exportables, cierre de caja y reportes por metodo.
-- Fase 3: portal del paciente, aprobacion digital y pagos online.
-- Futuro: conciliacion bancaria, contabilidad e indicadores de rentabilidad.
+- Recibos exportables, cierre de caja y reportes por método.
+- Portal del paciente, aprobación digital y pagos online.
+- Conciliación bancaria, contabilidad e indicadores de rentabilidad.

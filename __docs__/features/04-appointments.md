@@ -71,8 +71,8 @@ Coordinar citas por clinica, profesional, paciente, tipo de cita, horario y esta
 - Lista de espera.
 - Reglas complejas de disponibilidad.
 
-## Backlog Fase 2/Fase 3/Futuro
+## Mejoras previstas
 
-- Fase 2: confirmaciones automaticas, Google Calendar, boxes y excepciones.
-- Fase 3: agenda por sede, reservas desde portal y lista de espera.
-- Futuro: optimizacion inteligente y prediccion de ausencias.
+- Confirmaciones automáticas, Google Calendar, boxes y excepciones.
+- Agenda por sede, reservas desde portal y lista de espera.
+- Optimización inteligente y predicción de ausencias.

@@ -1,4 +1,4 @@
--- Phase 1 core schema for mobile MVP
+-- Core clinic, appointment, and billing schema for the mobile MVP.
 -- Run with psql or your migration runner before disabling DB synchronize.
 
 CREATE TABLE IF NOT EXISTS clinics (

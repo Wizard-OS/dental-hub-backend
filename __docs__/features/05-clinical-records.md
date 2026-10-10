@@ -71,8 +71,8 @@ Registrar antecedentes, evoluciones clinicas y notas profesionales por paciente 
 - Plantillas por especialidad.
 - Auditoria avanzada.
 
-## Backlog Fase 2/Fase 3/Futuro
+## Mejoras previstas
 
-- Fase 2: plantillas clinicas, recetas, indicaciones y consentimientos imprimibles.
-- Fase 3: versionado, firma digital y auditoria avanzada.
-- Futuro: resumen asistido por IA y alertas clinicas.
+- Plantillas clínicas, recetas, indicaciones y consentimientos imprimibles.
+- Versionado, firma digital y auditoría avanzada.
+- Resumen asistido por IA y alertas clínicas.
