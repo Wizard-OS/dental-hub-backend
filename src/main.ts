@@ -4,16 +4,20 @@ import { I18nValidationPipe } from 'nestjs-i18n';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import helmet from 'helmet';
 import { json, urlencoded } from 'express';
+import type { Express } from 'express';
 
 import { AppModule } from './app.module';
 import { I18nHttpExceptionFilter } from './common/filters/i18n-http-exception.filter';
 import { I18nResponseInterceptor } from './common/interceptors/i18n-response.interceptor';
 import { getBooleanEnv, getEnv } from './config/env';
+import { getTrustedProxyHops } from './config/app-module-options';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const logger = new Logger('Bootstrap');
 
+  const expressInstance = app.getHttpAdapter().getInstance() as Express;
+  expressInstance.set('trust proxy', getTrustedProxyHops());
   app.setGlobalPrefix('api');
   app.use(helmet());
   app.use(json({ limit: getEnv('BODY_JSON_LIMIT') ?? '1mb' }));

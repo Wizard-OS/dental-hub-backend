@@ -57,7 +57,8 @@ describe('UserSessionsService', () => {
             if (
               matchesWhereValue(where.id, session.id) &&
               matchesWhereValue(where.userId, session.userId) &&
-              matchesWhereValue(where.isRevoked, session.isRevoked)
+              matchesWhereValue(where.isRevoked, session.isRevoked) &&
+              matchesWhereValue(where.lastActiveAt, session.lastActiveAt)
             ) {
               Object.assign(session, patch);
             }
@@ -148,6 +149,28 @@ describe('UserSessionsService', () => {
       service.assertActiveSession(userId, session.id),
     ).rejects.toBeInstanceOf(UnauthorizedException);
   });
+
+  it('writes activity only when the last update is at least one minute old', async () => {
+    const session = await service.createSession(userId, {});
+    session.lastActiveAt = new Date(Date.now() - 30_000);
+    const recent = session.lastActiveAt;
+
+    await service.updateLastActive(session.id, recent);
+    expect(session.lastActiveAt).toBe(recent);
+
+    session.lastActiveAt = new Date(Date.now() - 120_000);
+    await service.updateLastActive(session.id, session.lastActiveAt);
+    expect(session.lastActiveAt.getTime()).toBeGreaterThan(Date.now() - 60_000);
+  });
+
+  it('skips the database update when the observed activity is fresh', async () => {
+    const session = await service.createSession(userId, {});
+    const freshActivity = new Date();
+
+    await service.updateLastActive(session.id, freshActivity);
+
+    expect(repository.update).not.toHaveBeenCalled();
+  });
 });
 
 function matchesWhereValue<T>(whereValue: unknown, value: T) {
@@ -160,6 +183,19 @@ function matchesWhereValue<T>(whereValue: unknown, value: T) {
     whereValue._type === 'not'
   ) {
     return whereValue._value !== value;
+  }
+  if (
+    typeof whereValue === 'object' &&
+    whereValue !== null &&
+    '_type' in whereValue &&
+    '_value' in whereValue &&
+    whereValue._type === 'lessThanOrEqual'
+  ) {
+    return (
+      value instanceof Date &&
+      whereValue._value instanceof Date &&
+      value.getTime() <= whereValue._value.getTime()
+    );
   }
 
   return whereValue === value;

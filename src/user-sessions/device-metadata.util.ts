@@ -106,9 +106,6 @@ function inferDeviceName(
 }
 
 function getClientIp(request: Request) {
-  const forwardedFor = normalizeHeader(request.headers['x-forwarded-for']);
-  if (forwardedFor) return forwardedFor.split(',')[0]?.trim() || forwardedFor;
-
   return request.ip ?? request.socket.remoteAddress ?? undefined;
 }
 

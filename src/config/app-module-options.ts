@@ -47,10 +47,10 @@ export function createI18nOptions() {
 export function createTypeOrmOptions(): TypeOrmModuleOptions {
   const rawDatabaseUrl = getEnv('DATABASE_URL');
   const databaseUrl = rawDatabaseUrl
-    ? normalizeDatabaseUrl(rawDatabaseUrl)
+    ? normalizeDatabaseUrl(rawDatabaseUrl, getBooleanEnv('DB_SSL'))
     : undefined;
   const ssl = getBooleanEnv('DB_SSL')
-    ? { rejectUnauthorized: false }
+    ? { rejectUnauthorized: true }
     : undefined;
   const synchronize =
     getEnv('NODE_ENV') !== 'production' && getEnv('DB_SYNCHRONIZE') === 'true';
@@ -72,6 +72,14 @@ export function createTypeOrmOptions(): TypeOrmModuleOptions {
     retryAttempts: 10,
     retryDelay: 3000,
   };
+}
+
+export function getTrustedProxyHops(): number {
+  const value = Number(getEnv('TRUST_PROXY_HOPS') ?? 0);
+  if (!Number.isInteger(value) || value < 0 || value > 5) {
+    throw new Error('TRUST_PROXY_HOPS must be an integer from 0 to 5.');
+  }
+  return value;
 }
 
 function numberEnv(name: string, fallback: number): number {

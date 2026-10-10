@@ -87,6 +87,7 @@ Variables clave:
 
 - `PORT`: puerto HTTP de la API (default `3000`)
 - `CORS_ORIGINS`: origins permitidos separados por coma. En producción, origins no listados son rechazados.
+- `TRUST_PROXY_HOPS`: reverse-proxy hops confiables para `request.ip` (default `0`; usar `1` en Render tras verificar IP real y headers en staging).
 - `ENABLE_SWAGGER`:
   - `false` (o no definido en producción): no expone `/api/docs`
   - `true`: expone Swagger
@@ -99,7 +100,7 @@ Variables clave:
 - `DB_PASSWORD`: password DB (default `postgres`)
 - `DB_SSL`:
   - `false` (o no definido): conexión PostgreSQL sin SSL, útil para Docker local
-  - `true`: habilita SSL para Neon, Supabase u otros Postgres administrados
+  - `true`: habilita SSL con verificación del certificado para Neon, Supabase u otros Postgres administrados. URLs con `sslmode=disable`, `allow`, `no-verify` o `ssl=0` se rechazan; modos `prefer`, `require` y `verify-ca` se normalizan a `verify-full`.
 - `DB_SYNCHRONIZE`:
   - `true`: habilita `synchronize` solo cuando `NODE_ENV !== production`
   - `false` o no definido: deshabilita synchronize

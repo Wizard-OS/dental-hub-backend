@@ -19,6 +19,8 @@ import { UserSessionsModule } from '../user-sessions/user-sessions.module';
 import { PasswordHasherService } from './services/password-hasher.service';
 import { PasswordResetOtpService } from './services/password-reset-otp.service';
 import { PasswordResetEmailProvider } from './services/password-reset-email.provider';
+import { AUTH_SECURITY_TRANSACTION } from './application/ports/auth-security-transaction.port';
+import { TypeOrmAuthSecurityTransactionAdapter } from './infrastructure/typeorm-auth-security-transaction.adapter';
 
 @Global()
 @Module({
@@ -33,6 +35,11 @@ import { PasswordResetEmailProvider } from './services/password-reset-email.prov
     PasswordHasherService,
     PasswordResetOtpService,
     PasswordResetEmailProvider,
+    TypeOrmAuthSecurityTransactionAdapter,
+    {
+      provide: AUTH_SECURITY_TRANSACTION,
+      useExisting: TypeOrmAuthSecurityTransactionAdapter,
+    },
   ],
   imports: [
     ConfigModule,

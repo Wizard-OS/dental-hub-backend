@@ -9,6 +9,7 @@ describe('JwtStrategy', () => {
   const userId = 'user-1';
   const sessionId = 'session-1';
   let user: User;
+  let lastActiveAt: Date;
   let userRepository: { findOneBy: jest.Mock };
   let userSessionsService: {
     assertActiveSession: jest.Mock;
@@ -40,8 +41,9 @@ describe('JwtStrategy', () => {
     userRepository = {
       findOneBy: jest.fn(() => user),
     };
+    lastActiveAt = new Date(Date.now() - 120_000);
     userSessionsService = {
-      assertActiveSession: jest.fn(),
+      assertActiveSession: jest.fn().mockResolvedValue({ lastActiveAt }),
       updateLastActive: jest.fn(),
     };
 
@@ -63,6 +65,7 @@ describe('JwtStrategy', () => {
     );
     expect(userSessionsService.updateLastActive).toHaveBeenCalledWith(
       sessionId,
+      lastActiveAt,
     );
     expect(user.currentSessionId).toBe(sessionId);
   });

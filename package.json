@@ -28,6 +28,7 @@
     "test:watch": "node --experimental-vm-modules node_modules/jest/bin/jest.js --watch",
     "test:cov": "node --experimental-vm-modules node_modules/jest/bin/jest.js --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
+    "test:database-config": "node --test scripts/database-config.test.mjs",
     "test:e2e": "node --experimental-vm-modules node_modules/jest/bin/jest.js --config __test__/jest-e2e.json",
     "test:migrations": "node --test scripts/migration-ledger.test.mjs",
     "db:migrate:membership": "node scripts/migrate-membership.mjs",

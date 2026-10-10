@@ -4,15 +4,18 @@ import * as bcrypt from 'bcrypt';
 import { AuthService } from './auth.service';
 import { apiMessage } from '../common/i18n/api-message';
 import { User } from './entities/user.entity';
+import { UserSession } from '../user-sessions/entities/user-session.entity';
 import { ValidRoles } from './interfaces';
 import { PasswordHasherService } from './services/password-hasher.service';
 import { PasswordResetOtpService } from './services/password-reset-otp.service';
+import type { LockedAuthSecurityAccount } from './application/ports/auth-security-transaction.port';
 
 describe('AuthService password reset', () => {
   let service: AuthService;
   let users: Map<string, User>;
   let specialties: Map<string, { id: string; isActive: boolean }>;
   let jwtService: { sign: jest.Mock };
+  let activeSessions: UserSession[];
   let userSessionsService: {
     createSession: jest.Mock;
     revokeCurrentSession: jest.Mock;
@@ -27,6 +30,7 @@ describe('AuthService password reset', () => {
     process.env.NODE_ENV = 'development';
     process.env.ENABLE_DEV_OTP = 'true';
     users = new Map<string, User>();
+    activeSessions = [];
     specialties = new Map<string, { id: string; isActive: boolean }>();
     specialties.set('specialty-1', { id: 'specialty-1', isActive: true });
     users.set(userId, {
@@ -68,6 +72,90 @@ describe('AuthService password reset', () => {
         Object.assign(user, patch);
         return { affected: 1 };
       }),
+    };
+
+    let transactionTail = Promise.resolve();
+    const transactAccount = async <T>(
+      account: User | undefined,
+      operation: (
+        lockedAccount: LockedAuthSecurityAccount | null,
+      ) => Promise<T>,
+    ) => {
+      const previous = transactionTail;
+      let release: () => void = () => undefined;
+      transactionTail = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      await previous;
+      try {
+        if (!account) return operation(null);
+        const securityAccount = {
+          id: account.id,
+          email: account.email,
+          isActive: account.isActive,
+          password: account.password,
+          passwordResetOtpHash: account.passwordResetOtpHash ?? null,
+          passwordResetOtpExpiresAt: account.passwordResetOtpExpiresAt ?? null,
+          passwordResetOtpUsedAt: account.passwordResetOtpUsedAt ?? null,
+          passwordResetOtpAttemptCount:
+            account.passwordResetOtpAttemptCount ?? 0,
+          passwordResetOtpLockedUntil:
+            account.passwordResetOtpLockedUntil ?? null,
+        };
+        return await operation({
+          account: securityAccount,
+          update: (patch) => {
+            Object.assign(account, patch);
+            Object.assign(securityAccount, patch);
+            return Promise.resolve();
+          },
+          createSession: (metadata) => {
+            const id = `session-${userId}`;
+            activeSessions.push({
+              id,
+              userId,
+              ...metadata,
+              isRevoked: false,
+              revokedAt: null,
+            } as UserSession);
+            return Promise.resolve(id);
+          },
+          revokeSessions: (exceptSessionId) => {
+            activeSessions.forEach((session) => {
+              if (
+                session.userId === account.id &&
+                session.id !== exceptSessionId
+              ) {
+                session.isRevoked = true;
+                session.revokedAt = new Date();
+              }
+            });
+            return Promise.resolve();
+          },
+        });
+      } finally {
+        release();
+      }
+    };
+    const securityTransactions = {
+      withLockedAccountById: (
+        id: string,
+        operation: (
+          account: LockedAuthSecurityAccount | null,
+        ) => Promise<unknown>,
+      ) => transactAccount(users.get(id), operation),
+      withLockedAccountByEmail: (
+        lookupEmail: string,
+        operation: (
+          account: LockedAuthSecurityAccount | null,
+        ) => Promise<unknown>,
+      ) =>
+        transactAccount(
+          [...users.values()].find(
+            (candidate) => candidate.email === lookupEmail.toLowerCase().trim(),
+          ),
+          operation,
+        ),
     };
 
     const clinicMembershipRepository = {
@@ -113,6 +201,7 @@ describe('AuthService password reset', () => {
       new PasswordHasherService(),
       new PasswordResetOtpService(),
       { configured: false, sendCode: jest.fn() },
+      securityTransactions as never,
     );
   });
 
@@ -153,12 +242,17 @@ describe('AuthService password reset', () => {
   it('resets password, invalidates OTP, and rejects the old password', async () => {
     const response = await service.forgotPassword({ email });
     const otp = response.devOtp!;
+    activeSessions.push(
+      { id: 'old-a', userId, isRevoked: false, revokedAt: null } as UserSession,
+      { id: 'old-b', userId, isRevoked: false, revokedAt: null } as UserSession,
+    );
 
     await expect(
       service.resetPassword({ email, otp, newPassword: 'NewPass1' }),
     ).resolves.toEqual({
       message: apiMessage('api.messages.password_reset_successfully'),
     });
+    expect(activeSessions.every((session) => session.isRevoked)).toBe(true);
 
     await expect(service.verifyOtp({ email, otp })).rejects.toBeInstanceOf(
       BadRequestException,
@@ -211,6 +305,100 @@ describe('AuthService password reset', () => {
     await expect(
       service.verifyOtp({ email, otp: response.devOtp! }),
     ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('serializes concurrent OTP failures and prevents resends from clearing a lock', async () => {
+    await service.forgotPassword({ email });
+    await Promise.all(
+      Array.from({ length: 8 }, () =>
+        service.verifyOtp({ email, otp: '999999' }).catch(() => undefined),
+      ),
+    );
+
+    const user = users.get(userId)!;
+    expect(user.passwordResetOtpAttemptCount).toBe(5);
+    expect(user.passwordResetOtpLockedUntil).toBeInstanceOf(Date);
+    await service.forgotPassword({ email });
+    expect(user.passwordResetOtpAttemptCount).toBe(5);
+    expect(user.passwordResetOtpLockedUntil).toBeInstanceOf(Date);
+  });
+
+  it('consumes a reset OTP once when reset requests race', async () => {
+    const response = await service.forgotPassword({ email });
+    const results = await Promise.allSettled([
+      service.resetPassword({
+        email,
+        otp: response.devOtp!,
+        newPassword: 'FirstPass1',
+      }),
+      service.resetPassword({
+        email,
+        otp: response.devOtp!,
+        newPassword: 'SecondPass1',
+      }),
+    ]);
+
+    expect(
+      results.filter((result) => result.status === 'fulfilled'),
+    ).toHaveLength(1);
+  });
+
+  it('does not leave an old-password login session active when reset races login', async () => {
+    const response = await service.forgotPassword({ email });
+    const login = service.login({ email, password: 'OldPass1' });
+    const reset = service.resetPassword({
+      email,
+      otp: response.devOtp!,
+      newPassword: 'NewPass1',
+    });
+
+    const [loginResult] = await Promise.allSettled([login, reset]);
+    if (loginResult.status === 'fulfilled') {
+      expect(
+        activeSessions
+          .filter((session) => session.userId === userId)
+          .every((session) => session.isRevoked),
+      ).toBe(true);
+    } else {
+      expect(loginResult.reason).toBeInstanceOf(UnauthorizedException);
+    }
+    await expect(
+      service.login({ email, password: 'OldPass1' }),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
+  });
+
+  it('keeps the current session and revokes other sessions on password change', async () => {
+    const user = users.get(userId)!;
+    user.currentSessionId = 'current-session';
+    activeSessions.push(
+      {
+        id: 'current-session',
+        userId,
+        isRevoked: false,
+        revokedAt: null,
+      } as UserSession,
+      {
+        id: 'other-session',
+        userId,
+        isRevoked: false,
+        revokedAt: null,
+      } as UserSession,
+    );
+
+    await expect(
+      service.changePassword(user, {
+        currentPassword: 'OldPass1',
+        newPassword: 'NewPass1',
+      }),
+    ).resolves.toMatchObject({
+      message: apiMessage('api.messages.password_changed_successfully'),
+    });
+    expect(
+      activeSessions.find(({ id }) => id === 'current-session')?.isRevoked,
+    ).toBe(false);
+    expect(
+      activeSessions.find(({ id }) => id === 'other-session')?.isRevoked,
+    ).toBe(true);
   });
 
   it('does not expose dev OTP unless explicitly enabled in local development', async () => {

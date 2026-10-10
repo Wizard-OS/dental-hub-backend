@@ -1,25 +1,13 @@
 import fs from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import pg from 'pg';
+import { createDatabaseConnectionConfig } from './database-config.mjs';
 try {
   process.loadEnvFile();
 } catch (error) {
   if (error.code !== 'ENOENT') throw error;
 }
-const client = new pg.Client(
-  process.env.DATABASE_URL
-    ? { connectionString: process.env.DATABASE_URL }
-    : {
-        host: process.env.DB_HOST ?? '127.0.0.1',
-        port: Number(process.env.DB_PORT ?? 5432),
-        user: process.env.DB_USERNAME ?? 'postgres',
-        password: process.env.DB_PASSWORD,
-        database: process.env.DB_NAME ?? 'DentalHubDB',
-        ...(process.env.DB_SSL === 'true'
-          ? { ssl: { rejectUnauthorized: true } }
-          : {}),
-      },
-);
+const client = new pg.Client(createDatabaseConnectionConfig());
 const migrations = [
   '202609100001_membership_checkout_contracts.sql',
   '202609100002_membership_saved_methods_and_jobs.sql',

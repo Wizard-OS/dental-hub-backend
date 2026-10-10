@@ -3,6 +3,7 @@ import { UserStorageIntegration } from '../storage/entities/user-storage-integra
 import { StorageIntegrationStatus } from '../storage/interfaces/storage-integration-status.enum';
 import {
   BadRequestException,
+  Inject,
   Injectable,
   InternalServerErrorException,
   Logger,
@@ -34,6 +35,11 @@ import { validateAndNormalizeUploadedFile } from '../common/files/upload-validat
 import { PasswordHasherService } from './services/password-hasher.service';
 import { PasswordResetOtpService } from './services/password-reset-otp.service';
 import { PasswordResetEmailProvider } from './services/password-reset-email.provider';
+import { AUTH_SECURITY_TRANSACTION } from './application/ports/auth-security-transaction.port';
+import type {
+  AuthSecurityAccount,
+  AuthSecurityTransactionPort,
+} from './application/ports/auth-security-transaction.port';
 
 @Injectable()
 export class AuthService {
@@ -58,6 +64,9 @@ export class AuthService {
     private readonly passwordResetOtp: PasswordResetOtpService,
 
     private readonly passwordResetEmail: PasswordResetEmailProvider,
+
+    @Inject(AUTH_SECURITY_TRANSACTION)
+    private readonly securityTransactions: AuthSecurityTransactionPort,
   ) {}
 
   async create(createUserDto: CreateUserDto, request?: Request) {
@@ -66,7 +75,7 @@ export class AuthService {
 
       const user = this.userRepository.create({
         ...userData,
-        password: this.passwordHasher.hash(password),
+        password: await this.passwordHasher.hash(password),
       });
 
       await this.userRepository.save(user);
@@ -113,13 +122,9 @@ export class AuthService {
         apiMessage('api.messages.credentials_are_not_valid'),
       );
 
-    if (!user.password || !this.passwordHasher.compare(password, user.password))
-      throw new UnauthorizedException(
-        apiMessage('api.messages.credentials_are_not_valid'),
-      );
-
-    const session = await this.userSessionsService.createSession(
+    const session = await this.createLoginSession(
       user.id,
+      password,
       request ? buildSessionMetadata(request) : {},
     );
 
@@ -148,15 +153,32 @@ export class AuthService {
     }
 
     const otp = this.passwordResetOtp.generate();
-    const expiresAt = this.passwordResetOtp.expirationFrom();
-
-    await this.userRepository.update(user.id, {
-      passwordResetOtpHash: this.passwordHasher.hash(otp),
-      passwordResetOtpExpiresAt: expiresAt,
-      passwordResetOtpUsedAt: null,
-      passwordResetOtpAttemptCount: 0,
-      passwordResetOtpLockedUntil: null,
-    });
+    const otpHash = await this.passwordHasher.hash(otp);
+    await this.securityTransactions.withLockedAccountById(
+      user.id,
+      async (lockedAccount) => {
+        if (!lockedAccount) return;
+        const { account } = lockedAccount;
+        const lockStillActive =
+          account.passwordResetOtpLockedUntil &&
+          account.passwordResetOtpLockedUntil.getTime() > Date.now();
+        const resetWindowExpired =
+          !account.passwordResetOtpExpiresAt ||
+          account.passwordResetOtpExpiresAt.getTime() <= Date.now();
+        await lockedAccount.update({
+          passwordResetOtpHash: otpHash,
+          passwordResetOtpExpiresAt: this.passwordResetOtp.expirationFrom(),
+          passwordResetOtpUsedAt: null,
+          passwordResetOtpAttemptCount:
+            resetWindowExpired && !lockStillActive
+              ? 0
+              : account.passwordResetOtpAttemptCount,
+          passwordResetOtpLockedUntil: lockStillActive
+            ? account.passwordResetOtpLockedUntil
+            : null,
+        });
+      },
+    );
 
     if (this.passwordResetEmail.configured) {
       try {
@@ -174,28 +196,53 @@ export class AuthService {
   }
 
   async verifyOtp(verifyOtpDto: VerifyOtpDto) {
-    await this.assertValidPasswordResetOtp(
+    const valid = await this.checkPasswordResetOtp(
       verifyOtpDto.email,
       verifyOtpDto.otp,
     );
+    if (!valid) this.throwInvalidOtp();
 
     return { message: apiMessage('api.messages.otp_verified_successfully') };
   }
 
   async resetPassword(resetPasswordDto: ResetPasswordDto) {
-    const user = await this.assertValidPasswordResetOtp(
-      resetPasswordDto.email,
-      resetPasswordDto.otp,
+    const passwordHash = await this.passwordHasher.hash(
+      resetPasswordDto.newPassword,
     );
+    const reset = await this.securityTransactions.withLockedAccountByEmail(
+      resetPasswordDto.email,
+      async (lockedAccount) => {
+        const account = lockedAccount?.account ?? null;
+        if (
+          !lockedAccount ||
+          !(await this.isPasswordResetOtpValid(account, resetPasswordDto.otp))
+        ) {
+          if (
+            lockedAccount &&
+            this.canAttemptPasswordResetOtp(lockedAccount.account)
+          ) {
+            await lockedAccount.update(
+              this.passwordResetOtp.nextFailedAttemptState(
+                lockedAccount.account.passwordResetOtpAttemptCount,
+              ),
+            );
+          }
+          return false;
+        }
 
-    await this.userRepository.update(user.id, {
-      password: this.passwordHasher.hash(resetPasswordDto.newPassword),
-      passwordResetOtpHash: null,
-      passwordResetOtpExpiresAt: null,
-      passwordResetOtpUsedAt: new Date(),
-      passwordResetOtpAttemptCount: 0,
-      passwordResetOtpLockedUntil: null,
-    });
+        await lockedAccount.update({
+          password: passwordHash,
+          passwordResetOtpHash: null,
+          passwordResetOtpExpiresAt: null,
+          passwordResetOtpUsedAt: new Date(),
+          passwordResetOtpAttemptCount: 0,
+          passwordResetOtpLockedUntil: null,
+        });
+        await lockedAccount.revokeSessions();
+        return true;
+      },
+    );
+    if (!reset) this.throwInvalidOtp();
 
     return { message: apiMessage('api.messages.password_reset_successfully') };
   }
@@ -289,35 +336,36 @@ export class AuthService {
   async changePassword(user: User, changePasswordDto: ChangePasswordDto) {
     const { currentPassword, newPassword } = changePasswordDto;
 
-    const userWithPassword = await this.userRepository.findOne({
-      where: { id: user.id },
-      select: { id: true, password: true },
-    });
-
-    if (!userWithPassword) {
-      throw new InternalServerErrorException(
-        apiMessage('api.messages.user_not_found'),
-      );
-    }
-
-    if (
-      !userWithPassword.password ||
-      !this.passwordHasher.compare(currentPassword, userWithPassword.password)
-    ) {
-      throw new UnauthorizedException(
-        apiMessage('api.messages.current_password_is_incorrect'),
-      );
-    }
-
-    await this.userRepository.update(user.id, {
-      password: this.passwordHasher.hash(newPassword),
-    });
+    const newPasswordHash = await this.passwordHasher.hash(newPassword);
+    const sessionId = this.requireCurrentSessionId(user);
+    await this.securityTransactions.withLockedAccountById(
+      user.id,
+      async (lockedAccount) => {
+        const account = lockedAccount?.account;
+        if (
+          !lockedAccount ||
+          !account?.password ||
+          !(await this.passwordHasher.compare(
+            currentPassword,
+            account.password,
+          ))
+        ) {
+          throw new UnauthorizedException(
+            apiMessage('api.messages.current_password_is_incorrect'),
+          );
+        }
+        await lockedAccount.update({
+          password: newPasswordHash,
+        });
+        await lockedAccount.revokeSessions(sessionId);
+      },
+    );
 
     return {
       message: apiMessage('api.messages.password_changed_successfully'),
       token: this.getJwtToken({
         id: user.id,
-        sessionId: this.requireCurrentSessionId(user),
+        sessionId,
       }),
     };
   }
@@ -382,66 +430,94 @@ export class AuthService {
     return this.jwtService.sign(payload);
   }
 
-  private async assertValidPasswordResetOtp(email: string, otp: string) {
-    const user = await this.userRepository.findOne({
-      where: { email: email.toLowerCase().trim() },
-      select: {
-        id: true,
-        email: true,
-        passwordResetOtpHash: true,
-        passwordResetOtpExpiresAt: true,
-        passwordResetOtpUsedAt: true,
-        passwordResetOtpAttemptCount: true,
-        passwordResetOtpLockedUntil: true,
+  private async checkPasswordResetOtp(email: string, otp: string) {
+    return this.securityTransactions.withLockedAccountByEmail(
+      email,
+      async (lockedAccount) => {
+        const account = lockedAccount?.account ?? null;
+        if (
+          !lockedAccount ||
+          !(await this.isPasswordResetOtpValid(account, otp))
+        ) {
+          if (
+            lockedAccount &&
+            this.canAttemptPasswordResetOtp(lockedAccount.account)
+          ) {
+            await lockedAccount.update(
+              this.passwordResetOtp.nextFailedAttemptState(
+                lockedAccount.account.passwordResetOtpAttemptCount,
+              ),
+            );
+          }
+          return false;
+        }
+
+        if (account?.passwordResetOtpAttemptCount) {
+          await lockedAccount.update({
+            passwordResetOtpAttemptCount: 0,
+            passwordResetOtpLockedUntil: null,
+          });
+        }
+        return true;
       },
-    });
+    );
+  }
 
-    if (
-      !user ||
-      !user.passwordResetOtpHash ||
-      !user.passwordResetOtpExpiresAt ||
-      user.passwordResetOtpUsedAt
-    ) {
-      throw new BadRequestException(
-        apiMessage('api.messages.invalid_or_expired_otp'),
-      );
-    }
+  private canAttemptPasswordResetOtp(user: AuthSecurityAccount) {
+    return Boolean(
+      user.passwordResetOtpHash &&
+      user.passwordResetOtpExpiresAt &&
+      user.passwordResetOtpExpiresAt.getTime() > Date.now() &&
+      !user.passwordResetOtpUsedAt &&
+      (!user.passwordResetOtpLockedUntil ||
+        user.passwordResetOtpLockedUntil.getTime() <= Date.now()),
+    );
+  }
 
-    if (
-      user.passwordResetOtpLockedUntil &&
-      user.passwordResetOtpLockedUntil.getTime() > Date.now()
-    ) {
-      throw new BadRequestException(
-        apiMessage('api.messages.invalid_or_expired_otp'),
-      );
-    }
+  private async isPasswordResetOtpValid(
+    user: AuthSecurityAccount | null,
+    otp: string,
+  ) {
+    return Boolean(
+      user &&
+      user.passwordResetOtpHash &&
+      user.passwordResetOtpExpiresAt &&
+      user.passwordResetOtpExpiresAt.getTime() > Date.now() &&
+      !user.passwordResetOtpUsedAt &&
+      (!user.passwordResetOtpLockedUntil ||
+        user.passwordResetOtpLockedUntil.getTime() <= Date.now()) &&
+      (await this.passwordHasher.compare(otp, user.passwordResetOtpHash)),
+    );
+  }
 
-    if (user.passwordResetOtpExpiresAt.getTime() <= Date.now()) {
-      throw new BadRequestException(
-        apiMessage('api.messages.invalid_or_expired_otp'),
-      );
-    }
+  private throwInvalidOtp(): never {
+    throw new BadRequestException(
+      apiMessage('api.messages.invalid_or_expired_otp'),
+    );
+  }
 
-    if (!this.passwordHasher.compare(otp, user.passwordResetOtpHash)) {
-      await this.userRepository.update(
-        user.id,
-        this.passwordResetOtp.nextFailedAttemptState(
-          user.passwordResetOtpAttemptCount,
-        ),
-      );
-      throw new BadRequestException(
-        apiMessage('api.messages.invalid_or_expired_otp'),
-      );
-    }
-
-    if (user.passwordResetOtpAttemptCount) {
-      await this.userRepository.update(user.id, {
-        passwordResetOtpAttemptCount: 0,
-        passwordResetOtpLockedUntil: null,
-      });
-    }
-
-    return user;
+  private async createLoginSession(
+    userId: string,
+    password: string,
+    metadata: ReturnType<typeof buildSessionMetadata> | Record<string, never>,
+  ) {
+    return this.securityTransactions.withLockedAccountById(
+      userId,
+      async (lockedAccount) => {
+        const user = lockedAccount?.account;
+        if (
+          !lockedAccount ||
+          !user?.password ||
+          !user.isActive ||
+          !(await this.passwordHasher.compare(password, user.password))
+        ) {
+          throw new UnauthorizedException(
+            apiMessage('api.messages.credentials_are_not_valid'),
+          );
+        }
+        return { id: await lockedAccount.createSession(metadata) };
+      },
+    );
   }
 
   private async buildAuthResponse(user: User, sessionId: string) {

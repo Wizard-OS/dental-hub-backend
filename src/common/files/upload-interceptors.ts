@@ -2,7 +2,7 @@ import { apiMessage, type ApiMessage } from '../i18n/api-message';
 import { BadRequestException } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
-import * as fs from 'fs';
+import { promises as fs } from 'fs';
 import * as path from 'path';
 
 const DOCUMENT_MIME_TYPES = new Set([
@@ -29,8 +29,10 @@ export function createUploadInterceptor(options: UploadInterceptorOptions) {
           'uploads',
           options.directory,
         );
-        fs.mkdirSync(uploadDir, { recursive: true });
-        cb(null, uploadDir);
+        void fs.mkdir(uploadDir, { recursive: true }).then(
+          () => cb(null, uploadDir),
+          (error: Error) => cb(error, uploadDir),
+        );
       },
       filename: (req, file, cb) => {
         cb(null, options.filename(req, file));

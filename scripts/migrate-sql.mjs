@@ -4,6 +4,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import pg from 'pg';
+import { createDatabaseConnectionConfig } from './database-config.mjs';
 import { applyMigration, legacyMigrationAliases } from './migration-ledger.mjs';
 
 try {
@@ -16,23 +17,6 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const migrationsDir = path.resolve(__dirname, '../src/migrations');
 const migrationsTable = 'schema_migrations';
 const lockKey = 'dentalhub-schema-migrations';
-
-function clientConfig() {
-  if (process.env.DATABASE_URL) {
-    return { connectionString: process.env.DATABASE_URL };
-  }
-
-  return {
-    host: process.env.DB_HOST ?? '127.0.0.1',
-    port: Number(process.env.DB_PORT ?? 5432),
-    user: process.env.DB_USERNAME ?? 'postgres',
-    password: process.env.DB_PASSWORD,
-    database: process.env.DB_NAME ?? 'DentalHubDB',
-    ...(process.env.DB_SSL === 'true'
-      ? { ssl: { rejectUnauthorized: true } }
-      : {}),
-  };
-}
 
 async function listMigrationFiles() {
   const entries = await fs.readdir(migrationsDir, { withFileTypes: true });
@@ -50,7 +34,7 @@ async function readMigration(name) {
   return { sql, checksum };
 }
 
-const client = new pg.Client(clientConfig());
+const client = new pg.Client(createDatabaseConnectionConfig());
 
 try {
   await client.connect();

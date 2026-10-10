@@ -54,8 +54,14 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
         apiMessage('api.messages.user_is_inactive_talk_with_an_admin'),
       );
 
-    await this.userSessionsService.assertActiveSession(user.id, sessionId);
-    await this.userSessionsService.updateLastActive(sessionId);
+    const session = await this.userSessionsService.assertActiveSession(
+      user.id,
+      sessionId,
+    );
+    await this.userSessionsService.updateLastActive(
+      sessionId,
+      session.lastActiveAt,
+    );
 
     user.currentSessionId = sessionId;
 

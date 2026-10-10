@@ -5,7 +5,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Not, Repository, FindOptionsWhere } from 'typeorm';
+import { FindOptionsWhere, LessThanOrEqual, Not, Repository } from 'typeorm';
 
 import { UserSession } from './entities/user-session.entity';
 import { SessionMetadata } from './device-metadata.util';
@@ -105,9 +105,19 @@ export class UserSessionsService {
     return session;
   }
 
-  async updateLastActive(sessionId: string): Promise<void> {
+  async updateLastActive(
+    sessionId: string,
+    observedLastActiveAt: Date,
+  ): Promise<void> {
+    const staleBefore = new Date(Date.now() - 60_000);
+    if (observedLastActiveAt > staleBefore) return;
+
     await this.sessionRepository.update(
-      { id: sessionId, isRevoked: false },
+      {
+        id: sessionId,
+        isRevoked: false,
+        lastActiveAt: LessThanOrEqual(staleBefore),
+      },
       {
         lastActiveAt: new Date(),
       },

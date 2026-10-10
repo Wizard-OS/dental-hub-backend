@@ -126,15 +126,17 @@ export class SeedService {
 
   private async insertUsers() {
     const dbUsers = await this.userRepository.save(
-      initialData.users.map((user) =>
-        this.userRepository.create({
-          email: user.email,
-          firstName: user.firstName,
-          lastName: user.lastName,
-          password: bcrypt.hashSync(user.passwordPlain, 10),
-          roles: user.roles,
-          profilePhotoUrl: user.profilePhotoUrl,
-        }),
+      await Promise.all(
+        initialData.users.map(async (user) =>
+          this.userRepository.create({
+            email: user.email,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            password: await bcrypt.hash(user.passwordPlain, 10),
+            roles: user.roles,
+            profilePhotoUrl: user.profilePhotoUrl,
+          }),
+        ),
       ),
     );
 

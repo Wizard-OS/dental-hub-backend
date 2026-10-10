@@ -1,5 +1,7 @@
 overrides:
   qs: 6.16.0
+  proxy-addr: 2.0.8
+  nestjs-i18n>chokidar: 4.0.3
 
 allowBuilds:
   '@nestjs/core': true
