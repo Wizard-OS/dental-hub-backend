@@ -303,6 +303,8 @@ https://<tu-servicio>.onrender.com/api/docs # solo si ENABLE_SWAGGER=true
 
 ## Scripts
 
+- `pnpm lint`: revisa TypeScript de la aplicación y de `__test__/`; falla si encuentra errores o warnings.
+- `pnpm lint:fix`: aplica las correcciones automáticas disponibles y falla si quedan errores o warnings. Los problemas de tipos inseguros requieren validar los datos y corregir el código.
 - `pnpm start:dev`: levanta API en modo watch
 - `pnpm start:prod`: ejecuta build en `dist`
 - `pnpm test:e2e`: corre toda la suite e2e
@@ -412,6 +414,14 @@ Catálogos:
 Los mensajes que se devuelven al cliente usan claves de catálogo y argumentos de interpolación. Las respuestas exitosas conservan `message` como texto; los errores conservan su estado HTTP y estructura. Los errores de validación se devuelven como una lista plana de mensajes.
 
 ## Pruebas E2E
+
+Las respuestas HTTP no tipadas se validan con los lectores de `__test__/support/json-response.ts` antes de acceder a sus campos. Estos lectores reciben `unknown`, verifican los contenedores y los tipos consumidos, e indican la ruta del campo si la respuesta no coincide con lo esperado. No es necesario desactivar las reglas de tipos inseguros ni convertir el cuerpo completo con `as`.
+
+Para comprobar los lectores sin conexión a la base de datos:
+
+```bash
+pnpm test --rootDir . --runTestsByPath __test__/support/json-response.spec.ts --runInBand
+```
 
 Configuración:
 

@@ -67,4 +67,10 @@ await this.securityTransactions.withLockedAccountById(user.id, async (locked) =>
 });
 ```
 
+## Diagnostics and external data
+
+- Run `pnpm lint` before finishing. It includes `src/` and `__test__/` and fails on warnings as well as errors. Use `pnpm lint:fix` for available automatic fixes, then resolve remaining diagnostics in the code; unsafe type warnings usually need a manual correction.
+- Treat untyped external values, including HTTP response bodies and raw query results, as `unknown`. Validate the objects, arrays, and primitive fields actually consumed before using them. In end-to-end tests, reuse the readers in `__test__/support/json-response.ts`; do not hide warnings with blanket type assertions, `any`, or rule suppressions.
+- Check affected test files as well as application files. Run the relevant tests and TypeScript checks, and report unresolved diagnostics or pre-existing failures with their scope and cause. A successful application build alone does not establish that end-to-end tests are type-safe.
+
 Before finishing, review the changed code for clear names, cohesive responsibilities, unnecessary indirection, preserved behavior, and consistency with nearby files.

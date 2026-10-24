@@ -5,6 +5,7 @@ import { App } from 'supertest/types';
 import { DataSource } from 'typeorm';
 
 import { AppModule } from '../src/app.module';
+import { readJsonString, readJsonValue } from './support/json-response';
 
 describe('Membership limits (e2e)', () => {
   let app: INestApplication<App>;
@@ -41,7 +42,7 @@ describe('Membership limits (e2e)', () => {
       })
       .expect(201);
 
-    ownerToken = owner.body.token;
+    ownerToken = readJsonString(owner.body, 'token');
 
     const specialist = await request(app.getHttpServer())
       .post('/auth/register')
@@ -53,8 +54,8 @@ describe('Membership limits (e2e)', () => {
       })
       .expect(201);
 
-    specialistToken = specialist.body.token;
-    specialistUserId = specialist.body.id;
+    specialistToken = readJsonString(specialist.body, 'token');
+    specialistUserId = readJsonString(specialist.body, 'id');
 
     const extraSpecialist = await request(app.getHttpServer())
       .post('/auth/register')
@@ -66,7 +67,7 @@ describe('Membership limits (e2e)', () => {
       })
       .expect(201);
 
-    extraSpecialistUserId = extraSpecialist.body.id;
+    extraSpecialistUserId = readJsonString(extraSpecialist.body, 'id');
 
     const clinic = await request(app.getHttpServer())
       .post('/clinics')
@@ -78,7 +79,7 @@ describe('Membership limits (e2e)', () => {
       })
       .expect(201);
 
-    clinicId = clinic.body.id;
+    clinicId = readJsonString(clinic.body, 'id');
   });
 
   afterAll(async () => {
@@ -94,10 +95,10 @@ describe('Membership limits (e2e)', () => {
       .set('x-clinic-id', clinicId)
       .expect(200);
 
-    expect(current.body.plan).toEqual(
+    expect(readJsonValue(current.body, 'plan')).toEqual(
       expect.objectContaining({ code: 'free' }),
     );
-    expect(current.body.limits).toEqual(
+    expect(readJsonValue(current.body, 'limits')).toEqual(
       expect.objectContaining({
         professionalUsers: 1,
         totalUsers: 2,
@@ -105,8 +106,10 @@ describe('Membership limits (e2e)', () => {
         messagingCreditsMonthlyIncluded: 100,
       }),
     );
-    expect(current.body.warnings).not.toHaveProperty('activePatients');
-    expect(current.body.entitlements).toEqual(
+    expect(readJsonValue(current.body, 'warnings')).not.toHaveProperty(
+      'activePatients',
+    );
+    expect(readJsonValue(current.body, 'entitlements')).toEqual(
       expect.objectContaining({
         patientPortal: false,
         googleCalendar: false,
@@ -125,7 +128,7 @@ describe('Membership limits (e2e)', () => {
       })
       .expect(201);
 
-    specialistMembershipId = specialistMembership.body.id;
+    specialistMembershipId = readJsonString(specialistMembership.body, 'id');
 
     await request(app.getHttpServer())
       .post('/clinic-memberships')
@@ -161,9 +164,9 @@ describe('Membership limits (e2e)', () => {
         })
         .expect(201);
 
-      if (i === 0) archivedPatientId = patient.body.id;
+      if (i === 0) archivedPatientId = readJsonString(patient.body, 'id');
 
-      if (i === 1) storagePatientId = patient.body.id;
+      if (i === 1) storagePatientId = readJsonString(patient.body, 'id');
     }
 
     await request(app.getHttpServer())
@@ -184,8 +187,12 @@ describe('Membership limits (e2e)', () => {
       .set('x-clinic-id', clinicId)
       .expect(200);
 
-    expect(afterPatients.body.limits.activePatients).toBeNull();
-    expect(afterPatients.body.usage.activePatients).toBeGreaterThanOrEqual(55);
+    expect(
+      readJsonValue(afterPatients.body, 'limits', 'activePatients'),
+    ).toBeNull();
+    expect(
+      readJsonValue(afterPatients.body, 'usage', 'activePatients'),
+    ).toBeGreaterThanOrEqual(55);
   });
 
   it('blocks patient file uploads when the storage limit would be exceeded', async () => {
@@ -265,7 +272,7 @@ describe('Membership limits (e2e)', () => {
       .set('Authorization', `Bearer ${ownerToken}`)
       .set('x-clinic-id', clinicId)
       .send({
-        patientId: patient.body.id,
+        patientId: readJsonString(patient.body, 'id'),
         professionalMembershipId: specialistMembershipId,
       })
       .expect(201);
@@ -279,7 +286,7 @@ describe('Membership limits (e2e)', () => {
     expect(patients.body).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          id: patient.body.id,
+          id: readJsonString(patient.body, 'id'),
           email: null,
           phone: null,
           address: null,

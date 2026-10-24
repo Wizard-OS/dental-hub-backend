@@ -4,6 +4,7 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 
 import { AppModule } from '../src/app.module';
+import { readJsonString } from './support/json-response';
 
 describe('Clinical records and treatment (e2e)', () => {
   let app: INestApplication<App>;
@@ -31,8 +32,16 @@ describe('Clinical records and treatment (e2e)', () => {
       .get('/seed')
       .expect(200);
 
-    clinicMainId = seedResponse.body.clinicIds['clinic-main'];
-    clinicEastId = seedResponse.body.clinicIds['clinic-east'];
+    clinicMainId = readJsonString(
+      seedResponse.body,
+      'clinicIds',
+      'clinic-main',
+    );
+    clinicEastId = readJsonString(
+      seedResponse.body,
+      'clinicIds',
+      'clinic-east',
+    );
 
     const loginResponse = await request(app.getHttpServer())
       .post('/auth/login')
@@ -42,8 +51,8 @@ describe('Clinical records and treatment (e2e)', () => {
       })
       .expect(201);
 
-    adminToken = loginResponse.body.token;
-    adminUserId = loginResponse.body.id;
+    adminToken = readJsonString(loginResponse.body, 'token');
+    adminUserId = readJsonString(loginResponse.body, 'id');
 
     const patientAna = await request(app.getHttpServer())
       .get('/patients/ana.perez@example.com')
@@ -57,8 +66,8 @@ describe('Clinical records and treatment (e2e)', () => {
       .set('x-clinic-id', clinicMainId)
       .expect(200);
 
-    patientAnaId = patientAna.body.id;
-    patientLuisId = patientLuis.body.id;
+    patientAnaId = readJsonString(patientAna.body, 'id');
+    patientLuisId = readJsonString(patientLuis.body, 'id');
   });
 
   afterAll(async () => {
@@ -79,7 +88,7 @@ describe('Clinical records and treatment (e2e)', () => {
       })
       .expect(201);
 
-    clinicalRecordAnaId = recordAna.body.id;
+    clinicalRecordAnaId = readJsonString(recordAna.body, 'id');
 
     const recordLuis = await request(app.getHttpServer())
       .post('/clinical-records')
@@ -91,7 +100,7 @@ describe('Clinical records and treatment (e2e)', () => {
       })
       .expect(201);
 
-    clinicalRecordLuisId = recordLuis.body.id;
+    clinicalRecordLuisId = readJsonString(recordLuis.body, 'id');
 
     await request(app.getHttpServer())
       .post('/clinical-records')
@@ -129,7 +138,7 @@ describe('Clinical records and treatment (e2e)', () => {
       })
       .expect(201);
 
-    treatmentAnaId = treatment.body.id;
+    treatmentAnaId = readJsonString(treatment.body, 'id');
 
     await request(app.getHttpServer())
       .post('/treatment-sessions')

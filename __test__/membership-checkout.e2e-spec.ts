@@ -4,6 +4,7 @@ import { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { I18nValidationPipe } from 'nestjs-i18n';
 import request from 'supertest';
+import type { App } from 'supertest/types';
 import { DataSource } from 'typeorm';
 
 import { AppModule } from '../src/app.module';
@@ -18,6 +19,12 @@ import {
   VaultResource,
 } from '../src/billing/vault/paypal-vault.provider';
 import { ClinicSubscription } from '../src/membership/entities/clinic-subscription.entity';
+import {
+  readJsonArray,
+  readJsonBoolean,
+  readJsonString,
+  readJsonValue,
+} from './support/json-response';
 
 class FakeVault {
   configured = true;
@@ -142,7 +149,7 @@ class FakeVault {
 }
 
 describe('Membership screens: saved methods, reminders and recurring billing (isolated PostgreSQL)', () => {
-  let app: INestApplication;
+  let app: INestApplication<App>;
   let db: DataSource;
   let vault: FakeVault;
   let token: string;
@@ -181,7 +188,7 @@ describe('Membership screens: saved methods, reminders and recurring billing (is
       .useValue(email)
       .compile();
 
-    app = module.createNestApplication();
+    app = module.createNestApplication<INestApplication<App>>();
     app.useGlobalPipes(
       new I18nValidationPipe({
         whitelist: true,
@@ -203,21 +210,21 @@ describe('Membership screens: saved methods, reminders and recurring billing (is
       })
       .expect(201);
 
-    token = owner.body.token;
+    token = readJsonString(owner.body, 'token');
     const clinic = await request(app.getHttpServer())
       .post('/clinics')
       .set('Authorization', `Bearer ${token}`)
       .send({ name: 'Membership E2E', email: 'billing@example.com' })
       .expect(201);
 
-    clinicId = clinic.body.id;
+    clinicId = readJsonString(clinic.body, 'id');
     const other = await request(app.getHttpServer())
       .post('/clinics')
       .set('Authorization', `Bearer ${token}`)
       .send({ name: 'Other clinic' })
       .expect(201);
 
-    otherClinicId = other.body.id;
+    otherClinicId = readJsonString(other.body, 'id');
   });
   afterAll(async () => {
     await app?.close();
@@ -240,7 +247,7 @@ describe('Membership screens: saved methods, reminders and recurring billing (is
       .send({ type: 'card', requestId: randomUUID() })
       .expect(201);
 
-    setupId = created.body.setupSessionId;
+    setupId = readJsonString(created.body, 'setupSessionId');
     await auth(
       'post',
       `/membership/payment-methods/setup/${setupId}/confirm`,
@@ -250,13 +257,14 @@ describe('Membership screens: saved methods, reminders and recurring billing (is
       `/membership/payment-methods/setup/${setupId}/confirm`,
       otherClinicId,
     ).expect(404);
-    vault.setups.get(created.body.setupTokenId)!.status = 'APPROVED';
+    vault.setups.get(readJsonString(created.body, 'setupTokenId'))!.status =
+      'APPROVED';
     const completed = await auth(
       'post',
       `/membership/payment-methods/setup/${setupId}/confirm`,
     ).expect(201);
 
-    cardId = completed.body.id;
+    cardId = readJsonString(completed.body, 'id');
     expect(completed.body).toMatchObject({
       brand: 'MASTERCARD',
       last4: '4242',
@@ -268,7 +276,7 @@ describe('Membership screens: saved methods, reminders and recurring billing (is
       `/membership/payment-methods/setup/${setupId}/confirm`,
     ).expect(201);
 
-    expect(replay.body.id).toBe(cardId);
+    expect(readJsonString(replay.body, 'id')).toBe(cardId);
     expect(vault.exchangeSetup).toHaveBeenCalledTimes(1);
   });
   it('adds PayPal, masks the email and selects exactly one default under concurrent requests', async () => {
@@ -276,14 +284,17 @@ describe('Membership screens: saved methods, reminders and recurring billing (is
       .send({ type: 'paypal', requestId: randomUUID() })
       .expect(201);
 
-    vault.setups.get(created.body.setupTokenId)!.status = 'APPROVED';
+    vault.setups.get(readJsonString(created.body, 'setupTokenId'))!.status =
+      'APPROVED';
     const completed = await auth(
       'post',
-      `/membership/payment-methods/setup/${created.body.setupSessionId}/confirm`,
+      `/membership/payment-methods/setup/${readJsonString(created.body, 'setupSessionId')}/confirm`,
     ).expect(201);
 
-    paypalId = completed.body.id;
-    expect(completed.body.maskedEmail).toBe('own***@example.com');
+    paypalId = readJsonString(completed.body, 'id');
+    expect(readJsonValue(completed.body, 'maskedEmail')).toBe(
+      'own***@example.com',
+    );
     await Promise.all(
       [cardId, paypalId].map((paymentMethodId) =>
         auth('patch', '/membership/payment-methods/default')
@@ -292,8 +303,11 @@ describe('Membership screens: saved methods, reminders and recurring billing (is
       ),
     );
     const list = await auth('get', '/membership/payment-methods').expect(200);
-    const paymentMethods = (list.body as { methods: { isDefault: boolean }[] })
-      .methods;
+    const paymentMethods = readJsonArray(list.body, 'methods').map(
+      (method) => ({
+        isDefault: readJsonBoolean(method, 'isDefault'),
+      }),
+    );
 
     expect(paymentMethods.filter((method) => method.isDefault)).toHaveLength(1);
     expect(paymentMethods).toHaveLength(2);
@@ -318,10 +332,22 @@ describe('Membership screens: saved methods, reminders and recurring billing (is
       auth('post', '/membership/start').send(payload).expect(201),
     ]);
 
-    expect(first.body.membership.billing.providerSubscriptionId).toBe(
-      repeated.body.membership.billing.providerSubscriptionId,
+    expect(
+      readJsonString(
+        first.body,
+        'membership',
+        'billing',
+        'providerSubscriptionId',
+      ),
+    ).toBe(
+      readJsonString(
+        repeated.body,
+        'membership',
+        'billing',
+        'providerSubscriptionId',
+      ),
     );
-    expect(first.body.membership).toMatchObject({
+    expect(readJsonValue(first.body, 'membership')).toMatchObject({
       status: 'trialing',
       checkout: { totalToday: 0, firstCharge: 9000, renewalAmount: 10000 },
       billing: { paymentMethod: { id: cardId } },
@@ -330,15 +356,30 @@ describe('Membership screens: saved methods, reminders and recurring billing (is
       .send({ ...payload, planCode: 'premium' })
       .expect(201);
 
-    expect(checkoutAlias.body.membership.billing.providerSubscriptionId).toBe(
-      first.body.membership.billing.providerSubscriptionId,
+    expect(
+      readJsonString(
+        checkoutAlias.body,
+        'membership',
+        'billing',
+        'providerSubscriptionId',
+      ),
+    ).toBe(
+      readJsonString(
+        first.body,
+        'membership',
+        'billing',
+        'providerSubscriptionId',
+      ),
     );
     const methods = await auth('get', '/membership/payment-methods').expect(
       200,
     );
-    const savedMethods = (
-      methods.body as { methods: { id: string; isDefault: boolean }[] }
-    ).methods;
+    const savedMethods = readJsonArray(methods.body, 'methods').map(
+      (method) => ({
+        id: readJsonString(method, 'id'),
+        isDefault: readJsonBoolean(method, 'isDefault'),
+      }),
+    );
 
     expect(savedMethods.find((method) => method.id === cardId)?.isDefault).toBe(
       true,
@@ -375,7 +416,7 @@ describe('Membership screens: saved methods, reminders and recurring billing (is
       reminders.processClinic(clinicId),
     ]);
     expect(email.send).toHaveBeenCalledTimes(2);
-    expect(email.send.mock.calls[0][1]).toMatchObject({
+    expect(email.send.mock.calls[0][1]).toMatchObject<Record<string, unknown>>({
       to: 'billing@example.com',
       text: expect.stringContaining('US$90.00'),
     });
@@ -421,7 +462,7 @@ describe('Membership screens: saved methods, reminders and recurring billing (is
     expect(sub.paidCycles).toBe(1);
     const restored = await auth('post', '/membership/restore').expect(201);
 
-    expect(restored.body.status).toBe('active');
+    expect(readJsonValue(restored.body, 'status')).toBe('active');
     expect(vault.captureCalls).toBe(1);
   });
   it('renews at full price and lets the clinic change its saved method', async () => {

@@ -4,6 +4,7 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 
 import { AppModule } from '../src/app.module';
+import { readJsonString, readJsonValue } from './support/json-response';
 
 describe('Messaging, reminders, and expenses (e2e)', () => {
   let app: INestApplication<App>;
@@ -28,7 +29,11 @@ describe('Messaging, reminders, and expenses (e2e)', () => {
       .get('/seed')
       .expect(200);
 
-    clinicMainId = seedResponse.body.clinicIds['clinic-main'];
+    clinicMainId = readJsonString(
+      seedResponse.body,
+      'clinicIds',
+      'clinic-main',
+    );
 
     const loginResponse = await request(app.getHttpServer())
       .post('/auth/login')
@@ -38,7 +43,7 @@ describe('Messaging, reminders, and expenses (e2e)', () => {
       })
       .expect(201);
 
-    adminToken = loginResponse.body.token;
+    adminToken = readJsonString(loginResponse.body, 'token');
 
     const patientAna = await request(app.getHttpServer())
       .get('/patients/ana.perez@example.com')
@@ -46,7 +51,7 @@ describe('Messaging, reminders, and expenses (e2e)', () => {
       .set('x-clinic-id', clinicMainId)
       .expect(200);
 
-    patientAnaId = patientAna.body.id;
+    patientAnaId = readJsonString(patientAna.body, 'id');
 
     const appointments = await request(app.getHttpServer())
       .get('/appointments')
@@ -54,7 +59,7 @@ describe('Messaging, reminders, and expenses (e2e)', () => {
       .set('x-clinic-id', clinicMainId)
       .expect(200);
 
-    appointmentId = appointments.body[0].id;
+    appointmentId = readJsonString(appointments.body, 0, 'id');
   });
 
   afterAll(async () => {
@@ -76,7 +81,7 @@ describe('Messaging, reminders, and expenses (e2e)', () => {
       })
       .expect(201);
 
-    templateId = templateResponse.body.id;
+    templateId = readJsonString(templateResponse.body, 'id');
 
     const reminderResponse = await request(app.getHttpServer())
       .post('/reminders')
@@ -90,9 +95,9 @@ describe('Messaging, reminders, and expenses (e2e)', () => {
       })
       .expect(201);
 
-    reminderId = reminderResponse.body.id;
+    reminderId = readJsonString(reminderResponse.body, 'id');
 
-    expect(reminderResponse.body.status).toBe('scheduled');
+    expect(readJsonValue(reminderResponse.body, 'status')).toBe('scheduled');
   });
 
   it('creates outbound message and marks sent', async () => {
@@ -113,7 +118,7 @@ describe('Messaging, reminders, and expenses (e2e)', () => {
       })
       .expect(201);
 
-    outboundMessageId = outboundResponse.body.id;
+    outboundMessageId = readJsonString(outboundResponse.body, 'id');
 
     const updated = await request(app.getHttpServer())
       .patch(`/outbound-messages/${outboundMessageId}`)
@@ -125,8 +130,10 @@ describe('Messaging, reminders, and expenses (e2e)', () => {
       })
       .expect(200);
 
-    expect(updated.body.status).toBe('sent');
-    expect(updated.body.providerMessageId).toBe('provider-msg-123');
+    expect(readJsonValue(updated.body, 'status')).toBe('sent');
+    expect(readJsonValue(updated.body, 'providerMessageId')).toBe(
+      'provider-msg-123',
+    );
   });
 
   it('creates expense and returns totals + dashboard summary', async () => {
@@ -157,8 +164,12 @@ describe('Messaging, reminders, and expenses (e2e)', () => {
       .set('x-clinic-id', clinicMainId)
       .expect(200);
 
-    expect(Number(dashboard.body.financial.expenseTotal)).toBeGreaterThan(0);
-    expect(dashboard.body.operations.reminders).toBeGreaterThanOrEqual(1);
+    expect(
+      Number(readJsonString(dashboard.body, 'financial', 'expenseTotal')),
+    ).toBeGreaterThan(0);
+    expect(
+      readJsonValue(dashboard.body, 'operations', 'reminders'),
+    ).toBeGreaterThanOrEqual(1);
   });
 
   it('enforces clinic scope for reminders', async () => {

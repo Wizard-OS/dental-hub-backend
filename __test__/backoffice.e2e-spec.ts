@@ -5,6 +5,11 @@ import { App } from 'supertest/types';
 import { DataSource } from 'typeorm';
 
 import { AppModule } from '../src/app.module';
+import {
+  readJsonArray,
+  readJsonString,
+  readJsonValue,
+} from './support/json-response';
 
 jest.setTimeout(30000);
 
@@ -36,7 +41,7 @@ describe('Backoffice SaaS (e2e)', () => {
       })
       .expect(201);
 
-    adminToken = adminLogin.body.token;
+    adminToken = readJsonString(adminLogin.body, 'token');
 
     const superUserLogin = await request(app.getHttpServer())
       .post('/auth/login')
@@ -46,7 +51,7 @@ describe('Backoffice SaaS (e2e)', () => {
       })
       .expect(201);
 
-    superUserToken = superUserLogin.body.token;
+    superUserToken = readJsonString(superUserLogin.body, 'token');
 
     const regularUserLogin = await request(app.getHttpServer())
       .post('/auth/login')
@@ -56,14 +61,14 @@ describe('Backoffice SaaS (e2e)', () => {
       })
       .expect(201);
 
-    regularUserId = regularUserLogin.body.id;
+    regularUserId = readJsonString(regularUserLogin.body, 'id');
 
     const clinics = await request(app.getHttpServer())
       .get('/backoffice/clinics')
       .set('Authorization', `Bearer ${superUserToken}`)
       .expect(200);
 
-    clinicId = clinics.body.items[0].id;
+    clinicId = readJsonString(clinics.body, 'items', 0, 'id');
 
     const supportRequest = await request(app.getHttpServer())
       .post('/help-center/support-request')
@@ -75,7 +80,7 @@ describe('Backoffice SaaS (e2e)', () => {
       })
       .expect(201);
 
-    supportRequestId = supportRequest.body.id;
+    supportRequestId = readJsonString(supportRequest.body, 'id');
   });
 
   afterAll(async () => {
@@ -97,9 +102,15 @@ describe('Backoffice SaaS (e2e)', () => {
       .set('Authorization', `Bearer ${superUserToken}`)
       .expect(200);
 
-    expect(response.body.totals.clinics.total).toBeGreaterThanOrEqual(2);
-    expect(response.body.totals.users.total).toBeGreaterThanOrEqual(3);
-    expect(response.body.recentActivity.clinics.length).toBeGreaterThan(0);
+    expect(
+      readJsonValue(response.body, 'totals', 'clinics', 'total'),
+    ).toBeGreaterThanOrEqual(2);
+    expect(
+      readJsonValue(response.body, 'totals', 'users', 'total'),
+    ).toBeGreaterThanOrEqual(3);
+    expect(
+      readJsonArray(response.body, 'recentActivity', 'clinics').length,
+    ).toBeGreaterThan(0);
   });
 
   it('lists clinics with subscription and usage summary', async () => {
@@ -108,9 +119,9 @@ describe('Backoffice SaaS (e2e)', () => {
       .set('Authorization', `Bearer ${superUserToken}`)
       .expect(200);
 
-    expect(response.body.total).toBeGreaterThanOrEqual(2);
-    expect(response.body.items[0]).toEqual(
-      expect.objectContaining({
+    expect(readJsonValue(response.body, 'total')).toBeGreaterThanOrEqual(2);
+    expect(readJsonValue(response.body, 'items', 0)).toEqual(
+      expect.objectContaining<Record<string, unknown>>({
         id: expect.any(String),
         name: expect.any(String),
         owner: expect.any(Object),
@@ -118,7 +129,9 @@ describe('Backoffice SaaS (e2e)', () => {
         patientsCount: expect.any(Number),
       }),
     );
-    expect(response.body.items[0]).toHaveProperty('subscription');
+    expect(readJsonValue(response.body, 'items', 0)).toHaveProperty(
+      'subscription',
+    );
   });
 
   it('updates clinic active state from backoffice', async () => {
@@ -128,7 +141,7 @@ describe('Backoffice SaaS (e2e)', () => {
       .send({ isActive: false })
       .expect(200);
 
-    expect(inactive.body.isActive).toBe(false);
+    expect(readJsonValue(inactive.body, 'isActive')).toBe(false);
 
     const active = await request(app.getHttpServer())
       .patch(`/backoffice/clinics/${clinicId}`)
@@ -136,7 +149,7 @@ describe('Backoffice SaaS (e2e)', () => {
       .send({ isActive: true })
       .expect(200);
 
-    expect(active.body.isActive).toBe(true);
+    expect(readJsonValue(active.body, 'isActive')).toBe(true);
   });
 
   it('updates user active state and global roles from backoffice', async () => {
@@ -149,8 +162,8 @@ describe('Backoffice SaaS (e2e)', () => {
       })
       .expect(200);
 
-    expect(response.body.isActive).toBe(false);
-    expect(response.body.roles).toEqual(['user']);
+    expect(readJsonValue(response.body, 'isActive')).toBe(false);
+    expect(readJsonValue(response.body, 'roles')).toEqual(['user']);
   });
 
   it('updates a clinic subscription and writes global audit', async () => {
@@ -163,9 +176,9 @@ describe('Backoffice SaaS (e2e)', () => {
       })
       .expect(200);
 
-    expect(response.body.plan.code).toBe('premium');
+    expect(readJsonValue(response.body, 'plan', 'code')).toBe('premium');
 
-    const auditRows = await dataSource.query(
+    const auditRows: unknown = await dataSource.query(
       `
         SELECT "changedByMembershipId", reason
         FROM clinic_subscription_audit_logs
@@ -176,8 +189,10 @@ describe('Backoffice SaaS (e2e)', () => {
       [clinicId],
     );
 
-    expect(auditRows[0].changedByMembershipId).toBeNull();
-    expect(auditRows[0].reason).toBe('Backoffice e2e upgrade');
+    expect(readJsonValue(auditRows, 0, 'changedByMembershipId')).toBeNull();
+    expect(readJsonString(auditRows, 0, 'reason')).toBe(
+      'Backoffice e2e upgrade',
+    );
   });
 
   it('lists and updates support requests from backoffice', async () => {
@@ -186,7 +201,7 @@ describe('Backoffice SaaS (e2e)', () => {
       .set('Authorization', `Bearer ${superUserToken}`)
       .expect(200);
 
-    expect(list.body.items).toEqual(
+    expect(readJsonValue(list.body, 'items')).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ id: supportRequestId }),
       ]),
@@ -198,6 +213,6 @@ describe('Backoffice SaaS (e2e)', () => {
       .send({ status: 'in_progress' })
       .expect(200);
 
-    expect(updated.body.status).toBe('in_progress');
+    expect(readJsonValue(updated.body, 'status')).toBe('in_progress');
   });
 });

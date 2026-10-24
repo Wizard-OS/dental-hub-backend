@@ -7,6 +7,7 @@ import { App } from 'supertest/types';
 import { AppModule } from '../src/app.module';
 import { I18nHttpExceptionFilter } from '../src/common/filters/i18n-http-exception.filter';
 import { I18nResponseInterceptor } from '../src/common/interceptors/i18n-response.interceptor';
+import { readJsonString, readJsonValue } from './support/json-response';
 
 describe('i18n responses (e2e)', () => {
   let app: INestApplication<App>;
@@ -30,7 +31,11 @@ describe('i18n responses (e2e)', () => {
       .get('/seed')
       .expect(200);
 
-    clinicMainId = seedResponse.body.clinicIds['clinic-main'];
+    clinicMainId = readJsonString(
+      seedResponse.body,
+      'clinicIds',
+      'clinic-main',
+    );
 
     const loginResponse = await request(app.getHttpServer())
       .post('/auth/login')
@@ -40,7 +45,7 @@ describe('i18n responses (e2e)', () => {
       })
       .expect(201);
 
-    adminToken = loginResponse.body.token;
+    adminToken = readJsonString(loginResponse.body, 'token');
   });
 
   afterAll(async () => {
@@ -58,7 +63,9 @@ describe('i18n responses (e2e)', () => {
       })
       .expect(401);
 
-    expect(response.body.message).toBe('Credenciales inválidas');
+    expect(readJsonValue(response.body, 'message')).toBe(
+      'Credenciales inválidas',
+    );
   });
 
   it('translates auth error to English using x-lang header', async () => {
@@ -71,7 +78,9 @@ describe('i18n responses (e2e)', () => {
       })
       .expect(401);
 
-    expect(response.body.message).toBe('Credentials are not valid');
+    expect(readJsonValue(response.body, 'message')).toBe(
+      'Credentials are not valid',
+    );
   });
 
   it('prioritizes lang query over x-lang header in protected endpoints', async () => {
@@ -82,7 +91,9 @@ describe('i18n responses (e2e)', () => {
       .set('x-lang', 'en')
       .expect(400);
 
-    expect(response.body.message).toBe('El ID de la cita no es válido');
+    expect(readJsonValue(response.body, 'message')).toBe(
+      'El ID de la cita no es válido',
+    );
   });
 
   it('falls back to English when unsupported language is requested', async () => {
@@ -94,6 +105,8 @@ describe('i18n responses (e2e)', () => {
       })
       .expect(401);
 
-    expect(response.body.message).toBe('Credentials are not valid');
+    expect(readJsonValue(response.body, 'message')).toBe(
+      'Credentials are not valid',
+    );
   });
 });

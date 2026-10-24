@@ -6,6 +6,11 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 
 import { AppModule } from '../src/app.module';
+import {
+  readJsonArray,
+  readJsonString,
+  readJsonValue,
+} from './support/json-response';
 
 describe('Clinic care and billing (e2e)', () => {
   let app: INestApplication<App>;
@@ -50,8 +55,8 @@ describe('Clinic care and billing (e2e)', () => {
       })
       .expect(201);
 
-    adminToken = loginResponse.body.token;
-    adminUserId = loginResponse.body.id;
+    adminToken = readJsonString(loginResponse.body, 'token');
+    adminUserId = readJsonString(loginResponse.body, 'id');
 
     const doctorLoginResponse = await request(app.getHttpServer())
       .post('/auth/login')
@@ -61,8 +66,8 @@ describe('Clinic care and billing (e2e)', () => {
       })
       .expect(201);
 
-    doctorToken = doctorLoginResponse.body.token;
-    doctorUserId = doctorLoginResponse.body.id;
+    doctorToken = readJsonString(doctorLoginResponse.body, 'token');
+    doctorUserId = readJsonString(doctorLoginResponse.body, 'id');
 
     const assistantResponse = await request(app.getHttpServer())
       .post('/auth/register')
@@ -74,8 +79,8 @@ describe('Clinic care and billing (e2e)', () => {
       })
       .expect(201);
 
-    assistantToken = assistantResponse.body.token;
-    assistantUserId = assistantResponse.body.id;
+    assistantToken = readJsonString(assistantResponse.body, 'token');
+    assistantUserId = readJsonString(assistantResponse.body, 'id');
   });
 
   afterAll(async () => {
@@ -101,7 +106,7 @@ describe('Clinic care and billing (e2e)', () => {
       })
       .expect(201);
 
-    clinicId = clinicResponse.body.id;
+    clinicId = readJsonString(clinicResponse.body, 'id');
     expect(clinicResponse.body).toEqual(
       expect.objectContaining({
         countryCode: 'UY',
@@ -118,14 +123,11 @@ describe('Clinic care and billing (e2e)', () => {
       .set('x-clinic-id', clinicId)
       .expect(200);
 
-    const memberships = membershipsResponse.body as {
-      userId: string;
-      role: string;
-      id: string;
-    }[];
+    const memberships = readJsonArray(membershipsResponse.body);
     const ownerMembership = memberships.find(
-      (membership: { userId: string; role: string }) =>
-        membership.userId === adminUserId && membership.role === 'owner',
+      (membership) =>
+        readJsonString(membership, 'userId') === adminUserId &&
+        readJsonString(membership, 'role') === 'owner',
     );
 
     expect(ownerMembership).toBeDefined();
@@ -134,7 +136,7 @@ describe('Clinic care and billing (e2e)', () => {
       throw new Error('Expected owner membership to be present');
     }
 
-    membershipId = ownerMembership.id;
+    membershipId = readJsonString(ownerMembership, 'id');
 
     await request(app.getHttpServer())
       .post('/clinic-memberships')
@@ -167,7 +169,10 @@ describe('Clinic care and billing (e2e)', () => {
       })
       .expect(201);
 
-    assistantMembershipId = assistantMembershipResponse.body.id;
+    assistantMembershipId = readJsonString(
+      assistantMembershipResponse.body,
+      'id',
+    );
   });
 
   it('creates patient, appointment type and appointment in clinic scope', async () => {
@@ -199,7 +204,7 @@ describe('Clinic care and billing (e2e)', () => {
       })
       .expect(201);
 
-    patientId = patientResponse.body.id;
+    patientId = readJsonString(patientResponse.body, 'id');
     expect(patientResponse.body).toEqual(
       expect.objectContaining({
         profession: 'Arquitecta',
@@ -219,7 +224,7 @@ describe('Clinic care and billing (e2e)', () => {
       .set('x-clinic-id', clinicId)
       .expect(200);
 
-    expect(patientByDocument.body.id).toBe(patientId);
+    expect(readJsonString(patientByDocument.body, 'id')).toBe(patientId);
 
     const typeResponse = await request(app.getHttpServer())
       .post('/appointments/types')
@@ -233,7 +238,7 @@ describe('Clinic care and billing (e2e)', () => {
       })
       .expect(201);
 
-    appointmentTypeId = typeResponse.body.id;
+    appointmentTypeId = readJsonString(typeResponse.body, 'id');
 
     const startAt = new Date('2026-09-28T12:30:00.000Z');
     const endAt = new Date('2026-09-28T13:00:00.000Z');
@@ -256,7 +261,7 @@ describe('Clinic care and billing (e2e)', () => {
       })
       .expect(201);
 
-    appointmentId = appointmentResponse.body.id;
+    appointmentId = readJsonString(appointmentResponse.body, 'id');
   });
 
   it('returns professional agenda appointments with availability', async () => {
@@ -271,7 +276,7 @@ describe('Clinic care and billing (e2e)', () => {
       .set('x-clinic-id', clinicId)
       .expect(200);
 
-    expect(agendaResponse.body.appointments).toEqual(
+    expect(readJsonValue(agendaResponse.body, 'appointments')).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           id: appointmentId,
@@ -280,8 +285,8 @@ describe('Clinic care and billing (e2e)', () => {
         }),
       ]),
     );
-    expect(agendaResponse.body.availability).toEqual(
-      expect.objectContaining({
+    expect(readJsonValue(agendaResponse.body, 'availability')).toEqual(
+      expect.objectContaining<Record<string, unknown>>({
         timezone: 'America/Montevideo',
         weekly: expect.arrayContaining([
           expect.objectContaining({
@@ -400,12 +405,12 @@ describe('Clinic care and billing (e2e)', () => {
           emergencyContact: null,
         }),
         expect.objectContaining({
-          id: doctorCreatedPatient.body.id,
+          id: readJsonString(doctorCreatedPatient.body, 'id'),
           phone: null,
           email: null,
         }),
         expect.objectContaining({
-          id: hiddenPatientResponse.body.id,
+          id: readJsonString(hiddenPatientResponse.body, 'id'),
           phone: null,
           email: null,
           address: null,
@@ -420,14 +425,14 @@ describe('Clinic care and billing (e2e)', () => {
     );
 
     const hiddenPatientForDoctor = await request(app.getHttpServer())
-      .get(`/patients/${hiddenPatientResponse.body.id}`)
+      .get(`/patients/${readJsonString(hiddenPatientResponse.body, 'id')}`)
       .set('Authorization', `Bearer ${doctorToken}`)
       .set('x-clinic-id', clinicId)
       .expect(200);
 
     expect(hiddenPatientForDoctor.body).toEqual(
       expect.objectContaining({
-        id: hiddenPatientResponse.body.id,
+        id: readJsonString(hiddenPatientResponse.body, 'id'),
         phone: null,
         email: null,
         address: null,
@@ -472,7 +477,7 @@ describe('Clinic care and billing (e2e)', () => {
       .set('x-clinic-id', clinicId)
       .send({
         clinicId,
-        patientId: temporaryPatient.body.id,
+        patientId: readJsonString(temporaryPatient.body, 'id'),
         appointmentTypeId,
         professionalMembershipId: assistantMembershipId,
         description: 'Acceso temporal',
@@ -482,20 +487,20 @@ describe('Clinic care and billing (e2e)', () => {
       .expect(201);
 
     await request(app.getHttpServer())
-      .get(`/patients/${temporaryPatient.body.id}`)
+      .get(`/patients/${readJsonString(temporaryPatient.body, 'id')}`)
       .set('Authorization', `Bearer ${assistantToken}`)
       .set('x-clinic-id', clinicId)
       .expect(200);
 
     await request(app.getHttpServer())
-      .patch(`/appointments/${temporaryAppointment.body.id}`)
+      .patch(`/appointments/${readJsonString(temporaryAppointment.body, 'id')}`)
       .set('Authorization', `Bearer ${adminToken}`)
       .set('x-clinic-id', clinicId)
       .send({ status: 3 })
       .expect(200);
 
     await request(app.getHttpServer())
-      .get(`/patients/${temporaryPatient.body.id}`)
+      .get(`/patients/${readJsonString(temporaryPatient.body, 'id')}`)
       .set('Authorization', `Bearer ${assistantToken}`)
       .set('x-clinic-id', clinicId)
       .expect(403);
@@ -516,7 +521,7 @@ describe('Clinic care and billing (e2e)', () => {
       })
       .expect(201);
 
-    clinicalRecordId = clinicalRecord.body.id;
+    clinicalRecordId = readJsonString(clinicalRecord.body, 'id');
 
     const clinicalNote = await request(app.getHttpServer())
       .post('/clinical-notes')
@@ -534,7 +539,7 @@ describe('Clinic care and billing (e2e)', () => {
       })
       .expect(201);
 
-    clinicalNoteId = clinicalNote.body.id;
+    clinicalNoteId = readJsonString(clinicalNote.body, 'id');
 
     const treatment = await request(app.getHttpServer())
       .post('/treatments')
@@ -552,7 +557,7 @@ describe('Clinic care and billing (e2e)', () => {
       })
       .expect(201);
 
-    treatmentId = treatment.body.id;
+    treatmentId = readJsonString(treatment.body, 'id');
 
     const odontogramEntry = await request(app.getHttpServer())
       .patch(`/patients/${patientId}/odontogram/teeth/36`)
@@ -566,8 +571,8 @@ describe('Clinic care and billing (e2e)', () => {
       })
       .expect(200);
 
-    expect(odontogramEntry.body.entries).toHaveLength(1);
-    expect(odontogramEntry.body.entries[0]).toEqual(
+    expect(readJsonValue(odontogramEntry.body, 'entries')).toHaveLength(1);
+    expect(readJsonValue(odontogramEntry.body, 'entries', 0)).toEqual(
       expect.objectContaining({
         status: 'caries',
         surface: 'full',
@@ -590,15 +595,13 @@ describe('Clinic care and billing (e2e)', () => {
       })
       .expect(200);
 
-    const updatedEntries = surfaceUpdate.body.entries as {
-      actionGroupId: string;
-      surface: string;
-      status: string;
-    }[];
+    const updatedEntries = readJsonArray(surfaceUpdate.body, 'entries');
 
     expect(updatedEntries).toHaveLength(2);
     expect(
-      new Set(updatedEntries.map((entry) => entry.actionGroupId)).size,
+      new Set(
+        updatedEntries.map((entry) => readJsonString(entry, 'actionGroupId')),
+      ).size,
     ).toBe(1);
     expect(updatedEntries).toEqual(
       expect.arrayContaining([
@@ -613,11 +616,13 @@ describe('Clinic care and billing (e2e)', () => {
       .set('x-clinic-id', clinicId)
       .expect(200);
 
-    expect(odontogram.body.dentition.toothCodes).toContain('36');
-    expect(odontogram.body.legend).toEqual(
+    expect(readJsonValue(odontogram.body, 'dentition', 'toothCodes')).toContain(
+      '36',
+    );
+    expect(readJsonValue(odontogram.body, 'legend')).toEqual(
       expect.arrayContaining([expect.objectContaining({ status: 'caries' })]),
     );
-    expect(odontogram.body.entries).toEqual(
+    expect(readJsonValue(odontogram.body, 'entries')).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           toothCode: '36',
@@ -656,7 +661,12 @@ describe('Clinic care and billing (e2e)', () => {
       })
       .expect(400);
 
-    const removableEntryId = surfaceUpdate.body.entries[0].id;
+    const removableEntryId = readJsonString(
+      surfaceUpdate.body,
+      'entries',
+      0,
+      'id',
+    );
 
     await request(app.getHttpServer())
       .delete(`/patients/${patientId}/odontogram/entries/${removableEntryId}`)
@@ -675,13 +685,13 @@ describe('Clinic care and billing (e2e)', () => {
       })
       .expect(201);
 
-    expect(pdfResponse.body.patientId).toBe(patientId);
-    expect(pdfResponse.body.type).toBe('pdf');
-    expect(pdfResponse.body.mimeType).toBe('application/pdf');
-    expect(fs.existsSync(pdfResponse.body.path)).toBe(true);
+    expect(readJsonValue(pdfResponse.body, 'patientId')).toBe(patientId);
+    expect(readJsonValue(pdfResponse.body, 'type')).toBe('pdf');
+    expect(readJsonValue(pdfResponse.body, 'mimeType')).toBe('application/pdf');
+    expect(fs.existsSync(readJsonString(pdfResponse.body, 'path'))).toBe(true);
 
     await request(app.getHttpServer())
-      .delete(`/patient-files/${pdfResponse.body.id}`)
+      .delete(`/patient-files/${readJsonString(pdfResponse.body, 'id')}`)
       .set('Authorization', `Bearer ${adminToken}`)
       .set('x-clinic-id', clinicId)
       .expect(200);
@@ -715,7 +725,7 @@ describe('Clinic care and billing (e2e)', () => {
       })
       .expect(201);
 
-    invoiceId = invoiceResponse.body.id;
+    invoiceId = readJsonString(invoiceResponse.body, 'id');
 
     const paymentResponse = await request(app.getHttpServer())
       .post('/payments')
@@ -730,7 +740,7 @@ describe('Clinic care and billing (e2e)', () => {
       })
       .expect(201);
 
-    paymentId = paymentResponse.body.id;
+    paymentId = readJsonString(paymentResponse.body, 'id');
 
     const invoiceAfterPayment = await request(app.getHttpServer())
       .get(`/invoices/${invoiceId}`)
@@ -738,7 +748,9 @@ describe('Clinic care and billing (e2e)', () => {
       .set('x-clinic-id', clinicId)
       .expect(200);
 
-    expect(invoiceAfterPayment.body.status).toBe('partially_paid');
+    expect(readJsonValue(invoiceAfterPayment.body, 'status')).toBe(
+      'partially_paid',
+    );
   });
 
   it('rejects mismatched commercial document relations', async () => {
@@ -764,7 +776,7 @@ describe('Clinic care and billing (e2e)', () => {
       .set('x-clinic-id', clinicId)
       .send({
         name: 'Limpieza otro paciente',
-        patientId: otherPatient.body.id,
+        patientId: readJsonString(otherPatient.body, 'id'),
         doctorId: adminUserId,
         professionalMembershipId: membershipId,
         description: 'Tratamiento de control',
@@ -781,7 +793,7 @@ describe('Clinic care and billing (e2e)', () => {
         clinicId,
         patientId,
         number: `INV-BAD-${Date.now()}`,
-        treatmentId: otherTreatment.body.id,
+        treatmentId: readJsonString(otherTreatment.body, 'id'),
         subtotal: '80.00',
         discount: '0.00',
         tax: '0.00',
@@ -795,7 +807,7 @@ describe('Clinic care and billing (e2e)', () => {
       .set('x-clinic-id', clinicId)
       .send({
         name: 'Tratamiento con factura ajena',
-        patientId: otherPatient.body.id,
+        patientId: readJsonString(otherPatient.body, 'id'),
         doctorId: adminUserId,
         professionalMembershipId: membershipId,
         description: 'Debe fallar por invoiceId',
@@ -811,7 +823,7 @@ describe('Clinic care and billing (e2e)', () => {
       .set('x-clinic-id', clinicId)
       .send({
         invoiceId,
-        patientId: otherPatient.body.id,
+        patientId: readJsonString(otherPatient.body, 'id'),
         amount: '1.00',
         method: 'cash',
         paidAt: new Date().toISOString(),
@@ -824,7 +836,7 @@ describe('Clinic care and billing (e2e)', () => {
       .set('x-clinic-id', clinicId)
       .send({
         invoiceId,
-        treatmentId: otherTreatment.body.id,
+        treatmentId: readJsonString(otherTreatment.body, 'id'),
         amount: '1.00',
         method: 'cash',
         paidAt: new Date().toISOString(),
@@ -842,8 +854,10 @@ describe('Clinic care and billing (e2e)', () => {
       })
       .expect(200);
 
-    expect(voidedPayment.body.voidedAt).toBeDefined();
-    expect(voidedPayment.body.voidReason).toBe('Pago cargado por error');
+    expect(readJsonValue(voidedPayment.body, 'voidedAt')).toBeDefined();
+    expect(readJsonValue(voidedPayment.body, 'voidReason')).toBe(
+      'Pago cargado por error',
+    );
 
     await request(app.getHttpServer())
       .post('/payments')
@@ -864,7 +878,9 @@ describe('Clinic care and billing (e2e)', () => {
       .set('x-clinic-id', clinicId)
       .expect(200);
 
-    expect(invoiceAfterPayment.body.status).toBe('partially_paid');
+    expect(readJsonValue(invoiceAfterPayment.body, 'status')).toBe(
+      'partially_paid',
+    );
   });
 
   it('uploads and lists patient files', async () => {
@@ -883,10 +899,12 @@ describe('Clinic care and billing (e2e)', () => {
       })
       .expect(201);
 
-    patientFileId = uploadResponse.body.id;
-    patientFilePath = uploadResponse.body.path;
-    expect(uploadResponse.body.patientId).toBe(patientId);
-    expect(uploadResponse.body.url).toContain('/uploads/patient-files/');
+    patientFileId = readJsonString(uploadResponse.body, 'id');
+    patientFilePath = readJsonString(uploadResponse.body, 'path');
+    expect(readJsonValue(uploadResponse.body, 'patientId')).toBe(patientId);
+    expect(readJsonString(uploadResponse.body, 'url')).toContain(
+      '/uploads/patient-files/',
+    );
     expect(fs.existsSync(patientFilePath)).toBe(true);
 
     const filesResponse = await request(app.getHttpServer())
@@ -937,8 +955,12 @@ describe('Clinic care and billing (e2e)', () => {
         mimeType: 'image/jpeg',
       }),
     );
-    expect(profilePhotoResponse.body.url).toContain('/uploads/patient-files/');
-    expect(fs.existsSync(profilePhotoResponse.body.path)).toBe(true);
+    expect(readJsonString(profilePhotoResponse.body, 'url')).toContain(
+      '/uploads/patient-files/',
+    );
+    expect(
+      fs.existsSync(readJsonString(profilePhotoResponse.body, 'path')),
+    ).toBe(true);
 
     const patientResponse = await request(app.getHttpServer())
       .get(`/patients/${patientId}`)
@@ -948,18 +970,22 @@ describe('Clinic care and billing (e2e)', () => {
 
     expect(patientResponse.body).toEqual(
       expect.objectContaining({
-        profilePhotoFileId: profilePhotoResponse.body.id,
-        profilePhotoUrl: profilePhotoResponse.body.url,
+        profilePhotoFileId: readJsonString(profilePhotoResponse.body, 'id'),
+        profilePhotoUrl: readJsonString(profilePhotoResponse.body, 'url'),
       }),
     );
 
     await request(app.getHttpServer())
-      .delete(`/patient-files/${profilePhotoResponse.body.id}`)
+      .delete(
+        `/patient-files/${readJsonString(profilePhotoResponse.body, 'id')}`,
+      )
       .set('Authorization', `Bearer ${adminToken}`)
       .set('x-clinic-id', clinicId)
       .expect(200);
 
-    expect(fs.existsSync(profilePhotoResponse.body.path)).toBe(false);
+    expect(
+      fs.existsSync(readJsonString(profilePhotoResponse.body, 'path')),
+    ).toBe(false);
 
     const patientWithoutProfilePhoto = await request(app.getHttpServer())
       .get(`/patients/${patientId}`)
@@ -990,7 +1016,9 @@ describe('Clinic care and billing (e2e)', () => {
       .set('x-clinic-id', clinicId)
       .expect(200);
 
-    expect(appointmentsReport.body.total).toBeGreaterThanOrEqual(1);
+    expect(
+      readJsonValue(appointmentsReport.body, 'total'),
+    ).toBeGreaterThanOrEqual(1);
 
     const from = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
     const to = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
@@ -1002,7 +1030,9 @@ describe('Clinic care and billing (e2e)', () => {
       .set('x-clinic-id', clinicId)
       .expect(200);
 
-    expect(Number(incomeReport.body.total)).toBeGreaterThan(0);
+    expect(Number(readJsonString(incomeReport.body, 'total'))).toBeGreaterThan(
+      0,
+    );
 
     const pendingReport = await request(app.getHttpServer())
       .get('/common/reports/pending-payments')
@@ -1010,7 +1040,9 @@ describe('Clinic care and billing (e2e)', () => {
       .set('x-clinic-id', clinicId)
       .expect(200);
 
-    expect(Number(pendingReport.body.totalPending)).toBeGreaterThan(0);
+    expect(
+      Number(readJsonString(pendingReport.body, 'totalPending')),
+    ).toBeGreaterThan(0);
 
     const treatmentsReport = await request(app.getHttpServer())
       .get('/common/reports/active-treatments')
@@ -1018,6 +1050,8 @@ describe('Clinic care and billing (e2e)', () => {
       .set('x-clinic-id', clinicId)
       .expect(200);
 
-    expect(treatmentsReport.body.count).toBeGreaterThanOrEqual(1);
+    expect(
+      readJsonValue(treatmentsReport.body, 'count'),
+    ).toBeGreaterThanOrEqual(1);
   });
 });

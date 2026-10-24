@@ -4,6 +4,7 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 
 import { AppModule } from '../src/app.module';
+import { readJsonString, readJsonValue } from './support/json-response';
 
 describe('Multi-tenant clinic scope (e2e)', () => {
   let app: INestApplication<App>;
@@ -30,8 +31,16 @@ describe('Multi-tenant clinic scope (e2e)', () => {
       .get('/seed')
       .expect(200);
 
-    clinicMainId = seedResponse.body.clinicIds['clinic-main'];
-    clinicEastId = seedResponse.body.clinicIds['clinic-east'];
+    clinicMainId = readJsonString(
+      seedResponse.body,
+      'clinicIds',
+      'clinic-main',
+    );
+    clinicEastId = readJsonString(
+      seedResponse.body,
+      'clinicIds',
+      'clinic-east',
+    );
 
     const adminLogin = await request(app.getHttpServer())
       .post('/auth/login')
@@ -41,8 +50,8 @@ describe('Multi-tenant clinic scope (e2e)', () => {
       })
       .expect(201);
 
-    adminToken = adminLogin.body.token;
-    adminUserId = adminLogin.body.id;
+    adminToken = readJsonString(adminLogin.body, 'token');
+    adminUserId = readJsonString(adminLogin.body, 'id');
 
     const doctorEastLogin = await request(app.getHttpServer())
       .post('/auth/login')
@@ -52,8 +61,8 @@ describe('Multi-tenant clinic scope (e2e)', () => {
       })
       .expect(201);
 
-    doctorEastToken = doctorEastLogin.body.token;
-    doctorEastUserId = doctorEastLogin.body.id;
+    doctorEastToken = readJsonString(doctorEastLogin.body, 'token');
+    doctorEastUserId = readJsonString(doctorEastLogin.body, 'id');
 
     const patientAna = await request(app.getHttpServer())
       .get('/patients/ana.perez@example.com')
@@ -61,7 +70,7 @@ describe('Multi-tenant clinic scope (e2e)', () => {
       .set('x-clinic-id', clinicMainId)
       .expect(200);
 
-    patientAnaId = patientAna.body.id;
+    patientAnaId = readJsonString(patientAna.body, 'id');
 
     const receptionist = await request(app.getHttpServer())
       .post('/auth/register')
@@ -73,8 +82,8 @@ describe('Multi-tenant clinic scope (e2e)', () => {
       })
       .expect(201);
 
-    receptionistUserId = receptionist.body.id;
-    receptionistToken = receptionist.body.token;
+    receptionistUserId = readJsonString(receptionist.body, 'id');
+    receptionistToken = readJsonString(receptionist.body, 'token');
   });
 
   afterAll(async () => {
@@ -92,7 +101,7 @@ describe('Multi-tenant clinic scope (e2e)', () => {
       })
       .expect(201);
 
-    expect(response.body.memberships).toEqual(
+    expect(readJsonValue(response.body, 'memberships')).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           clinicId: clinicMainId,
@@ -133,7 +142,7 @@ describe('Multi-tenant clinic scope (e2e)', () => {
       .expect(200);
 
     expect(clinics.body).toHaveLength(1);
-    expect(clinics.body[0].id).toBe(clinicMainId);
+    expect(readJsonString(clinics.body, 0, 'id')).toBe(clinicMainId);
   });
 
   it('rejects clinic scope when user has no membership', async () => {
@@ -246,7 +255,7 @@ describe('Multi-tenant clinic scope (e2e)', () => {
       })
       .expect(201);
 
-    newClinicId = clinic.body.id;
+    newClinicId = readJsonString(clinic.body, 'id');
     expect(clinic.body).toEqual(
       expect.objectContaining({
         countryCode: 'UY',
@@ -260,13 +269,13 @@ describe('Multi-tenant clinic scope (e2e)', () => {
     const memberships = await request(app.getHttpServer())
       .get('/clinic-memberships')
       .set('Authorization', `Bearer ${adminToken}`)
-      .set('x-clinic-id', clinic.body.id)
+      .set('x-clinic-id', readJsonString(clinic.body, 'id'))
       .expect(200);
 
     expect(memberships.body).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          clinicId: clinic.body.id,
+          clinicId: readJsonString(clinic.body, 'id'),
           userId: adminUserId,
           role: 'owner',
         }),

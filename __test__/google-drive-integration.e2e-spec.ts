@@ -5,6 +5,7 @@ import { App } from 'supertest/types';
 
 import { AppModule } from '../src/app.module';
 import { GoogleDriveStorageProvider } from '../src/storage/providers/google-drive-storage.provider';
+import { readJsonString } from './support/json-response';
 
 describe('Google Drive Integration (e2e)', () => {
   let app: INestApplication<App>;
@@ -70,7 +71,7 @@ describe('Google Drive Integration (e2e)', () => {
       })
       .expect(201);
 
-    ownerToken = loginResponse.body.token;
+    ownerToken = readJsonString(loginResponse.body, 'token');
 
     const clinicResponse = await request(app.getHttpServer())
       .post('/clinics')
@@ -82,7 +83,7 @@ describe('Google Drive Integration (e2e)', () => {
       })
       .expect(201);
 
-    clinicId = clinicResponse.body.id;
+    clinicId = readJsonString(clinicResponse.body, 'id');
   });
 
   afterAll(async () => {
@@ -115,7 +116,7 @@ describe('Google Drive Integration (e2e)', () => {
       .set('x-clinic-id', clinicId)
       .expect(200);
 
-    expect(oauthUrlResponse.body.url).toBe(
+    expect(readJsonString(oauthUrlResponse.body, 'url')).toBe(
       'https://accounts.google.test/oauth',
     );
 
