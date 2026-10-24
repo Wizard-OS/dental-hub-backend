@@ -1,5 +1,5 @@
-import { ClinicPermission } from '../interfaces';
 import { ClinicMembershipRole } from '../../clinic-memberships/interfaces/clinic-membership-role.enum';
+import { ClinicPermission } from '../interfaces';
 
 export type ClinicPermissionMap = Partial<Record<ClinicPermission, boolean>> &
   Record<string, boolean | undefined>;
@@ -85,6 +85,7 @@ export function hasClinicPermission(
   if (!role) return false;
 
   const explicit = permissionsJson?.[permission];
+
   if (explicit !== undefined) return explicit;
 
   return defaultPermissionsByRole[role]?.[permission];

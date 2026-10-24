@@ -1,10 +1,10 @@
-import { apiMessage, type ApiMessage } from '../common/i18n/api-message';
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
 import { ClinicMembership } from '../clinic-memberships/entities/clinic-membership.entity';
 import { ClinicMembershipRole } from '../clinic-memberships/interfaces/clinic-membership-role.enum';
+import { type ApiMessage, apiMessage } from '../common/i18n/api-message';
 import { PatientFile } from '../patient-files/entities/patient-file.entity';
 import { Patient } from '../patients/entities/patient.entity';
 import { MembershipPlanCode } from './interfaces/membership-plan-code.enum';
@@ -134,10 +134,12 @@ export class MembershipEntitlementsService {
 
         const used = usage[key as keyof MembershipUsage];
         const ratio = used / limit;
+
         warnings[key] = {
           at80Percent: ratio >= 0.8,
           blocked: used >= limit,
         };
+
         return warnings;
       },
       {} as Record<string, { at80Percent: boolean; blocked: boolean }>,

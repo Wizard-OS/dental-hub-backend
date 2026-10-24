@@ -1,3 +1,7 @@
+import type { Server } from 'node:http';
+import { readdirSync, readFileSync } from 'fs';
+import * as path from 'path';
+
 import {
   Body,
   Controller,
@@ -10,12 +14,10 @@ import {
   Post,
   UnauthorizedException,
 } from '@nestjs/common';
-import type { Server } from 'node:http';
 import { Test } from '@nestjs/testing';
 import { I18nModule, I18nValidationPipe } from 'nestjs-i18n';
 import request from 'supertest';
-import { readFileSync, readdirSync } from 'fs';
-import * as path from 'path';
+
 import { CreateUserDto } from '../../auth/dto';
 import { AppointmentAvailabilitySettingsDto } from '../../clinics/dto/update-appointment-settings.dto';
 import { createI18nOptions } from '../../config/app-module-options';
@@ -133,6 +135,7 @@ describe('API internationalization over HTTP', () => {
         I18nResponseInterceptor,
       ],
     }).compile();
+
     app = module.createNestApplication();
     app.useGlobalPipes(
       new I18nValidationPipe({ whitelist: true, forbidNonWhitelisted: true }),
@@ -177,6 +180,7 @@ describe('API internationalization over HTTP', () => {
       .get(`/i18n-test/success${query}`)
       .set(headers)
       .expect(200);
+
     expect(responseBody(response)).toEqual({
       message: expected,
       id: 'unchanged',
@@ -187,6 +191,7 @@ describe('API internationalization over HTTP', () => {
     const response = await httpRequest(app)
       .get('/i18n-test/plain-success?lang=es')
       .expect(200);
+
     expect(response.text).toBe('¡Hola!');
   });
 
@@ -194,6 +199,7 @@ describe('API internationalization over HTTP', () => {
     const response = await httpRequest(app)
       .get('/i18n-test/error?lang=es')
       .expect(404);
+
     expect(responseBody(response)).toEqual({
       statusCode: 404,
       error: 'Not Found',
@@ -202,6 +208,7 @@ describe('API internationalization over HTTP', () => {
     const custom = await httpRequest(app)
       .get('/i18n-test/custom-error?lang=es')
       .expect(409);
+
     expect(responseBody(custom)).toEqual({
       code: 'UPLOAD_IDENTITY_REQUIRED',
       message: 'La membresía de quien carga el archivo no está disponible.',
@@ -212,6 +219,7 @@ describe('API internationalization over HTTP', () => {
     const response = await httpRequest(app)
       .get('/i18n-test/stored?lang=es')
       .expect(200);
+
     expect(responseBody(response)).toEqual({
       message: 'User not found',
       body: 'Texto del usuario',
@@ -244,15 +252,19 @@ describe('API internationalization over HTTP', () => {
           lastName: 'García',
         })
         .expect(400);
+
       expect(responseBody(response)).toMatchObject({
         statusCode: 400,
         error: 'Bad Request',
       });
       const messages = responseBody(response).message;
+
       expect(Array.isArray(messages)).toBe(true);
+
       if (!Array.isArray(messages)) {
         throw new Error('Expected validation messages to be a flat array');
       }
+
       expect(messages).toEqual(
         expect.arrayContaining([email, password, passwordRule]),
       );
@@ -270,6 +282,7 @@ describe('API internationalization over HTTP', () => {
       .post('/i18n-test/nested?lang=es')
       .send({ weekly: [{ dayOfWeek: 8, isOpen: true, secret: 'private' }] })
       .expect(400);
+
     expect(responseBody(response).message).toEqual(
       expect.arrayContaining([
         'weekly.0.dayOfWeek no debe ser mayor que 7',
@@ -277,6 +290,18 @@ describe('API internationalization over HTTP', () => {
       ]),
     );
     expect(JSON.stringify(responseBody(response))).not.toContain('private');
+  });
+
+  it.each([
+    { name: 'an empty array', body: [] },
+    { name: 'an empty object', body: {} },
+  ])('preserves the optional-only DTO response for $name', async ({ body }) => {
+    const response = await httpRequest(app)
+      .post('/i18n-test/nested?lang=es')
+      .send(body)
+      .expect(201);
+
+    expect(response.body).toEqual(body);
   });
 
   it('keeps valid DTO content unchanged', async () => {
@@ -290,6 +315,7 @@ describe('API internationalization over HTTP', () => {
       .post('/i18n-test/validation?lang=es')
       .send(body)
       .expect(201);
+
     expect(responseBody(response)).toEqual(body);
   });
 
@@ -297,18 +323,21 @@ describe('API internationalization over HTTP', () => {
     const unauthorized = await httpRequest(app)
       .get('/i18n-test/unauthorized?lang=es')
       .expect(401);
+
     expect(responseBody(unauthorized).message).toBe(
       'Debes autenticarte para continuar',
     );
     const upload = await httpRequest(app)
       .get('/i18n-test/upload?lang=es')
       .expect(413);
+
     expect(responseBody(upload).message).toBe(
       'El archivo o la solicitud supera el tamaño permitido',
     );
     const missing = await httpRequest(app)
       .get('/not-a-route?lang=es')
       .expect(404);
+
     expect(responseBody(missing).message).toBe(
       'No se encontró el recurso solicitado',
     );
@@ -318,10 +347,12 @@ describe('API internationalization over HTTP', () => {
     const log = jest
       .spyOn(Logger.prototype, 'error')
       .mockImplementation(() => undefined);
+
     try {
       const response = await httpRequest(app)
         .get('/i18n-test/unexpected?lang=es')
         .expect(500);
+
       expect(responseBody(response)).toEqual({
         statusCode: 500,
         message: 'Se produjo un error interno. Inténtalo de nuevo más tarde',
@@ -340,6 +371,7 @@ describe('translation catalogs', () => {
     return Object.fromEntries(
       Object.entries(value).flatMap(([key, entry]) => {
         const name = prefix ? `${prefix}.${key}` : key;
+
         return typeof entry === 'string'
           ? [[name, entry]]
           : Object.entries(flatten(entry as Record<string, unknown>, name));
@@ -349,6 +381,7 @@ describe('translation catalogs', () => {
 
   it('has matching keys and interpolation arguments in every locale', () => {
     const root = path.join(__dirname, '../../i18n');
+
     for (const file of readdirSync(path.join(root, 'en')).filter((file) =>
       file.endsWith('.json'),
     )) {
@@ -364,6 +397,7 @@ describe('translation catalogs', () => {
           unknown
         >,
       );
+
       expect(Object.keys(es).sort()).toEqual(Object.keys(en).sort());
       for (const key of Object.keys(en)) {
         expect(es[key].trim()).not.toBe('');

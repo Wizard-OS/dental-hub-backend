@@ -8,18 +8,18 @@ import {
   Post,
 } from '@nestjs/common';
 import {
-  ApiTags,
-  ApiOperation,
-  ApiResponse,
   ApiBearerAuth,
-  ApiSecurity,
+  ApiOperation,
   ApiParam,
+  ApiResponse,
+  ApiSecurity,
+  ApiTags,
 } from '@nestjs/swagger';
 
-import { OutboundMessagesService } from './outbound-messages.service';
+import { AuthClinic, GetClinicId } from '../auth/decorators';
 import { CreateOutboundMessageDto } from './dto/create-outbound-message.dto';
 import { UpdateOutboundMessageDto } from './dto/update-outbound-message.dto';
-import { AuthClinic, GetClinicId } from '../auth/decorators';
+import { OutboundMessagesService } from './outbound-messages.service';
 
 @ApiTags('Outbound Messages')
 @ApiBearerAuth()

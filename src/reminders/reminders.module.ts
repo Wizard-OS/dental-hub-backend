@@ -1,11 +1,11 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
-import { Reminder } from './entities/reminder.entity';
 import { Appointment } from '../appointments/entities/appointment.entity';
 import { MessageTemplate } from '../message-templates/entities/message-template.entity';
-import { RemindersService } from './reminders.service';
+import { Reminder } from './entities/reminder.entity';
 import { RemindersController } from './reminders.controller';
+import { RemindersService } from './reminders.service';
 
 @Module({
   controllers: [RemindersController],

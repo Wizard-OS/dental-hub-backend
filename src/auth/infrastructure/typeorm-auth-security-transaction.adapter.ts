@@ -1,14 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { DataSource, Repository } from 'typeorm';
 
-import { User } from '../entities/user.entity';
+import type { SessionMetadata } from '../../user-sessions/device-metadata.util';
 import { UserSession } from '../../user-sessions/entities/user-session.entity';
 import {
   AuthSecurityAccount,
   AuthSecurityTransactionPort,
   LockedAuthSecurityAccount,
 } from '../application/ports/auth-security-transaction.port';
-import type { SessionMetadata } from '../../user-sessions/device-metadata.util';
+import { User } from '../entities/user.entity';
 
 @Injectable()
 export class TypeOrmAuthSecurityTransactionAdapter implements AuthSecurityTransactionPort {
@@ -58,9 +58,11 @@ export class TypeOrmAuthSecurityTransactionAdapter implements AuthSecurityTransa
         ])
         .setLock('pessimistic_write');
       const user = await find(query);
+
       if (!user) return operation(null);
 
       const account = this.toAccount(user);
+
       return operation({
         account,
         update: async (patch) => {
@@ -72,6 +74,7 @@ export class TypeOrmAuthSecurityTransactionAdapter implements AuthSecurityTransa
           const session = await sessions.save(
             sessions.create({ userId: user.id, ...metadata }),
           );
+
           return session.id;
         },
         revokeSessions: async (exceptSessionId?: string) => {
@@ -83,9 +86,11 @@ export class TypeOrmAuthSecurityTransactionAdapter implements AuthSecurityTransa
             .where('"userId" = :userId AND "isRevoked" = false', {
               userId: user.id,
             });
+
           if (exceptSessionId) {
             sessions.andWhere('"id" != :exceptSessionId', { exceptSessionId });
           }
+
           await sessions.execute();
         },
       });

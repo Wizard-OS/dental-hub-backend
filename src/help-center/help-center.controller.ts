@@ -1,15 +1,15 @@
 import { Body, Controller, Get, Post } from '@nestjs/common';
 import {
-  ApiTags,
+  ApiBearerAuth,
   ApiOperation,
   ApiResponse,
-  ApiBearerAuth,
+  ApiTags,
 } from '@nestjs/swagger';
 
 import { Auth, GetUser } from '../auth/decorators';
 import { User } from '../auth/entities/user.entity';
-import { HelpCenterService } from './help-center.service';
 import { CreateSupportRequestDto } from './dto/create-support-request.dto';
+import { HelpCenterService } from './help-center.service';
 
 @ApiTags('Help Center')
 @Controller('help-center')

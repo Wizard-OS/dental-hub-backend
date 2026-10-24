@@ -22,10 +22,12 @@ export class GoogleDriveChangesController {
     @Headers('x-goog-channel-token') channelToken?: string,
   ): Promise<void> {
     if (!channelId || !channelToken) throw new UnauthorizedException();
+
     const accepted = await this.drive.handleDriveNotification(
       channelId,
       channelToken,
     );
+
     if (!accepted) throw new UnauthorizedException();
   }
 }

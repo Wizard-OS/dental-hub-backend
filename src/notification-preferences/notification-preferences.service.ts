@@ -2,8 +2,8 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
-import { NotificationPreference } from './entities/notification-preference.entity';
 import { UpdateNotificationPreferencesDto } from './dto/update-notification-preferences.dto';
+import { NotificationPreference } from './entities/notification-preference.entity';
 
 @Injectable()
 export class NotificationPreferencesService {

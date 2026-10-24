@@ -1,6 +1,7 @@
 import { promises as fs } from 'fs';
 import * as os from 'os';
 import * as path from 'path';
+
 import { BadRequestException } from '@nestjs/common';
 
 import { validateAndNormalizeUploadedFile } from './upload-validation';
@@ -63,6 +64,7 @@ describe('validateAndNormalizeUploadedFile', () => {
     mimetype = 'application/octet-stream',
   ): Promise<UploadedFile> {
     const filePath = path.join(tmpDir, filename);
+
     await fs.writeFile(filePath, content);
 
     return {

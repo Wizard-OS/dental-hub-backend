@@ -1,4 +1,3 @@
-import { apiMessage } from '../common/i18n/api-message';
 import {
   BadRequestException,
   ForbiddenException,
@@ -7,25 +6,26 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { ILike, Repository } from 'typeorm';
 import { isUUID } from 'class-validator';
+import { ILike, Repository } from 'typeorm';
 
-import { Appointment } from './entities/appointment.entity';
-import { AppointmentType } from './entities/appointment-type.entity';
-import { Patient } from '../patients/entities/patient.entity';
 import { ClinicMembership } from '../clinic-memberships/entities/clinic-membership.entity';
-import { CreateAppointmentDto } from './dto/create-appointment.dto';
-import { UpdateAppointmentDto } from './dto/update-appointment.dto';
-import { CreateAppointmentTypeDto } from './dto/create-appointment-type.dto';
-import { UpdateAppointmentTypeDto } from './dto/update-appointment-type.dto';
-import { QueryAgendaAppointmentsDto } from './dto/query-agenda-appointments.dto';
-import { AppointmentStatus } from './interfaces/AppointmentStatus.enum';
-import { AppointmentConfirmationStatus } from './interfaces/appointment-confirmation-status.enum';
 import { AppointmentAvailabilityService } from '../clinics/appointment-availability.service';
+import { apiMessage } from '../common/i18n/api-message';
+import { Patient } from '../patients/entities/patient.entity';
 import {
   ClinicAccessContext,
   PatientAccessService,
 } from '../patients/services/patient-access.service';
+import { CreateAppointmentDto } from './dto/create-appointment.dto';
+import { CreateAppointmentTypeDto } from './dto/create-appointment-type.dto';
+import { QueryAgendaAppointmentsDto } from './dto/query-agenda-appointments.dto';
+import { UpdateAppointmentDto } from './dto/update-appointment.dto';
+import { UpdateAppointmentTypeDto } from './dto/update-appointment-type.dto';
+import { Appointment } from './entities/appointment.entity';
+import { AppointmentType } from './entities/appointment-type.entity';
+import { AppointmentConfirmationStatus } from './interfaces/appointment-confirmation-status.enum';
+import { AppointmentStatus } from './interfaces/AppointmentStatus.enum';
 
 @Injectable()
 export class AppointmentsService {
@@ -55,6 +55,7 @@ export class AppointmentsService {
         dto.patientId,
       );
     }
+
     this.ensureClinicScope(context.clinicId, dto.clinicId);
     this.validateTimeWindow(dto.startTime, dto.endTime);
 
@@ -79,6 +80,7 @@ export class AppointmentsService {
         context.clinicId,
         professionalMembershipId,
       );
+
     this.appointmentAvailabilityService.assertAppointmentWithinAvailability(
       availability,
       dto.startTime,
@@ -103,6 +105,7 @@ export class AppointmentsService {
           dto.confirmationStatus ?? AppointmentConfirmationStatus.PENDING,
         rescheduleCount: dto.rescheduleCount ?? 0,
       });
+
       return await this.appointmentRepository.save(appointment);
     } catch (error) {
       this.handleDBErrors(error);
@@ -132,11 +135,13 @@ export class AppointmentsService {
     const appointments = await query
       .orderBy('appointment.startTime', 'ASC')
       .getMany();
+
     for (const appointment of appointments) {
       if (appointment.patient) {
         this.patientAccessService.sanitizePatient(appointment.patient, context);
       }
     }
+
     return appointments;
   }
 
@@ -146,6 +151,7 @@ export class AppointmentsService {
   ) {
     const from = new Date(queryDto.from);
     const to = new Date(queryDto.to);
+
     this.validateTimeWindow(from, to);
 
     if (
@@ -229,6 +235,7 @@ export class AppointmentsService {
       context,
       appointment.patientId,
     );
+
     if (appointment.patient) {
       this.patientAccessService.sanitizePatient(appointment.patient, context);
     }
@@ -244,23 +251,28 @@ export class AppointmentsService {
     if (!this.patientAccessService.canManagePatients(context)) {
       this.patientAccessService.assertCanManageClinical(context);
     }
+
     const appointment = await this.findOne(context, id);
 
     const nextStart = dto.startTime ?? appointment.startTime;
     const nextEnd = dto.endTime ?? appointment.endTime;
+
     this.validateTimeWindow(nextStart, nextEnd);
 
     if (dto.patientId)
       await this.assertPatientInClinic(dto.patientId, context.clinicId);
+
     if (dto.professionalMembershipId !== undefined) {
       await this.assertMembershipInClinic(
         dto.professionalMembershipId,
         context.clinicId,
       );
     }
+
     if (dto.dentistId !== undefined) {
       await this.assertUserMembershipInClinic(dto.dentistId, context.clinicId);
     }
+
     if (dto.appointmentTypeId !== undefined) {
       await this.assertAppointmentTypeInClinic(
         dto.appointmentTypeId,
@@ -279,6 +291,7 @@ export class AppointmentsService {
         context.clinicId,
         nextProfessionalMembershipId,
       );
+
     this.appointmentAvailabilityService.assertAppointmentWithinAvailability(
       availability,
       nextStart,
@@ -308,7 +321,9 @@ export class AppointmentsService {
   async remove(context: ClinicAccessContext, id: string) {
     this.patientAccessService.assertCanManagePatients(context);
     const appointment = await this.findOne(context, id);
+
     await this.appointmentRepository.remove(appointment);
+
     return {
       message: apiMessage('api.messages.appointment_removed', { id: id }),
     };
@@ -321,6 +336,7 @@ export class AppointmentsService {
         ...dto,
         clinicId,
       });
+
       return await this.appointmentTypeRepository.save(appointmentType);
     } catch (error) {
       this.handleDBErrors(error);
@@ -348,6 +364,7 @@ export class AppointmentsService {
       .addOrderBy('UPPER(type.color)', 'ASC')
       .limit(8)
       .getRawMany<{ color: string }>();
+
     return rows.map((row) => row.color);
   }
 
@@ -356,13 +373,16 @@ export class AppointmentsService {
       throw new BadRequestException(
         apiMessage('api.messages.invalid_appointment_type_id'),
       );
+
     const type = await this.appointmentTypeRepository.findOne({
       where: { id, clinicId },
     });
+
     if (!type)
       throw new NotFoundException(
         apiMessage('api.messages.appointment_type_not_found'),
       );
+
     return type;
   }
 
@@ -391,6 +411,7 @@ export class AppointmentsService {
     if (dto.clinicId) this.ensureClinicScope(clinicId, dto.clinicId);
 
     Object.assign(appointmentType, dto);
+
     return await this.appointmentTypeRepository.save(appointmentType);
   }
 
@@ -413,6 +434,7 @@ export class AppointmentsService {
     }
 
     appointmentType.isActive = false;
+
     return await this.appointmentTypeRepository.save(appointmentType);
   }
 

@@ -12,11 +12,11 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 
-import { ValidRoles } from '../interfaces';
 import { Appointment } from '../../appointments/entities/appointment.entity';
-import { ClinicalNote } from '../../clinical-notes/entities/clinical-note.entity';
 import { ClinicMembership } from '../../clinic-memberships/entities/clinic-membership.entity';
+import { ClinicalNote } from '../../clinical-notes/entities/clinical-note.entity';
 import { ProfessionalSpecialty } from '../../professional-specialties/entities/professional-specialty.entity';
+import { ValidRoles } from '../interfaces';
 
 @Entity('users')
 @Index(['email'], { unique: true })

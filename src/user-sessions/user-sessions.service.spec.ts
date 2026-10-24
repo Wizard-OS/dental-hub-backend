@@ -1,8 +1,8 @@
 import { NotFoundException, UnauthorizedException } from '@nestjs/common';
 
+import { apiMessage } from '../common/i18n/api-message';
 import { UserSession } from './entities/user-session.entity';
 import { UserSessionsService } from './user-sessions.service';
-import { apiMessage } from '../common/i18n/api-message';
 
 describe('UserSessionsService', () => {
   const userId = 'user-1';
@@ -29,6 +29,7 @@ describe('UserSessionsService', () => {
       })),
       save: jest.fn((session: UserSession) => {
         const existingIndex = sessions.findIndex(({ id }) => id === session.id);
+
         if (existingIndex >= 0) {
           sessions[existingIndex] = session;
         } else {
@@ -96,6 +97,7 @@ describe('UserSessionsService', () => {
     const current = await service.createSession(userId, {
       deviceName: 'Current',
     });
+
     await service.createSession(userId, { deviceName: 'Other' });
     await service.createSession('other-user', { deviceName: 'Foreign' });
 
@@ -143,6 +145,7 @@ describe('UserSessionsService', () => {
     const session = await service.createSession(userId, {
       deviceName: 'Revoked',
     });
+
     await service.revokeSession(userId, session.id);
 
     await expect(
@@ -152,6 +155,7 @@ describe('UserSessionsService', () => {
 
   it('writes activity only when the last update is at least one minute old', async () => {
     const session = await service.createSession(userId, {});
+
     session.lastActiveAt = new Date(Date.now() - 30_000);
     const recent = session.lastActiveAt;
 
@@ -175,6 +179,7 @@ describe('UserSessionsService', () => {
 
 function matchesWhereValue<T>(whereValue: unknown, value: T) {
   if (whereValue === undefined) return true;
+
   if (
     typeof whereValue === 'object' &&
     whereValue !== null &&
@@ -184,6 +189,7 @@ function matchesWhereValue<T>(whereValue: unknown, value: T) {
   ) {
     return whereValue._value !== value;
   }
+
   if (
     typeof whereValue === 'object' &&
     whereValue !== null &&

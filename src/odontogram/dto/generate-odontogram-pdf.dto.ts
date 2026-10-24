@@ -1,6 +1,6 @@
-import { i18nValidationMessage } from 'nestjs-i18n';
-import { IsOptional, IsString, IsUUID } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
+import { IsOptional, IsString, IsUUID } from 'class-validator';
+import { i18nValidationMessage } from 'nestjs-i18n';
 
 export class GenerateOdontogramPdfDto {
   @ApiPropertyOptional({ description: 'UUID de la cita asociada' })

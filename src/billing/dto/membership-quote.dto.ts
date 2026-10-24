@@ -1,12 +1,13 @@
-import { i18nValidationMessage } from 'nestjs-i18n';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsEnum,
   IsOptional,
   IsString,
-  MaxLength,
   Matches,
+  MaxLength,
 } from 'class-validator';
+import { i18nValidationMessage } from 'nestjs-i18n';
+
 import { BillingInterval } from '../interfaces/billing-interval.enum';
 
 export class MembershipQuoteDto {

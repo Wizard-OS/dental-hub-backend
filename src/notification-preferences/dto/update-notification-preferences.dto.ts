@@ -1,6 +1,6 @@
-import { i18nValidationMessage } from 'nestjs-i18n';
-import { IsBoolean, IsOptional } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
+import { IsBoolean, IsOptional } from 'class-validator';
+import { i18nValidationMessage } from 'nestjs-i18n';
 
 export class UpdateNotificationPreferencesDto {
   @ApiPropertyOptional({

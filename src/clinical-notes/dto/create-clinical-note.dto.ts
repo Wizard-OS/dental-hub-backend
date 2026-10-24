@@ -1,16 +1,16 @@
-import { i18nValidationMessage } from 'nestjs-i18n';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
   IsArray,
   IsDate,
-  MaxLength,
-  ValidateIf,
   IsOptional,
   IsString,
   IsUUID,
+  MaxLength,
   MinLength,
+  ValidateIf,
 } from 'class-validator';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { i18nValidationMessage } from 'nestjs-i18n';
 
 export class CreateClinicalNoteDto {
   @ApiProperty({ description: 'UUID del registro clínico' })

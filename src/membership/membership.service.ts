@@ -1,25 +1,24 @@
-import { apiMessage } from '../common/i18n/api-message';
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { EntityManager, Repository } from 'typeorm';
 
-import { Clinic } from '../clinics/entities/clinic.entity';
+import type { MembershipQuote } from '../billing/membership-offer';
 import { ClinicMembershipRole } from '../clinic-memberships/interfaces/clinic-membership-role.enum';
+import { Clinic } from '../clinics/entities/clinic.entity';
+import { apiMessage } from '../common/i18n/api-message';
+import { NotificationChannel } from '../common/interfaces/notification-channel.enum';
 import { getEnv } from '../config/env';
+import { OutboundMessagesService } from '../outbound-messages/outbound-messages.service';
 import { ClinicSubscription } from './entities/clinic-subscription.entity';
 import { ClinicSubscriptionAuditLog } from './entities/clinic-subscription-audit-log.entity';
 import { BillingProvider } from './interfaces/billing-provider.enum';
 import { MembershipPlanCode } from './interfaces/membership-plan-code.enum';
 import { SubscriptionStatus } from './interfaces/subscription-status.enum';
-import { NotificationChannel } from '../common/interfaces/notification-channel.enum';
-import { OutboundMessagesService } from '../outbound-messages/outbound-messages.service';
-import { MembershipEntitlementsService } from './membership-entitlements.service';
 import { MembershipCheckoutIntentService } from './membership-checkout-intent.service';
-import { MembershipPlanAssignmentService } from './membership-plan-assignment.service';
+import { MembershipEntitlementsService } from './membership-entitlements.service';
 import { MembershipLicenseService } from './membership-license.service';
+import { MembershipPlanAssignmentService } from './membership-plan-assignment.service';
 import { MEMBERSHIP_PLAN_VERSION } from './membership-plan-version';
-
-import type { MembershipQuote } from '../billing/membership-offer';
 
 export type { MembershipLimits } from './membership-entitlements.service';
 
@@ -143,6 +142,7 @@ export class MembershipService {
       planCode,
       reason,
     );
+
     return this.getCurrent(assignedClinicId);
   }
 
@@ -157,6 +157,7 @@ export class MembershipService {
         planCode,
         reason,
       );
+
     return this.getCurrent(assignedClinicId);
   }
 
@@ -167,6 +168,7 @@ export class MembershipService {
     checkoutQuote?: MembershipQuote;
   }) {
     await this.ensureSubscription(input.clinicId);
+
     return this.checkoutIntentService.reserve(input);
   }
 
@@ -178,6 +180,7 @@ export class MembershipService {
       subscription.status !== SubscriptionStatus.incomplete
     )
       return this.getCurrent(input.clinicId);
+
     subscription.checkoutQuote = input.checkoutQuote ?? null;
     subscription.providerCheckoutRequestId = null;
     subscription.providerCheckoutFingerprint = null;
@@ -221,6 +224,7 @@ export class MembershipService {
           input.trialStartedAt ?? subscription.trialStartedAt;
         subscription.trialEndsAt =
           input.trialEndsAt ?? subscription.trialEndsAt;
+
         if (
           input.trialEndsAt &&
           !subscription.reminderDueAt &&
@@ -231,6 +235,7 @@ export class MembershipService {
           );
           subscription.reminderNextAttemptAt = subscription.reminderDueAt;
         }
+
         subscription.status =
           input.trialEndsAt && input.trialEndsAt > now
             ? SubscriptionStatus.trialing
@@ -277,6 +282,7 @@ export class MembershipService {
             where: { id: subscription.clinicId },
             select: { id: true, name: true, email: true },
           });
+
           await this.outboundMessagesService.create(
             subscription.clinicId,
             {
@@ -360,6 +366,7 @@ export class MembershipService {
 
   async assertCanAddProfessional(clinicId: string) {
     const current = await this.getCurrent(clinicId);
+
     this.entitlementsService.assertProfessionalCapacity(
       current.usage,
       current.limits,
@@ -368,6 +375,7 @@ export class MembershipService {
 
   async assertCanStoreFile(clinicId: string, incomingBytes: number) {
     const current = await this.getCurrent(clinicId);
+
     this.entitlementsService.assertStorageCapacity(
       current.usage,
       current.limits,
@@ -389,6 +397,7 @@ export class MembershipService {
     if (existing) return existing;
 
     const now = new Date();
+
     await repository
       .createQueryBuilder()
       .insert()
@@ -402,6 +411,7 @@ export class MembershipService {
       })
       .orIgnore()
       .execute();
+
     return repository.findOneByOrFail({ clinicId });
   }
 
@@ -425,6 +435,7 @@ export class MembershipService {
           apiMessage('api.messages.subscription_belongs_to_another_clinic'),
         );
       }
+
       return existing;
     }
 
@@ -435,6 +446,7 @@ export class MembershipService {
     }
 
     const subscription = await this.ensureSubscription(clinicId, manager);
+
     subscription.billingProvider = provider;
     subscription.providerSubscriptionId = providerSubscriptionId;
 
@@ -456,12 +468,14 @@ export class MembershipService {
     ) {
       return MembershipPlanCode.free;
     }
+
     if (
       subscription.status === SubscriptionStatus.trialing &&
       (!subscription.trialEndsAt || subscription.trialEndsAt <= new Date())
     ) {
       return MembershipPlanCode.free;
     }
+
     if (
       [SubscriptionStatus.active, SubscriptionStatus.trialing].includes(
         subscription.status,

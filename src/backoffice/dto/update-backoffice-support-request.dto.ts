@@ -1,6 +1,6 @@
-import { i18nValidationMessage } from 'nestjs-i18n';
 import { ApiProperty } from '@nestjs/swagger';
 import { IsEnum } from 'class-validator';
+import { i18nValidationMessage } from 'nestjs-i18n';
 
 import { SupportRequestStatus } from '../../help-center/entities/support-request.entity';
 

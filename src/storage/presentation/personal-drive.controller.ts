@@ -1,5 +1,3 @@
-import { i18nValidationMessage } from 'nestjs-i18n';
-import { apiMessage, type ApiMessageKey } from '../../common/i18n/api-message';
 import {
   Body,
   ConflictException,
@@ -9,19 +7,21 @@ import {
   Post,
 } from '@nestjs/common';
 import {
-  IsBoolean,
-  IsNotEmpty,
-  IsOptional,
-  IsString,
-  MaxLength,
-} from 'class-validator';
-import {
   ApiBearerAuth,
   ApiProperty,
   ApiPropertyOptional,
   ApiTags,
 } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
+import {
+  IsBoolean,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  MaxLength,
+} from 'class-validator';
+import { i18nValidationMessage } from 'nestjs-i18n';
+
 import {
   Auth,
   AuthClinic,
@@ -33,6 +33,7 @@ import {
 } from '../../auth/decorators';
 import { User } from '../../auth/entities/user.entity';
 import { ClinicMembershipRole } from '../../clinic-memberships/interfaces/clinic-membership-role.enum';
+import { apiMessage, type ApiMessageKey } from '../../common/i18n/api-message';
 import { PersonalDrive } from '../application/personal-drive';
 import { PersonalDriveError } from '../domain/personal-drive';
 
@@ -73,11 +74,13 @@ class DisconnectDriveDto {
 @Controller('integrations/google-drive/me')
 export class PersonalDriveController {
   constructor(private readonly drive: PersonalDrive) {}
+
   @Get('status')
   @Auth()
   status(@GetUser() user: User) {
     return this.guard(() => this.drive.status(user.id));
   }
+
   @Post('connect')
   @Auth()
   @Throttle({ default: { limit: 5, ttl: 60_000 } })
@@ -86,18 +89,21 @@ export class PersonalDriveController {
       this.drive.connect(user.id, dto.serverAuthCode, dto.idToken),
     );
   }
+
   @Delete('disconnect')
   @Auth()
   async disconnect(@GetUser() user: User, @Body() dto?: DisconnectDriveDto) {
     await this.guard(() =>
       this.drive.disconnect(user.id, dto?.confirmFilesBackedUp ?? false),
     );
+
     return {
       message: apiMessage(
         'api.messages.google_drive_disconnected_files_remain_in_drive',
       ),
     };
   }
+
   @Get('migration')
   @AuthClinic()
   migrationStatus(
@@ -116,6 +122,7 @@ export class PersonalDriveController {
       }),
     );
   }
+
   @Post('migration')
   @AuthClinic()
   migrate(
@@ -134,6 +141,7 @@ export class PersonalDriveController {
       ),
     );
   }
+
   @Post('sync')
   @AuthClinic()
   sync(
@@ -152,6 +160,7 @@ export class PersonalDriveController {
       }),
     );
   }
+
   private async guard<T>(action: () => Promise<T>): Promise<T> {
     try {
       return await action();
@@ -161,6 +170,7 @@ export class PersonalDriveController {
           code: error.code,
           message: apiMessage(driveErrorMessages[error.code] ?? 'api.http.409'),
         });
+
       throw error;
     }
   }

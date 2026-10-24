@@ -1,6 +1,6 @@
 import { Gender } from '../interfaces/gender.enum';
-import type { PatientGenderLabelTranslator } from './ports/patient-gender-label-translator.port';
 import { GetPatientGenderOptions } from './get-patient-gender-options.use-case';
+import type { PatientGenderLabelTranslator } from './ports/patient-gender-label-translator.port';
 
 describe('GetPatientGenderOptions', () => {
   it('returns backend enum values with the requested translations', () => {

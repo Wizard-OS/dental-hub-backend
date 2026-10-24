@@ -1,14 +1,14 @@
-import { apiMessage } from '../../common/i18n/api-message';
-import { Reflector } from '@nestjs/core';
 import {
   CanActivate,
   ExecutionContext,
   ForbiddenException,
   Injectable,
 } from '@nestjs/common';
+import { Reflector } from '@nestjs/core';
 
-import { META_CLINIC_ROLES } from '../decorators/clinic-roles.decorator';
 import { ClinicMembershipRole } from '../../clinic-memberships/interfaces/clinic-membership-role.enum';
+import { apiMessage } from '../../common/i18n/api-message';
+import { META_CLINIC_ROLES } from '../decorators/clinic-roles.decorator';
 import type { AuthenticatedRequest } from '../interfaces';
 
 @Injectable()

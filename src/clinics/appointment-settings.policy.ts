@@ -1,5 +1,7 @@
-import { apiMessage } from '../common/i18n/api-message';
 import { BadRequestException, Injectable } from '@nestjs/common';
+
+import { apiMessage } from '../common/i18n/api-message';
+import { NotificationChannel } from '../common/interfaces/notification-channel.enum';
 import {
   AppointmentAvailabilitySettingsDto,
   AppointmentBreakDto,
@@ -7,7 +9,6 @@ import {
   AppointmentWorkingDayDto,
   UpdateAppointmentSettingsDto,
 } from './dto/update-appointment-settings.dto';
-import { NotificationChannel } from '../common/interfaces/notification-channel.enum';
 
 export type AppointmentSettings = Required<UpdateAppointmentSettingsDto>;
 export type WorkingHoursContainer = Record<string, unknown> & {
@@ -103,6 +104,7 @@ export class AppointmentSettingsPolicy {
 
       const breakStart = this.timeToMinutes(pause.startTime);
       const breakEnd = this.timeToMinutes(pause.endTime);
+
       if (startMinutes < breakEnd && endMinutes > breakStart) {
         throw new BadRequestException(
           apiMessage('api.messages.appointment_overlaps_a_schedule_break'),
@@ -279,11 +281,13 @@ export class AppointmentSettingsPolicy {
   validateAppointmentSettings(settings: AppointmentSettings) {
     for (const day of settings.availability.weekly ?? []) {
       if (!day.isOpen) continue;
+
       if (!day.startTime || !day.endTime) {
         throw new BadRequestException(
           apiMessage('api.messages.open_working_days_need_start_and_end'),
         );
       }
+
       this.assertTimeRange(day.startTime, day.endTime, 'working day');
     }
 
@@ -292,12 +296,14 @@ export class AppointmentSettingsPolicy {
     }
 
     const specialDates = new Set<string>();
+
     for (const specialDate of settings.availability.specialDates ?? []) {
       if (specialDates.has(specialDate.date)) {
         throw new BadRequestException(
           apiMessage('api.messages.specialdates_contains_duplicated_dates'),
         );
       }
+
       specialDates.add(specialDate.date);
 
       if (!specialDate.isClosed) {
@@ -306,6 +312,7 @@ export class AppointmentSettingsPolicy {
             apiMessage('api.messages.open_special_dates_need_start_and_end'),
           );
         }
+
         this.assertTimeRange(
           specialDate.startTime,
           specialDate.endTime,
@@ -413,6 +420,7 @@ export class AppointmentSettingsPolicy {
       const firstPeriod: unknown = Array.isArray(periods)
         ? periods[0]
         : undefined;
+
       if (!this.isObject(firstPeriod)) {
         return { dayOfWeek: index + 1, isOpen: false };
       }
@@ -428,6 +436,7 @@ export class AppointmentSettingsPolicy {
     });
 
     const hasLegacyHours = weekly.some((day) => day.isOpen);
+
     return hasLegacyHours ? { weekly } : {};
   }
 
@@ -498,22 +507,26 @@ export class AppointmentSettingsPolicy {
     patch: AppointmentWorkingDayDto[] | undefined,
   ): AppointmentWorkingDayDto[] {
     const byDay = new Map<number, AppointmentWorkingDayDto>();
+
     for (const day of base ?? []) {
       if (byDay.has(day.dayOfWeek)) {
         throw new BadRequestException(
           apiMessage('api.messages.weekly_contains_duplicated_days'),
         );
       }
+
       byDay.set(day.dayOfWeek, day);
     }
 
     const patchedDays = new Set<number>();
+
     for (const day of patch ?? []) {
       if (patchedDays.has(day.dayOfWeek)) {
         throw new BadRequestException(
           apiMessage('api.messages.weekly_contains_duplicated_days'),
         );
       }
+
       patchedDays.add(day.dayOfWeek);
       byDay.set(day.dayOfWeek, day);
     }
@@ -527,17 +540,20 @@ export class AppointmentSettingsPolicy {
     weekly: AppointmentWorkingDayDto[] | undefined,
   ): AppointmentWorkingDayDto[] {
     const byDay = new Map<number, AppointmentWorkingDayDto>();
+
     for (const day of weekly ?? []) {
       if (byDay.has(day.dayOfWeek)) {
         throw new BadRequestException(
           apiMessage('api.messages.weekly_contains_duplicated_days'),
         );
       }
+
       byDay.set(day.dayOfWeek, day);
     }
 
     return Array.from({ length: 7 }, (_, index) => {
       const dayOfWeek = index + 1;
+
       return byDay.get(dayOfWeek) ?? { dayOfWeek, isOpen: false };
     });
   }
@@ -546,6 +562,7 @@ export class AppointmentSettingsPolicy {
     return [...(breaks ?? [])].sort((left, right) => {
       const dayDelta =
         Math.min(...left.daysOfWeek) - Math.min(...right.daysOfWeek);
+
       return dayDelta || left.startTime.localeCompare(right.startTime);
     });
   }
@@ -568,6 +585,7 @@ export class AppointmentSettingsPolicy {
 
   private timeToMinutes(time: string) {
     const [hours, minutes] = time.split(':').map(Number);
+
     return hours * 60 + minutes;
   }
 
@@ -612,7 +630,9 @@ export class AppointmentSettingsPolicy {
         ])
         .filter(([, entry]) => {
           if (entry === undefined) return false;
+
           if (this.isObject(entry)) return Object.keys(entry).length > 0;
+
           return true;
         }),
     ) as T;

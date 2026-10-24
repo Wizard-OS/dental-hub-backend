@@ -1,4 +1,3 @@
-import { apiMessage } from '../common/i18n/api-message';
 import {
   BadRequestException,
   Injectable,
@@ -7,11 +6,12 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
-import { Patient } from '../patients/entities/patient.entity';
 import { ClinicMembership } from '../clinic-memberships/entities/clinic-membership.entity';
 import { ClinicMembershipRole } from '../clinic-memberships/interfaces/clinic-membership-role.enum';
-import { PatientProfessionalAssignment } from './entities/patient-professional-assignment.entity';
+import { apiMessage } from '../common/i18n/api-message';
+import { Patient } from '../patients/entities/patient.entity';
 import { CreatePatientAssignmentDto } from './dto/create-patient-assignment.dto';
+import { PatientProfessionalAssignment } from './entities/patient-professional-assignment.entity';
 
 @Injectable()
 export class PatientAssignmentsService {

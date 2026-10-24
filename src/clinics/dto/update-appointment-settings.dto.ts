@@ -1,4 +1,4 @@
-import { i18nValidationMessage } from 'nestjs-i18n';
+import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
   ArrayMaxSize,
@@ -17,7 +17,7 @@ import {
   Min,
   ValidateNested,
 } from 'class-validator';
-import { ApiPropertyOptional } from '@nestjs/swagger';
+import { i18nValidationMessage } from 'nestjs-i18n';
 
 import { NotificationChannel } from '../../common/interfaces/notification-channel.enum';
 

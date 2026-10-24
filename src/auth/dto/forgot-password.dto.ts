@@ -1,6 +1,6 @@
-import { i18nValidationMessage } from 'nestjs-i18n';
-import { IsEmail, IsString } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
+import { IsEmail, IsString } from 'class-validator';
+import { i18nValidationMessage } from 'nestjs-i18n';
 
 export class ForgotPasswordDto {
   @ApiProperty({

@@ -1,11 +1,12 @@
-import { apiMessage } from '../../common/i18n/api-message';
+import { createReadStream } from 'fs';
+
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { OAuth2Client } from 'google-auth-library';
 import { drive_v3, google } from 'googleapis';
-import { createReadStream } from 'fs';
 import { Repository } from 'typeorm';
 
+import { apiMessage } from '../../common/i18n/api-message';
 import { ClinicStorageIntegration } from '../entities/clinic-storage-integration.entity';
 import { StorageIntegrationStatus } from '../interfaces/storage-integration-status.enum';
 import {
@@ -70,6 +71,7 @@ export class GoogleDriveStorageProvider implements StorageProvider {
   }> {
     const client = this.createOAuthClient(redirectUri);
     const { tokens } = await client.getToken(code);
+
     return tokens;
   }
 
@@ -98,6 +100,7 @@ export class GoogleDriveStorageProvider implements StorageProvider {
     });
 
     await client.getAccessToken();
+
     if (client.credentials.access_token) {
       integration.encryptedAccessToken = this.tokenEncryption.encrypt(
         client.credentials.access_token,
@@ -107,6 +110,7 @@ export class GoogleDriveStorageProvider implements StorageProvider {
         : null;
       await this.integrationRepository.save(integration);
     }
+
     return google.drive({ version: 'v3', auth: client });
   }
 
@@ -222,9 +226,11 @@ export class GoogleDriveStorageProvider implements StorageProvider {
     if (!file.driveFileId) return;
 
     const integration = await this.findActiveIntegration(file.clinicId);
+
     if (!integration) return;
 
     const drive = await this.getDrive(integration);
+
     await drive.files.update({
       fileId: file.driveFileId,
       requestBody: { trashed: true },
@@ -251,6 +257,7 @@ export class GoogleDriveStorageProvider implements StorageProvider {
       fields: 'files(id)',
     });
     const existingId = existing.data.files?.[0]?.id;
+
     if (existingId) return existingId;
 
     const created = await drive.files.create({
@@ -275,6 +282,7 @@ export class GoogleDriveStorageProvider implements StorageProvider {
     clinicId: string,
   ): Promise<ClinicStorageIntegration> {
     const integration = await this.findActiveIntegration(clinicId);
+
     if (!integration) {
       throw new BadRequestException(
         apiMessage('api.messages.google_drive_integration_is_not_connected'),
@@ -298,8 +306,11 @@ export class GoogleDriveStorageProvider implements StorageProvider {
 
   private resolveEntityType(relation: StorageUploadInput['relation']): string {
     if (relation.appointmentId) return 'appointment';
+
     if (relation.clinicalNoteId) return 'clinical_note';
+
     if (relation.treatmentId) return 'treatment';
+
     return 'patient';
   }
 

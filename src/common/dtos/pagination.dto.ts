@@ -1,7 +1,7 @@
-import { i18nValidationMessage } from 'nestjs-i18n';
+import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { IsInt, IsOptional, Max, Min } from 'class-validator';
-import { ApiPropertyOptional } from '@nestjs/swagger';
+import { i18nValidationMessage } from 'nestjs-i18n';
 
 export class PaginationDto {
   @ApiPropertyOptional({

@@ -1,13 +1,13 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
-import { Treatment } from './entities/treatment.entity';
+import { ClinicMembership } from '../clinic-memberships/entities/clinic-membership.entity';
+import { Invoice } from '../invoices/entities/invoice.entity';
 import { Patient } from '../patients/entities/patient.entity';
 import { PatientsModule } from '../patients/patients.module';
-import { Invoice } from '../invoices/entities/invoice.entity';
-import { TreatmentsService } from './treatments.service';
+import { Treatment } from './entities/treatment.entity';
 import { TreatmentsController } from './treatments.controller';
-import { ClinicMembership } from '../clinic-memberships/entities/clinic-membership.entity';
+import { TreatmentsService } from './treatments.service';
 
 @Module({
   controllers: [TreatmentsController],

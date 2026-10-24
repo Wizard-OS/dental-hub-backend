@@ -1,4 +1,3 @@
-import { i18nValidationMessage } from 'nestjs-i18n';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsBooleanString,
@@ -6,6 +5,7 @@ import {
   IsString,
   MaxLength,
 } from 'class-validator';
+import { i18nValidationMessage } from 'nestjs-i18n';
 export class QueryAppointmentTypesDto {
   @ApiPropertyOptional({ description: 'Buscar por nombre' })
   @IsOptional()

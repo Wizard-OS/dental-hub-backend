@@ -9,10 +9,10 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 
+import { ClinicMembership } from '../../clinic-memberships/entities/clinic-membership.entity';
+import { ClinicalNote } from '../../clinical-notes/entities/clinical-note.entity';
 import { Patient } from '../../patients/entities/patient.entity';
 import { Treatment } from '../../treatments/entities/treatment.entity';
-import { ClinicalNote } from '../../clinical-notes/entities/clinical-note.entity';
-import { ClinicMembership } from '../../clinic-memberships/entities/clinic-membership.entity';
 import { ToothStatus } from '../interfaces/tooth-status.enum';
 import { ToothSurface } from '../interfaces/tooth-surface.enum';
 

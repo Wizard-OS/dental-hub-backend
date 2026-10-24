@@ -4,7 +4,8 @@ import {
   Injectable,
   NestInterceptor,
 } from '@nestjs/common';
-import { Observable, map } from 'rxjs';
+import { map, Observable } from 'rxjs';
+
 import { ApiMessage } from '../i18n/api-message';
 import { ApiMessageTranslatorService } from '../i18n/api-message-translator.service';
 
@@ -22,6 +23,7 @@ export class I18nResponseInterceptor implements NestInterceptor<
     return next.handle().pipe(
       map((data: unknown) => {
         if (data instanceof ApiMessage) return this.translator.translate(data);
+
         if (
           data &&
           typeof data === 'object' &&
@@ -30,6 +32,7 @@ export class I18nResponseInterceptor implements NestInterceptor<
         ) {
           return { ...data, message: this.translator.translate(data.message) };
         }
+
         return data;
       }),
     );

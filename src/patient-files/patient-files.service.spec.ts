@@ -2,14 +2,14 @@ import { promises as fs } from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 
-import { PatientFilesService } from './patient-files.service';
-import { PatientFile } from './entities/patient-file.entity';
+import type { UploadedFile } from '../common/files/uploaded-file.interface';
 import { Patient } from '../patients/entities/patient.entity';
+import { StorageProviderType } from '../storage/interfaces/storage-provider-type.enum';
+import { PatientFile } from './entities/patient-file.entity';
 import { PatientFileStorageStatus } from './interfaces/patient-file-storage-status.enum';
 import { PatientFileSyncSource } from './interfaces/patient-file-sync-source.enum';
 import { PatientFileType } from './interfaces/patient-file-type.enum';
-import { StorageProviderType } from '../storage/interfaces/storage-provider-type.enum';
-import type { UploadedFile } from '../common/files/uploaded-file.interface';
+import { PatientFilesService } from './patient-files.service';
 
 describe('PatientFilesService storage lifecycle', () => {
   let temporaryDirectory: string;
@@ -81,7 +81,9 @@ describe('PatientFilesService storage lifecycle', () => {
     const signature = Buffer.from([
       0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
     ]);
+
     await fs.writeFile(filePath, signature);
+
     return {
       filePath,
       file: {
@@ -98,6 +100,7 @@ describe('PatientFilesService storage lifecycle', () => {
 
   it('removes the normalized temporary file and compensates remote storage when metadata persistence fails', async () => {
     const { file, filePath } = await createUpload();
+
     patientFileRepository.save.mockRejectedValueOnce(
       new Error('database unavailable'),
     );
@@ -125,6 +128,7 @@ describe('PatientFilesService storage lifecycle', () => {
       storageStatus: PatientFileStorageStatus.AVAILABLE,
       syncSource: PatientFileSyncSource.APP,
     } as PatientFile;
+
     patientFileRepository.save.mockResolvedValue(savedFile);
     patientRepository.update.mockRejectedValueOnce(
       new Error('patient update failed'),

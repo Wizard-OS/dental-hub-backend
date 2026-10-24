@@ -1,9 +1,9 @@
-import { apiMessage } from '../common/i18n/api-message';
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
 import { ClinicMembership } from '../clinic-memberships/entities/clinic-membership.entity';
+import { apiMessage } from '../common/i18n/api-message';
 import { ClinicSubscription } from './entities/clinic-subscription.entity';
 import { ClinicSubscriptionAuditLog } from './entities/clinic-subscription-audit-log.entity';
 import { MembershipPlanCode } from './interfaces/membership-plan-code.enum';
@@ -63,6 +63,7 @@ export class MembershipPlanAssignmentService {
 
     if (!subscription) {
       const now = new Date();
+
       await this.subscriptionRepository
         .createQueryBuilder()
         .insert()
@@ -82,6 +83,7 @@ export class MembershipPlanAssignmentService {
     }
 
     const previousPlanCode = subscription.planCode;
+
     subscription.planCode = planCode;
     subscription.planVersion = MEMBERSHIP_PLAN_VERSION;
     subscription.status = SubscriptionStatus.active;
@@ -93,6 +95,7 @@ export class MembershipPlanAssignmentService {
       subscription.currentPeriodStart ?? new Date();
 
     const saved = await this.subscriptionRepository.save(subscription);
+
     await this.auditLogRepository.save(
       this.auditLogRepository.create({
         clinicId,

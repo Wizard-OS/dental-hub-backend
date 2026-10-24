@@ -8,12 +8,15 @@ export async function withBillingLock<T>(
   action: (manager: EntityManager) => Promise<T>,
 ): Promise<T> {
   const runner = dataSource.createQueryRunner();
+
   await runner.connect();
   const key = `membership-checkout:${clinicId}`;
+
   try {
     await runner.query('SELECT pg_advisory_lock(hashtextextended($1, 0))', [
       key,
     ]);
+
     return await action(runner.manager);
   } finally {
     try {

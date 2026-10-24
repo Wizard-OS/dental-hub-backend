@@ -1,4 +1,4 @@
-import { i18nValidationMessage } from 'nestjs-i18n';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsEmail,
   IsObject,
@@ -8,7 +8,7 @@ import {
   Matches,
   MaxLength,
 } from 'class-validator';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { i18nValidationMessage } from 'nestjs-i18n';
 
 export class CreateClinicDto {
   @ApiProperty({

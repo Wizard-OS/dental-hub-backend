@@ -14,6 +14,7 @@ describe('PaginationDto', () => {
     [{ offset: '1.5' }, false],
   ])('validates pagination query %j', (input, valid) => {
     const dto = plainToInstance(PaginationDto, input);
+
     expect(validateSync(dto).length === 0).toBe(valid);
   });
 });

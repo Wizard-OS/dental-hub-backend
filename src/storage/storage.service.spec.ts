@@ -1,5 +1,5 @@
-import { StorageService } from './storage.service';
 import { StorageProviderType } from './interfaces/storage-provider-type.enum';
+import { StorageService } from './storage.service';
 
 describe('StorageService personal ownership', () => {
   it('does not fall back to local storage when the uploader is disconnected', async () => {
@@ -15,6 +15,7 @@ describe('StorageService personal ownership', () => {
       registry as never,
       personal as never,
     );
+
     await expect(
       service.upload({
         clinicId: 'clinic',
@@ -48,6 +49,7 @@ describe('StorageService personal ownership', () => {
       clinicId: 'clinic',
       uploadedByMembershipId: 'membership-b',
     };
+
     await service.upload(first as never);
     await service.upload(second as never);
     expect(personal.upload).toHaveBeenNthCalledWith(1, first, 'user-a');

@@ -10,10 +10,10 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 
-import { User } from '../../auth/entities/user.entity';
-import { Clinic } from '../../clinics/entities/clinic.entity';
 import { Appointment } from '../../appointments/entities/appointment.entity';
+import { User } from '../../auth/entities/user.entity';
 import { ClinicalNote } from '../../clinical-notes/entities/clinical-note.entity';
+import { Clinic } from '../../clinics/entities/clinic.entity';
 import { ClinicMembershipRole } from '../interfaces/clinic-membership-role.enum';
 
 @Entity('clinic_memberships')

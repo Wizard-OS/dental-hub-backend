@@ -19,6 +19,7 @@ describe('PayPal Vault/Orders wire contracts', () => {
     'PAYPAL_CANCEL_URL',
   ];
   let before: (string | undefined)[];
+
   beforeEach(() => {
     before = keys.map((k) => process.env[k]);
     keys.forEach(

@@ -1,4 +1,4 @@
-import { i18nValidationMessage } from 'nestjs-i18n';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsEnum,
   IsInt,
@@ -8,7 +8,7 @@ import {
   Matches,
   Min,
 } from 'class-validator';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { i18nValidationMessage } from 'nestjs-i18n';
 
 import { InvoiceItemType } from '../interfaces/invoice-item-type.enum';
 

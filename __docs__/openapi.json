@@ -337,6 +337,7 @@
             "description": "Cantidad de registros por página",
             "schema": {
               "minimum": 1,
+              "maximum": 100,
               "example": 10,
               "type": "number"
             }
@@ -771,6 +772,7 @@
             "description": "Cantidad de registros por página",
             "schema": {
               "minimum": 1,
+              "maximum": 100,
               "example": 10,
               "type": "number"
             }
@@ -960,6 +962,7 @@
             "description": "Cantidad de registros por página",
             "schema": {
               "minimum": 1,
+              "maximum": 100,
               "example": 10,
               "type": "number"
             }
@@ -1095,6 +1098,7 @@
             "description": "Cantidad de registros por página",
             "schema": {
               "minimum": 1,
+              "maximum": 100,
               "example": 10,
               "type": "number"
             }
@@ -11894,6 +11898,10 @@
         "properties": {
           "serverAuthCode": {
             "type": "string"
+          },
+          "idToken": {
+            "type": "string",
+            "description": "ID token from the signed-in Google account."
           }
         },
         "required": [
@@ -11929,11 +11937,18 @@
             "format": "uri",
             "description": "Redirect URI used to generate the OAuth URL",
             "example": "https://app.dentalhub.example/integrations/google-drive/callback"
+          },
+          "state": {
+            "type": "string",
+            "minLength": 43,
+            "maxLength": 43,
+            "description": "One-time OAuth state returned by Google"
           }
         },
         "required": [
           "code",
-          "redirectUri"
+          "redirectUri",
+          "state"
         ]
       },
       "CreateReminderDto": {

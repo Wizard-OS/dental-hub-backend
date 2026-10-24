@@ -1,6 +1,6 @@
-import { i18nValidationMessage } from 'nestjs-i18n';
-import { IsEnum, IsObject, IsOptional, IsUUID } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsEnum, IsObject, IsOptional, IsUUID } from 'class-validator';
+import { i18nValidationMessage } from 'nestjs-i18n';
 
 import { ClinicMembershipRole } from '../interfaces/clinic-membership-role.enum';
 

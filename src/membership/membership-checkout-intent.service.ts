@@ -1,17 +1,18 @@
-import { apiMessage } from '../common/i18n/api-message';
+import { createHash } from 'crypto';
+
 import {
   BadRequestException,
   ConflictException,
   Injectable,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { createHash } from 'crypto';
 import { Repository } from 'typeorm';
 
+import type { MembershipQuote } from '../billing/membership-offer';
+import { apiMessage } from '../common/i18n/api-message';
 import { ClinicSubscription } from './entities/clinic-subscription.entity';
 import { MembershipPlanCode } from './interfaces/membership-plan-code.enum';
 import { SubscriptionStatus } from './interfaces/subscription-status.enum';
-import type { MembershipQuote } from '../billing/membership-offer';
 
 @Injectable()
 export class MembershipCheckoutIntentService {

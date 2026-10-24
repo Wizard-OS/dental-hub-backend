@@ -1,17 +1,18 @@
 import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { Repository } from 'typeorm';
-import { PatientExamsService } from './patient-exams.service';
-import {
-  PatientExam,
-  PatientExamCategory,
-} from './entities/patient-exam.entity';
-import { PatientFile } from '../patient-files/entities/patient-file.entity';
+
 import { ClinicalNote } from '../clinical-notes/entities/clinical-note.entity';
+import { PatientFile } from '../patient-files/entities/patient-file.entity';
 import {
   ClinicAccessContext,
   PatientAccessService,
 } from '../patients/services/patient-access.service';
 import { QueryPatientExamsDto } from './dto/query-patient-exams.dto';
+import {
+  PatientExam,
+  PatientExamCategory,
+} from './entities/patient-exam.entity';
+import { PatientExamsService } from './patient-exams.service';
 
 const context = {
   clinicId: 'clinic',
@@ -39,6 +40,7 @@ describe('PatientExamsService', () => {
     assertPatientAccessible: jest.fn(),
   };
   let service: PatientExamsService;
+
   beforeEach(() => {
     jest.clearAllMocks();
     access.assertCanManageClinical.mockImplementation(() => undefined);
@@ -53,6 +55,7 @@ describe('PatientExamsService', () => {
 
   it('stores measurements without requiring a file', async () => {
     const result = await service.create(context, 'patient', dto);
+
     expect(result).toMatchObject({
       patientId: 'patient',
       measurements: dto.measurements,

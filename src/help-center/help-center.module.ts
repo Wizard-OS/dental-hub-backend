@@ -2,8 +2,8 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { SupportRequest } from './entities/support-request.entity';
-import { HelpCenterService } from './help-center.service';
 import { HelpCenterController } from './help-center.controller';
+import { HelpCenterService } from './help-center.service';
 
 @Module({
   controllers: [HelpCenterController],

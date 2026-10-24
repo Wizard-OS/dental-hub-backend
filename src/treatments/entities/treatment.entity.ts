@@ -8,9 +8,10 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { TreatmentSession } from '../../treatment-sessions/entities/treatment-session.entity';
-import { Patient } from '../../patients/entities/patient.entity';
+
 import { ClinicMembership } from '../../clinic-memberships/entities/clinic-membership.entity';
+import { Patient } from '../../patients/entities/patient.entity';
+import { TreatmentSession } from '../../treatment-sessions/entities/treatment-session.entity';
 import { TreatmentStatus } from '../interfaces/treatment-status.enum';
 
 @Entity('treatments')

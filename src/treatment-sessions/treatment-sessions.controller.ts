@@ -8,18 +8,18 @@ import {
   Post,
 } from '@nestjs/common';
 import {
-  ApiTags,
-  ApiOperation,
-  ApiResponse,
   ApiBearerAuth,
-  ApiSecurity,
+  ApiOperation,
   ApiParam,
+  ApiResponse,
+  ApiSecurity,
+  ApiTags,
 } from '@nestjs/swagger';
 
-import { TreatmentSessionsService } from './treatment-sessions.service';
+import { AuthClinic, GetClinicId } from '../auth/decorators';
 import { CreateTreatmentSessionDto } from './dto/create-treatment-session.dto';
 import { UpdateTreatmentSessionDto } from './dto/update-treatment-session.dto';
-import { AuthClinic, GetClinicId } from '../auth/decorators';
+import { TreatmentSessionsService } from './treatment-sessions.service';
 
 @ApiTags('Treatment Sessions')
 @ApiBearerAuth()

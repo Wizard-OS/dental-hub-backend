@@ -1,11 +1,17 @@
-import { apiMessage } from '../common/i18n/api-message';
-import { BadRequestException, Injectable } from '@nestjs/common';
 import {
   createCipheriv,
   createDecipheriv,
   createHash,
   randomBytes,
 } from 'crypto';
+
+import {
+  BadRequestException,
+  Injectable,
+  InternalServerErrorException,
+} from '@nestjs/common';
+
+import { apiMessage } from '../common/i18n/api-message';
 
 @Injectable()
 export class TokenEncryptionService {
@@ -41,6 +47,7 @@ export class TokenEncryptionService {
       key,
       Buffer.from(iv, 'base64url'),
     );
+
     decipher.setAuthTag(Buffer.from(tag, 'base64url'));
 
     return Buffer.concat([
@@ -53,7 +60,7 @@ export class TokenEncryptionService {
     const secret = process.env.INTEGRATION_TOKEN_ENCRYPTION_KEY;
 
     if (!secret) {
-      throw new BadRequestException(
+      throw new InternalServerErrorException(
         apiMessage(
           'api.messages.integration_token_encryption_key_is_required_for_storage_integrations',
         ),
@@ -65,7 +72,16 @@ export class TokenEncryptionService {
     }
 
     const base64 = Buffer.from(secret, 'base64');
+
     if (base64.length === 32) return base64;
+
+    if (Buffer.byteLength(secret, 'utf8') < 32) {
+      throw new InternalServerErrorException(
+        apiMessage(
+          'api.messages.integration_token_encryption_key_must_be_at_least_32_bytes',
+        ),
+      );
+    }
 
     return createHash('sha256').update(secret).digest();
   }

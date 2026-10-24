@@ -35,6 +35,12 @@ export class BillingWebhookEvent {
   @Column('timestamptz', { nullable: true })
   processedAt: Date | null;
 
+  @Column('uuid', { nullable: true })
+  processingToken: string | null;
+
+  @Column('timestamptz', { nullable: true })
+  processingUntil: Date | null;
+
   @CreateDateColumn()
   createdAt: Date;
 }

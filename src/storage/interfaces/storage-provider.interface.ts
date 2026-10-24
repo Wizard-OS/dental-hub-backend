@@ -1,6 +1,6 @@
-import { Patient } from '../../patients/entities/patient.entity';
 import type { UploadedFile } from '../../common/files/uploaded-file.interface';
 import { PatientFileType } from '../../patient-files/interfaces/patient-file-type.enum';
+import { Patient } from '../../patients/entities/patient.entity';
 import { StorageProviderType } from './storage-provider-type.enum';
 
 export interface StorageUploadInput {

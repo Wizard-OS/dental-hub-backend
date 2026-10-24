@@ -1,5 +1,6 @@
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
+
 import { CreateAppointmentTypeDto } from '../appointments/dto/create-appointment-type.dto';
 import { UpdateAppointmentTypeDto } from '../appointments/dto/update-appointment-type.dto';
 import { CreateClinicalRecordDto } from '../clinical-records/dto/create-clinical-record.dto';
@@ -54,6 +55,7 @@ describe('Clinical interface input validation', () => {
       patientId: 'ee53ef20-0e58-4cb1-a1eb-ffdbfaaf3812',
       bloodType: 'X+',
     };
+
     expect(
       (await validate(plainToInstance(CreateClinicalRecordDto, value))).length,
     ).toBeGreaterThan(0);
@@ -67,6 +69,7 @@ describe('Clinical interface input validation', () => {
       measurements: [{ name: 'SNA', value: 82 }],
     };
     const valid = plainToInstance(CreatePatientExamDto, fields);
+
     expect(await validate(valid)).toEqual([]);
     expect(valid.performedAt).toBeInstanceOf(Date);
     expect(

@@ -1,25 +1,22 @@
 import {
   Body,
-  ParseUUIDPipe,
   Controller,
   Delete,
   Get,
   Param,
+  ParseUUIDPipe,
   Patch,
   Post,
 } from '@nestjs/common';
 import {
-  ApiTags,
-  ApiOperation,
-  ApiResponse,
   ApiBearerAuth,
-  ApiSecurity,
+  ApiOperation,
   ApiParam,
+  ApiResponse,
+  ApiSecurity,
+  ApiTags,
 } from '@nestjs/swagger';
 
-import { ClinicalRecordsService } from './clinical-records.service';
-import { CreateClinicalRecordDto } from './dto/create-clinical-record.dto';
-import { UpdateClinicalRecordDto } from './dto/update-clinical-record.dto';
 import {
   AuthClinic,
   ClinicRoles,
@@ -30,6 +27,9 @@ import {
 } from '../auth/decorators';
 import { ClinicMembershipRole } from '../clinic-memberships/interfaces/clinic-membership-role.enum';
 import { ClinicAccessContext } from '../patients/services/patient-access.service';
+import { ClinicalRecordsService } from './clinical-records.service';
+import { CreateClinicalRecordDto } from './dto/create-clinical-record.dto';
+import { UpdateClinicalRecordDto } from './dto/update-clinical-record.dto';
 
 @ApiTags('Clinical Records')
 @ApiBearerAuth()

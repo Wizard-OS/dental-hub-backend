@@ -10,8 +10,8 @@ import {
 } from 'typeorm';
 
 import type { MembershipQuote } from '../../billing/membership-offer';
-import { Clinic } from '../../clinics/entities/clinic.entity';
 import { ClinicMembership } from '../../clinic-memberships/entities/clinic-membership.entity';
+import { Clinic } from '../../clinics/entities/clinic.entity';
 import { BillingProvider } from '../interfaces/billing-provider.enum';
 import { MembershipPlanCode } from '../interfaces/membership-plan-code.enum';
 import { SubscriptionStatus } from '../interfaces/subscription-status.enum';

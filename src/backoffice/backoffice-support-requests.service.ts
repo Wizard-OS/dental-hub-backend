@@ -1,13 +1,14 @@
-import { apiMessage, type ApiMessage } from '../common/i18n/api-message';
 import {
   BadRequestException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { isUUID } from 'class-validator';
 import { Repository } from 'typeorm';
 import { Brackets } from 'typeorm';
-import { isUUID } from 'class-validator';
+
+import { type ApiMessage, apiMessage } from '../common/i18n/api-message';
 import { SupportRequest } from '../help-center/entities/support-request.entity';
 import { QueryBackofficeSupportRequestsDto } from './dto/query-backoffice-support-requests.dto';
 import { UpdateBackofficeSupportRequestDto } from './dto/update-backoffice-support-request.dto';
@@ -78,6 +79,7 @@ export class BackofficeSupportRequestsService {
     }
 
     request.status = dto.status;
+
     return await this.supportRequestRepository.save(request);
   }
 

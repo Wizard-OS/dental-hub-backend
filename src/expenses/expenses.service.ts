@@ -1,16 +1,16 @@
-import { apiMessage } from '../common/i18n/api-message';
 import {
   BadRequestException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
 import { isUUID } from 'class-validator';
+import { Repository } from 'typeorm';
 
-import { Expense } from './entities/expense.entity';
+import { apiMessage } from '../common/i18n/api-message';
 import { CreateExpenseDto } from './dto/create-expense.dto';
 import { UpdateExpenseDto } from './dto/update-expense.dto';
+import { Expense } from './entities/expense.entity';
 
 @Injectable()
 export class ExpensesService {
@@ -83,7 +83,9 @@ export class ExpensesService {
 
   async remove(clinicId: string, id: string) {
     const expense = await this.findOne(clinicId, id);
+
     await this.expenseRepository.remove(expense);
+
     return { message: apiMessage('api.messages.expense_removed', { id: id }) };
   }
 
@@ -102,6 +104,7 @@ export class ExpensesService {
     }
 
     const result = await query.getRawOne<{ total: string }>();
+
     return result?.total ?? '0';
   }
 }

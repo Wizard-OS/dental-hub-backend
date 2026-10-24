@@ -1,40 +1,39 @@
-import { apiMessage } from '../common/i18n/api-message';
 import {
+  Body,
   Controller,
   Delete,
   Get,
-  Post,
   Patch,
-  Body,
+  Post,
   Req,
   UploadedFile,
   UseInterceptors,
 } from '@nestjs/common';
-import type { Request } from 'express';
-import type { Express } from 'express';
-import { Throttle } from '@nestjs/throttler';
 import {
-  ApiTags,
+  ApiBearerAuth,
+  ApiBody,
+  ApiConsumes,
   ApiOperation,
   ApiResponse,
-  ApiBearerAuth,
-  ApiConsumes,
-  ApiBody,
+  ApiTags,
 } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
+import type { Request } from 'express';
+import type { Express } from 'express';
 
-import { AuthService } from './auth.service';
-import { GetUser, Auth } from './decorators';
-import { buildRequestBaseUrl } from '../common/http/request-url';
 import { createUploadInterceptor } from '../common/files/upload-interceptors';
-
+import { buildRequestBaseUrl } from '../common/http/request-url';
+import { apiMessage } from '../common/i18n/api-message';
+import { AuthService } from './auth.service';
+import { Auth, GetUser } from './decorators';
 import {
-  CreateUserDto,
-  LoginUserDto,
-  UpdateProfileDto,
   ChangePasswordDto,
+  CreateUserDto,
   ForgotPasswordDto,
-  VerifyOtpDto,
+  LoginUserDto,
   ResetPasswordDto,
+  UpdateProfileDto,
+  VerifyOtpDto,
 } from './dto';
 import { User } from './entities/user.entity';
 
@@ -137,6 +136,7 @@ export class AuthController {
       filename: (request) => {
         const userId =
           (request as Request & { user?: User }).user?.id ?? 'user';
+
         return `${userId}-${Date.now()}`;
       },
     }),
@@ -147,6 +147,7 @@ export class AuthController {
     @Req() request: Request,
   ) {
     const baseUrl = buildRequestBaseUrl(request);
+
     return this.authService.updateProfilePhoto(user, file, baseUrl);
   }
 

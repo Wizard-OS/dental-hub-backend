@@ -1,16 +1,15 @@
-import { apiMessage } from '../../common/i18n/api-message';
-import { ExtractJwt, Strategy } from 'passport-jwt';
-
-import { ConfigService } from '@nestjs/config';
-import { InjectRepository } from '@nestjs/typeorm';
-import { PassportStrategy } from '@nestjs/passport';
 import { Injectable, UnauthorizedException } from '@nestjs/common';
-
+import { ConfigService } from '@nestjs/config';
+import { PassportStrategy } from '@nestjs/passport';
+import { InjectRepository } from '@nestjs/typeorm';
+import { ExtractJwt, Strategy } from 'passport-jwt';
 import { Repository } from 'typeorm';
-import { JwtPayload } from '../interfaces';
-import { User } from '../entities/user.entity';
+
+import { apiMessage } from '../../common/i18n/api-message';
 import { getRequiredEnv } from '../../config/env';
 import { UserSessionsService } from '../../user-sessions/user-sessions.service';
+import { User } from '../entities/user.entity';
+import { JwtPayload } from '../interfaces';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
@@ -58,6 +57,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       user.id,
       sessionId,
     );
+
     await this.userSessionsService.updateLastActive(
       sessionId,
       session.lastActiveAt,

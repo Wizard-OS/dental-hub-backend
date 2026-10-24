@@ -1,4 +1,3 @@
-import { apiMessage } from '../../common/i18n/api-message';
 import {
   BadRequestException,
   Injectable,
@@ -9,6 +8,7 @@ import { Repository } from 'typeorm';
 
 import { Appointment } from '../../appointments/entities/appointment.entity';
 import { ClinicalNote } from '../../clinical-notes/entities/clinical-note.entity';
+import { apiMessage } from '../../common/i18n/api-message';
 import { Patient } from '../../patients/entities/patient.entity';
 import { Treatment } from '../../treatments/entities/treatment.entity';
 

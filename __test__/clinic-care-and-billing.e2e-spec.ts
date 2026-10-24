@@ -1,8 +1,9 @@
+import fs from 'fs';
+
 import { INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
 import { App } from 'supertest/types';
-import fs from 'fs';
 
 import { AppModule } from '../src/app.module';
 
@@ -128,9 +129,11 @@ describe('Clinic care and billing (e2e)', () => {
     );
 
     expect(ownerMembership).toBeDefined();
+
     if (!ownerMembership) {
       throw new Error('Expected owner membership to be present');
     }
+
     membershipId = ownerMembership.id;
 
     await request(app.getHttpServer())
@@ -234,6 +237,7 @@ describe('Clinic care and billing (e2e)', () => {
 
     const startAt = new Date('2026-09-28T12:30:00.000Z');
     const endAt = new Date('2026-09-28T13:00:00.000Z');
+
     appointmentStartIso = startAt.toISOString();
     appointmentEndIso = endAt.toISOString();
 
@@ -591,6 +595,7 @@ describe('Clinic care and billing (e2e)', () => {
       surface: string;
       status: string;
     }[];
+
     expect(updatedEntries).toHaveLength(2);
     expect(
       new Set(updatedEntries.map((entry) => entry.actionGroupId)).size,
@@ -652,6 +657,7 @@ describe('Clinic care and billing (e2e)', () => {
       .expect(400);
 
     const removableEntryId = surfaceUpdate.body.entries[0].id;
+
     await request(app.getHttpServer())
       .delete(`/patients/${patientId}/odontogram/entries/${removableEntryId}`)
       .set('Authorization', `Bearer ${adminToken}`)

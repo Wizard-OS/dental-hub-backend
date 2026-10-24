@@ -7,8 +7,8 @@ import {
   PrimaryGeneratedColumn,
 } from 'typeorm';
 
-import { Clinic } from '../../clinics/entities/clinic.entity';
 import { ClinicMembership } from '../../clinic-memberships/entities/clinic-membership.entity';
+import { Clinic } from '../../clinics/entities/clinic.entity';
 import { MembershipPlanCode } from '../interfaces/membership-plan-code.enum';
 
 @Entity('clinic_subscription_audit_logs')

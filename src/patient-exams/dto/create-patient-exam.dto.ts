@@ -1,4 +1,4 @@
-import { i18nValidationMessage } from 'nestjs-i18n';
+import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
   ArrayMaxSize,
@@ -12,10 +12,11 @@ import {
   IsUUID,
   Matches,
   MaxLength,
-  ValidateNested,
   ValidateIf,
+  ValidateNested,
 } from 'class-validator';
-import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
+import { i18nValidationMessage } from 'nestjs-i18n';
+
 import { PatientExamCategory } from '../entities/patient-exam.entity';
 
 export class ExamMeasurementDto {

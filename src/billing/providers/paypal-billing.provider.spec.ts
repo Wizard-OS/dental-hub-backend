@@ -1,6 +1,6 @@
-import { PayPalBillingProvider } from './paypal-billing.provider';
-import { BillingInterval } from '../interfaces/billing-interval.enum';
 import { MembershipPlanCode } from '../../membership/interfaces/membership-plan-code.enum';
+import { BillingInterval } from '../interfaces/billing-interval.enum';
+import { PayPalBillingProvider } from './paypal-billing.provider';
 
 describe('PayPal advertised trial validation', () => {
   type PayPalPlanCycle = {
@@ -50,6 +50,7 @@ describe('PayPal advertised trial validation', () => {
     'PAYPAL_CANCEL_URL',
   ];
   let env: (string | undefined)[];
+
   beforeEach(() => {
     env = envKeys.map((key) => process.env[key]);
     envKeys.forEach((key) => (process.env[key] = 'test'));
@@ -91,6 +92,7 @@ describe('PayPal advertised trial validation', () => {
     const subscriptionRequest = request.mock.calls.find(
       ([path]) => path === '/v1/billing/subscriptions',
     );
+
     expect(subscriptionRequest?.[1].headers?.['PayPal-Request-Id']).toBe(
       'request-1',
     );
@@ -108,16 +110,23 @@ describe('PayPal advertised trial validation', () => {
     async (mismatch) => {
       if (mismatch === 'price')
         plan.billing_cycles[2].pricing_scheme.fixed_price.value = '120.00';
+
       if (mismatch === 'currency')
         plan.billing_cycles[2].pricing_scheme.fixed_price.currency_code = 'EUR';
+
       if (mismatch === 'trialDuration')
         plan.billing_cycles[0].frequency.interval_count = 7;
+
       if (mismatch === 'setupFee')
         plan.payment_preferences = { setup_fee: { value: '1.00' } };
+
       if (mismatch === 'tax') plan.taxes = { percentage: '10' };
+
       if (mismatch === 'inactive') plan.status = 'INACTIVE';
+
       if (mismatch === 'discountRecurs')
         plan.billing_cycles[1].total_cycles = 0;
+
       await expect(provider.createSubscription(input)).rejects.toThrow(
         'api.messages.paypal_plan_does_not_match_the_advertised_membership_offer',
       );

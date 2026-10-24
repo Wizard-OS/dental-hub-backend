@@ -1,14 +1,14 @@
 import { BadRequestException, UnauthorizedException } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 
-import { AuthService } from './auth.service';
 import { apiMessage } from '../common/i18n/api-message';
-import { User } from './entities/user.entity';
 import { UserSession } from '../user-sessions/entities/user-session.entity';
+import type { LockedAuthSecurityAccount } from './application/ports/auth-security-transaction.port';
+import { AuthService } from './auth.service';
+import { User } from './entities/user.entity';
 import { ValidRoles } from './interfaces';
 import { PasswordHasherService } from './services/password-hasher.service';
 import { PasswordResetOtpService } from './services/password-reset-otp.service';
-import type { LockedAuthSecurityAccount } from './application/ports/auth-security-transaction.port';
 
 describe('AuthService password reset', () => {
   let service: AuthService;
@@ -57,19 +57,24 @@ describe('AuthService password reset', () => {
       findOne: jest.fn(
         ({ where }: { where: { id?: string; email?: string } }) => {
           if (where.id) return users.get(where.id) ?? null;
+
           if (where.email) {
             return (
               [...users.values()].find((user) => user.email === where.email) ??
               null
             );
           }
+
           return null;
         },
       ),
       update: jest.fn((id: string, patch: Partial<User>) => {
         const user = users.get(id);
+
         if (!user) return { affected: 0 };
+
         Object.assign(user, patch);
+
         return { affected: 1 };
       }),
     };
@@ -83,12 +88,14 @@ describe('AuthService password reset', () => {
     ) => {
       const previous = transactionTail;
       let release: () => void = () => undefined;
+
       transactionTail = new Promise<void>((resolve) => {
         release = resolve;
       });
       await previous;
       try {
         if (!account) return operation(null);
+
         const securityAccount = {
           id: account.id,
           email: account.email,
@@ -102,15 +109,18 @@ describe('AuthService password reset', () => {
           passwordResetOtpLockedUntil:
             account.passwordResetOtpLockedUntil ?? null,
         };
+
         return await operation({
           account: securityAccount,
           update: (patch) => {
             Object.assign(account, patch);
             Object.assign(securityAccount, patch);
+
             return Promise.resolve();
           },
           createSession: (metadata) => {
             const id = `session-${userId}`;
+
             activeSessions.push({
               id,
               userId,
@@ -118,6 +128,7 @@ describe('AuthService password reset', () => {
               isRevoked: false,
               revokedAt: null,
             } as UserSession);
+
             return Promise.resolve(id);
           },
           revokeSessions: (exceptSessionId) => {
@@ -130,6 +141,7 @@ describe('AuthService password reset', () => {
                 session.revokedAt = new Date();
               }
             });
+
             return Promise.resolve();
           },
         });
@@ -166,14 +178,18 @@ describe('AuthService password reset', () => {
       findOne: jest.fn(
         ({ where }: { where: { id?: string; isActive?: boolean } }) => {
           if (!where.id) return null;
+
           const specialty = specialties.get(where.id);
+
           if (!specialty) return null;
+
           if (
             where.isActive !== undefined &&
             specialty.isActive !== where.isActive
           ) {
             return null;
           }
+
           return specialty;
         },
       ),
@@ -208,6 +224,7 @@ describe('AuthService password reset', () => {
   afterEach(() => {
     if (originalNodeEnv === undefined) delete process.env.NODE_ENV;
     else process.env.NODE_ENV = originalNodeEnv;
+
     if (originalEnableDevOtp === undefined) delete process.env.ENABLE_DEV_OTP;
     else process.env.ENABLE_DEV_OTP = originalEnableDevOtp;
   });
@@ -242,6 +259,7 @@ describe('AuthService password reset', () => {
   it('resets password, invalidates OTP, and rejects the old password', async () => {
     const response = await service.forgotPassword({ email });
     const otp = response.devOtp!;
+
     activeSessions.push(
       { id: 'old-a', userId, isRevoked: false, revokedAt: null } as UserSession,
       { id: 'old-b', userId, isRevoked: false, revokedAt: null } as UserSession,
@@ -283,6 +301,7 @@ describe('AuthService password reset', () => {
   it('rejects expired OTP codes', async () => {
     const response = await service.forgotPassword({ email });
     const user = users.get(userId)!;
+
     user.passwordResetOtpExpiresAt = new Date(Date.now() - 1000);
 
     await expect(
@@ -316,6 +335,7 @@ describe('AuthService password reset', () => {
     );
 
     const user = users.get(userId)!;
+
     expect(user.passwordResetOtpAttemptCount).toBe(5);
     expect(user.passwordResetOtpLockedUntil).toBeInstanceOf(Date);
     await service.forgotPassword({ email });
@@ -353,6 +373,7 @@ describe('AuthService password reset', () => {
     });
 
     const [loginResult] = await Promise.allSettled([login, reset]);
+
     if (loginResult.status === 'fulfilled') {
       expect(
         activeSessions
@@ -362,6 +383,7 @@ describe('AuthService password reset', () => {
     } else {
       expect(loginResult.reason).toBeInstanceOf(UnauthorizedException);
     }
+
     await expect(
       service.login({ email, password: 'OldPass1' }),
     ).rejects.toBeInstanceOf(UnauthorizedException);
@@ -369,6 +391,7 @@ describe('AuthService password reset', () => {
 
   it('keeps the current session and revokes other sessions on password change', async () => {
     const user = users.get(userId)!;
+
     user.currentSessionId = 'current-session';
     activeSessions.push(
       {
@@ -423,6 +446,7 @@ describe('AuthService password reset', () => {
     ).rejects.toBeInstanceOf(UnauthorizedException);
 
     const authenticatedUser = users.get(userId)!;
+
     authenticatedUser.currentSessionId = 'session-current';
 
     await expect(
@@ -461,6 +485,7 @@ describe('AuthService password reset', () => {
 
   it('logs out by revoking the current session', async () => {
     const user = users.get(userId)!;
+
     user.currentSessionId = 'session-current';
 
     await expect(service.logout(user)).resolves.toEqual({

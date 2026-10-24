@@ -8,11 +8,11 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 
-import { Clinic } from '../../clinics/entities/clinic.entity';
-import { Patient } from '../../patients/entities/patient.entity';
 import { Appointment } from '../../appointments/entities/appointment.entity';
-import { MessageTemplate } from '../../message-templates/entities/message-template.entity';
+import { Clinic } from '../../clinics/entities/clinic.entity';
 import { NotificationChannel } from '../../common/interfaces/notification-channel.enum';
+import { MessageTemplate } from '../../message-templates/entities/message-template.entity';
+import { Patient } from '../../patients/entities/patient.entity';
 import { OutboundMessageStatus } from '../interfaces/outbound-message-status.enum';
 
 @Entity('outbound_messages')

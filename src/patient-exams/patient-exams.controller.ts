@@ -1,27 +1,23 @@
-import { QueryPatientExamsDto } from './dto/query-patient-exams.dto';
 import {
   Body,
-  Query,
-  ParseUUIDPipe,
   Controller,
   Delete,
   Get,
   Param,
+  ParseUUIDPipe,
   Patch,
   Post,
+  Query,
 } from '@nestjs/common';
 import {
-  ApiTags,
-  ApiOperation,
-  ApiResponse,
   ApiBearerAuth,
-  ApiSecurity,
+  ApiOperation,
   ApiParam,
+  ApiResponse,
+  ApiSecurity,
+  ApiTags,
 } from '@nestjs/swagger';
 
-import { PatientExamsService } from './patient-exams.service';
-import { CreatePatientExamDto } from './dto/create-patient-exam.dto';
-import { UpdatePatientExamDto } from './dto/create-patient-exam.dto';
 import {
   AuthClinic,
   ClinicRoles,
@@ -32,6 +28,10 @@ import {
 } from '../auth/decorators';
 import { ClinicMembershipRole } from '../clinic-memberships/interfaces/clinic-membership-role.enum';
 import { ClinicAccessContext } from '../patients/services/patient-access.service';
+import { CreatePatientExamDto } from './dto/create-patient-exam.dto';
+import { UpdatePatientExamDto } from './dto/create-patient-exam.dto';
+import { QueryPatientExamsDto } from './dto/query-patient-exams.dto';
+import { PatientExamsService } from './patient-exams.service';
 
 @ApiTags('Patient Exams')
 @ApiBearerAuth()

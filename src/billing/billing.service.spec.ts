@@ -1,16 +1,16 @@
+import { BillingProvider } from '../membership/interfaces/billing-provider.enum';
+import { MembershipPlanCode } from '../membership/interfaces/membership-plan-code.enum';
+import { SubscriptionStatus } from '../membership/interfaces/subscription-status.enum';
+import { MembershipService } from '../membership/membership.service';
 import { BillingCheckoutService } from './billing-checkout.service';
 import { BillingSubscriptionService } from './billing-subscription.service';
 import { BillingSubscriptionReconciliationService } from './billing-subscription-reconciliation.service';
 import { BillingInterval } from './interfaces/billing-interval.enum';
-import { MembershipPlanCode } from '../membership/interfaces/membership-plan-code.enum';
-import { BillingProvider } from '../membership/interfaces/billing-provider.enum';
-import { SubscriptionStatus } from '../membership/interfaces/subscription-status.enum';
-import { membershipQuote } from './membership-offer';
-import { MembershipService } from '../membership/membership.service';
 import type {
-  CreateProviderSubscriptionInput,
   CreatedProviderSubscription,
+  CreateProviderSubscriptionInput,
 } from './interfaces/billing-provider-adapter.interface';
+import { membershipQuote } from './membership-offer';
 
 type BeginProviderSubscriptionInput = Parameters<
   MembershipService['beginProviderSubscription']
@@ -46,6 +46,7 @@ describe('Membership checkout lifecycle', () => {
     startTrial: true,
     promotionCode: 'BIENVENIDA10',
   };
+
   beforeEach(() => {
     current = {
       planCode: 'free',
@@ -67,11 +68,13 @@ describe('Membership checkout lifecycle', () => {
         if (current.providerSubscriptionId) {
           return Promise.reject(new Error('A checkout is already pending'));
         }
+
         if (input.trialRequested && current.trialStartedAt) {
           return Promise.reject(
             new Error('The clinic has already used its trial'),
           );
         }
+
         return Promise.resolve({
           requestId: 'stable-provider-request',
           quote: input.checkoutQuote,
@@ -122,6 +125,7 @@ describe('Membership checkout lifecycle', () => {
     const reconciliation = new BillingSubscriptionReconciliationService(
       membership as never,
     );
+
     service = new BillingCheckoutService(
       membership as never,
       provider as never,
@@ -149,6 +153,7 @@ describe('Membership checkout lifecycle', () => {
       quote: { firstCharge: 9000 },
     });
     const beginInput = membership.beginProviderSubscription.mock.calls[0]?.[0];
+
     expect(beginInput?.checkoutQuote?.totalToday).toBe(0);
     expect(provider.createSubscription).toHaveBeenCalledWith(
       expect.objectContaining({ requestId: 'stable-provider-request' }),
@@ -194,6 +199,7 @@ describe('Membership checkout lifecycle', () => {
       provider.createSubscription.mock.calls[0]?.[0].requestId;
     const retryRequestId =
       provider.createSubscription.mock.calls[1]?.[0].requestId;
+
     expect(retryRequestId).toBe(firstRequestId);
   });
   it('confirms provider ownership and persists the original 14 day dates', async () => {
@@ -220,6 +226,7 @@ describe('Membership checkout lifecycle', () => {
     (field) => {
       linked();
       details[field] = 'another';
+
       return expect(subscriptionService.confirm('clinic')).rejects.toThrow();
     },
   );
@@ -249,6 +256,7 @@ describe('Membership checkout lifecycle', () => {
       requestId: 'request',
       acceptRecurringBilling: true as const,
     };
+
     await expect(service.createCheckout('clinic', saved)).rejects.toThrow();
     await expect(
       service.createCheckout('clinic', saved, 'actor'),

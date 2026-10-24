@@ -1,5 +1,6 @@
-import { apiMessage } from '../../common/i18n/api-message';
 import { Injectable, ServiceUnavailableException } from '@nestjs/common';
+
+import { apiMessage } from '../../common/i18n/api-message';
 import { getEnv, getRequiredEnv } from '../../config/env';
 import { PayPalBillingProvider } from '../providers/paypal-billing.provider';
 
@@ -40,6 +41,7 @@ export class PayPalVaultProvider {
       getEnv('PAYPAL_CLIENT_ID') && getEnv('PAYPAL_CLIENT_SECRET'),
     );
   }
+
   get setupConfigured() {
     return (
       this.configured &&
@@ -59,11 +61,13 @@ export class PayPalVaultProvider {
           'api.messages.paypal_credentials_and_return_urls_must_be_configured',
         ),
       );
+
     const experience = {
       return_url: getRequiredEnv('PAYPAL_RETURN_URL'),
       cancel_url: getRequiredEnv('PAYPAL_CANCEL_URL'),
       brand_name: 'DentalHub',
     };
+
     return this.paypal.paypalRequest<VaultResource>('/v3/vault/setup-tokens', {
       method: 'POST',
       headers: { 'PayPal-Request-Id': requestId },
@@ -86,12 +90,14 @@ export class PayPalVaultProvider {
       },
     });
   }
+
   getSetup(id: string) {
     return this.paypal.paypalRequest<VaultResource>(
       `/v3/vault/setup-tokens/${encodeURIComponent(id)}`,
       { method: 'GET' },
     );
   }
+
   exchangeSetup(id: string, requestId: string) {
     return this.paypal.paypalRequest<VaultResource>(
       '/v3/vault/payment-tokens',
@@ -102,12 +108,14 @@ export class PayPalVaultProvider {
       },
     );
   }
+
   getToken(id: string) {
     return this.paypal.paypalRequest<VaultResource>(
       `/v3/vault/payment-tokens/${encodeURIComponent(id)}`,
       { method: 'GET' },
     );
   }
+
   deleteToken(id: string) {
     return this.paypal.paypalRequest<void>(
       `/v3/vault/payment-tokens/${encodeURIComponent(id)}`,
@@ -159,12 +167,14 @@ export class PayPalVaultProvider {
       },
     });
   }
+
   getOrder(id: string) {
     return this.paypal.paypalRequest<VaultOrder>(
       `/v2/checkout/orders/${encodeURIComponent(id)}`,
       { method: 'GET' },
     );
   }
+
   captureOrder(
     id: string,
     chargeId: string,

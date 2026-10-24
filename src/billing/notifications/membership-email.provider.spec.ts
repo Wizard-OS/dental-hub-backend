@@ -4,6 +4,7 @@ describe('Membership email delivery adapter', () => {
   let previous: (string | undefined)[];
   let fetchMock: jest.SpiedFunction<typeof fetch>;
   const provider = new MembershipEmailProvider();
+
   beforeEach(() => {
     previous = [process.env.RESEND_API_KEY, process.env.MEMBERSHIP_EMAIL_FROM];
     process.env.RESEND_API_KEY = 'test';
@@ -29,6 +30,7 @@ describe('Membership email delivery adapter', () => {
       }),
     ).resolves.toBe('email-id');
     const [requestedUrl, requestInit] = fetchMock.mock.calls[0];
+
     expect(requestedUrl).toBe('https://api.resend.com/emails');
     expect(new Headers(requestInit?.headers).get('Idempotency-Key')).toBe(
       'reminder-1',

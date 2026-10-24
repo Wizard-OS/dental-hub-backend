@@ -1,14 +1,14 @@
-import { i18nValidationMessage } from 'nestjs-i18n';
+import { ApiPropertyOptional } from '@nestjs/swagger';
 import {
-  IsEmail,
   IsDateString,
+  IsEmail,
   IsOptional,
   IsString,
   IsUUID,
   MaxLength,
   MinLength,
 } from 'class-validator';
-import { ApiPropertyOptional } from '@nestjs/swagger';
+import { i18nValidationMessage } from 'nestjs-i18n';
 
 export class UpdateProfileDto {
   @ApiPropertyOptional({ example: 'Juan', description: 'Nombre' })

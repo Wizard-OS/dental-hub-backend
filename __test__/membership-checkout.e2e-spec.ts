@@ -1,21 +1,23 @@
-import { INestApplication } from '@nestjs/common';
-import { I18nValidationPipe } from 'nestjs-i18n';
-import { Test } from '@nestjs/testing';
-import { DataSource } from 'typeorm';
-import request from 'supertest';
 import { randomUUID } from 'crypto';
+
+import { INestApplication } from '@nestjs/common';
+import { Test } from '@nestjs/testing';
+import { I18nValidationPipe } from 'nestjs-i18n';
+import request from 'supertest';
+import { DataSource } from 'typeorm';
+
 import { AppModule } from '../src/app.module';
+import { MembershipCharge } from '../src/billing/entities/membership-charge.entity';
+import { MembershipPaymentMethod } from '../src/billing/entities/membership-payment-method.entity';
+import { MembershipEmailProvider } from '../src/billing/notifications/membership-email.provider';
+import { MembershipRemindersService } from '../src/billing/notifications/membership-reminders.service';
+import { MembershipRenewalsService } from '../src/billing/vault/membership-renewals.service';
 import {
   PayPalVaultProvider,
   VaultOrder,
   VaultResource,
 } from '../src/billing/vault/paypal-vault.provider';
-import { MembershipEmailProvider } from '../src/billing/notifications/membership-email.provider';
-import { MembershipRemindersService } from '../src/billing/notifications/membership-reminders.service';
-import { MembershipRenewalsService } from '../src/billing/vault/membership-renewals.service';
 import { ClinicSubscription } from '../src/membership/entities/clinic-subscription.entity';
-import { MembershipCharge } from '../src/billing/entities/membership-charge.entity';
-import { MembershipPaymentMethod } from '../src/billing/entities/membership-payment-method.entity';
 
 class FakeVault {
   configured = true;
@@ -32,6 +34,7 @@ class FakeVault {
   createSetup = jest.fn(
     (clinicId: string, type: string, key: string, customerId?: string) => {
       if (this.setupsByKey.has(key)) return this.setupsByKey.get(key)!;
+
       const result: VaultResource = {
         id: `SETUP${this.setups.size}`,
         status: 'CREATED',
@@ -50,8 +53,10 @@ class FakeVault {
               }
             : { paypal: { email_address: 'owner@example.com' } },
       };
+
       this.setups.set(result.id, result);
       this.setupsByKey.set(key, result);
+
       return result;
     },
   );
@@ -59,16 +64,21 @@ class FakeVault {
   getSetup = (id: string) => this.setups.get(id)!;
   exchangeSetup = jest.fn((id: string, key: string) => {
     if (this.tokensByKey.has(key)) return this.tokensByKey.get(key)!;
+
     const setup = this.setups.get(id)!;
     const result = { ...setup, id: `TOKEN${this.tokens.size}` };
+
     this.tokens.set(result.id, result);
     this.tokensByKey.set(key, result);
+
     return result;
   });
 
   getToken = (id: string) => {
     const token = this.tokens.get(id);
+
     if (!token) throw new Error('Token revoked');
+
     return token;
   };
 
@@ -79,6 +89,7 @@ class FakeVault {
   createOrder = jest.fn((input: { chargeId: string; amount: number }) => {
     if (this.ordersByKey.has(input.chargeId))
       return structuredClone(this.ordersByKey.get(input.chargeId)!);
+
     this.createCalls += 1;
     const order: VaultOrder = {
       id: `ORDER${this.orders.size}`,
@@ -94,8 +105,10 @@ class FakeVault {
         },
       ],
     };
+
     this.orders.set(order.id, order);
     this.ordersByKey.set(input.chargeId, order);
+
     return structuredClone(order);
   });
 
@@ -103,6 +116,7 @@ class FakeVault {
 
   captureOrder = jest.fn((id: string) => {
     const order = this.orders.get(id)!;
+
     if (order.status !== 'COMPLETED') {
       this.captureCalls += 1;
       order.status = 'COMPLETED';
@@ -116,10 +130,13 @@ class FakeVault {
         ],
       };
     }
+
     if (this.failCaptureOnce) {
       this.failCaptureOnce = false;
+
       throw new Error('Connection lost after capture');
     }
+
     return structuredClone(order);
   });
 }
@@ -141,6 +158,7 @@ describe('Membership screens: saved methods, reminders and recurring billing (is
     configured: true,
     send: jest.fn((...args: [string, unknown]) => {
       void args;
+
       return Promise.resolve('EMAIL-1');
     }),
   };
@@ -162,6 +180,7 @@ describe('Membership screens: saved methods, reminders and recurring billing (is
       .overrideProvider(MembershipEmailProvider)
       .useValue(email)
       .compile();
+
     app = module.createNestApplication();
     app.useGlobalPipes(
       new I18nValidationPipe({
@@ -183,18 +202,21 @@ describe('Membership screens: saved methods, reminders and recurring billing (is
         lastName: 'Owner',
       })
       .expect(201);
+
     token = owner.body.token;
     const clinic = await request(app.getHttpServer())
       .post('/clinics')
       .set('Authorization', `Bearer ${token}`)
       .send({ name: 'Membership E2E', email: 'billing@example.com' })
       .expect(201);
+
     clinicId = clinic.body.id;
     const other = await request(app.getHttpServer())
       .post('/clinics')
       .set('Authorization', `Bearer ${token}`)
       .send({ name: 'Other clinic' })
       .expect(201);
+
     otherClinicId = other.body.id;
   });
   afterAll(async () => {
@@ -217,6 +239,7 @@ describe('Membership screens: saved methods, reminders and recurring billing (is
     const created = await auth('post', '/membership/payment-methods/setup')
       .send({ type: 'card', requestId: randomUUID() })
       .expect(201);
+
     setupId = created.body.setupSessionId;
     await auth(
       'post',
@@ -232,6 +255,7 @@ describe('Membership screens: saved methods, reminders and recurring billing (is
       'post',
       `/membership/payment-methods/setup/${setupId}/confirm`,
     ).expect(201);
+
     cardId = completed.body.id;
     expect(completed.body).toMatchObject({
       brand: 'MASTERCARD',
@@ -243,6 +267,7 @@ describe('Membership screens: saved methods, reminders and recurring billing (is
       'post',
       `/membership/payment-methods/setup/${setupId}/confirm`,
     ).expect(201);
+
     expect(replay.body.id).toBe(cardId);
     expect(vault.exchangeSetup).toHaveBeenCalledTimes(1);
   });
@@ -250,11 +275,13 @@ describe('Membership screens: saved methods, reminders and recurring billing (is
     const created = await auth('post', '/membership/payment-methods/setup')
       .send({ type: 'paypal', requestId: randomUUID() })
       .expect(201);
+
     vault.setups.get(created.body.setupTokenId)!.status = 'APPROVED';
     const completed = await auth(
       'post',
       `/membership/payment-methods/setup/${created.body.setupSessionId}/confirm`,
     ).expect(201);
+
     paypalId = completed.body.id;
     expect(completed.body.maskedEmail).toBe('own***@example.com');
     await Promise.all(
@@ -267,6 +294,7 @@ describe('Membership screens: saved methods, reminders and recurring billing (is
     const list = await auth('get', '/membership/payment-methods').expect(200);
     const paymentMethods = (list.body as { methods: { isDefault: boolean }[] })
       .methods;
+
     expect(paymentMethods.filter((method) => method.isDefault)).toHaveLength(1);
     expect(paymentMethods).toHaveLength(2);
     expect(JSON.stringify(list.body)).not.toContain('TOKEN');
@@ -289,6 +317,7 @@ describe('Membership screens: saved methods, reminders and recurring billing (is
       auth('post', '/membership/start').send(payload).expect(201),
       auth('post', '/membership/start').send(payload).expect(201),
     ]);
+
     expect(first.body.membership.billing.providerSubscriptionId).toBe(
       repeated.body.membership.billing.providerSubscriptionId,
     );
@@ -300,6 +329,7 @@ describe('Membership screens: saved methods, reminders and recurring billing (is
     const checkoutAlias = await auth('post', '/billing/checkout')
       .send({ ...payload, planCode: 'premium' })
       .expect(201);
+
     expect(checkoutAlias.body.membership.billing.providerSubscriptionId).toBe(
       first.body.membership.billing.providerSubscriptionId,
     );
@@ -309,6 +339,7 @@ describe('Membership screens: saved methods, reminders and recurring billing (is
     const savedMethods = (
       methods.body as { methods: { id: string; isDefault: boolean }[] }
     ).methods;
+
     expect(savedMethods.find((method) => method.id === cardId)?.isDefault).toBe(
       true,
     );
@@ -320,6 +351,7 @@ describe('Membership screens: saved methods, reminders and recurring billing (is
   });
   it('sends the day-12 reminder once, with durable state', async () => {
     const repo = db.getRepository(ClinicSubscription);
+
     await repo.update(
       { clinicId },
       {
@@ -353,6 +385,7 @@ describe('Membership screens: saved methods, reminders and recurring billing (is
   });
   it('charges 90 dollars on day 14 and recovers a lost capture response without a second charge', async () => {
     const now = new Date(Date.now() - 1000);
+
     await db.getRepository(ClinicSubscription).update(
       { clinicId },
       {
@@ -365,6 +398,7 @@ describe('Membership screens: saved methods, reminders and recurring billing (is
     vault.failCaptureOnce = true;
     await renewals.processClinic(clinicId);
     let charges = await db.getRepository(MembershipCharge).findBy({ clinicId });
+
     expect(charges).toHaveLength(1);
     expect(charges[0].amount).toBe(9000);
     expect(charges[0].providerOrderId).toBeTruthy();
@@ -382,9 +416,11 @@ describe('Membership screens: saved methods, reminders and recurring billing (is
     const sub = await db
       .getRepository(ClinicSubscription)
       .findOneByOrFail({ clinicId });
+
     expect(sub.status).toBe('active');
     expect(sub.paidCycles).toBe(1);
     const restored = await auth('post', '/membership/restore').expect(201);
+
     expect(restored.body.status).toBe('active');
     expect(vault.captureCalls).toBe(1);
   });
@@ -399,9 +435,11 @@ describe('Membership screens: saved methods, reminders and recurring billing (is
     const charges = await db
       .getRepository(MembershipCharge)
       .find({ where: { clinicId }, order: { cycle: 'ASC' } });
+
     expect(charges.map((c) => c.amount)).toEqual([9000, 10000]);
     expect(charges[1].status).toBe('paid');
     const list = await auth('get', '/membership/charges').expect(200);
+
     expect(list.body).toHaveLength(2);
     await auth(
       'post',
@@ -415,6 +453,7 @@ describe('Membership screens: saved methods, reminders and recurring billing (is
     const charge = await db
       .getRepository(MembershipCharge)
       .findOneByOrFail({ clinicId, cycle: 1 });
+
     vault.orders.set('UNRELATED', {
       id: 'UNRELATED',
       status: 'COMPLETED',
@@ -433,6 +472,7 @@ describe('Membership screens: saved methods, reminders and recurring billing (is
   it('cancels, suppresses renewals, removes the token and refuses a second trial', async () => {
     await auth('post', '/membership/cancel').expect(201);
     const calls = vault.captureCalls;
+
     await renewals.processClinic(clinicId);
     expect(vault.captureCalls).toBe(calls);
     await auth('delete', `/membership/payment-methods/${paypalId}`).expect(200);
@@ -444,6 +484,7 @@ describe('Membership screens: saved methods, reminders and recurring billing (is
     const record = await db
       .getRepository(MembershipPaymentMethod)
       .findOneByOrFail({ id: paypalId });
+
     expect(record.deletedAt).toBeTruthy();
   });
 });

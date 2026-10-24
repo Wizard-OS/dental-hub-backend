@@ -1,4 +1,3 @@
-import { apiMessage, type ApiMessage } from '../common/i18n/api-message';
 import {
   Injectable,
   NotFoundException,
@@ -7,8 +6,9 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { FindOptionsWhere, LessThanOrEqual, Not, Repository } from 'typeorm';
 
-import { UserSession } from './entities/user-session.entity';
+import { type ApiMessage, apiMessage } from '../common/i18n/api-message';
 import { SessionMetadata } from './device-metadata.util';
+import { UserSession } from './entities/user-session.entity';
 
 export type UserSessionResponse = UserSession & { isCurrent: boolean };
 
@@ -27,6 +27,7 @@ export class UserSessionsService {
       userId,
       ...metadata,
     });
+
     return await this.sessionRepository.save(session);
   }
 
@@ -57,6 +58,7 @@ export class UserSessionsService {
     }
 
     const now = new Date();
+
     session.isRevoked = true;
     session.revokedAt = now;
     session.lastActiveAt = now;
@@ -70,11 +72,13 @@ export class UserSessionsService {
     currentSessionId?: string,
   ): Promise<{ message: ApiMessage }> {
     const where: FindOptionsWhere<UserSession> = { userId, isRevoked: false };
+
     if (currentSessionId) {
       where.id = Not(currentSessionId);
     }
 
     const now = new Date();
+
     await this.sessionRepository.update(where, {
       isRevoked: true,
       revokedAt: now,
@@ -110,6 +114,7 @@ export class UserSessionsService {
     observedLastActiveAt: Date,
   ): Promise<void> {
     const staleBefore = new Date(Date.now() - 60_000);
+
     if (observedLastActiveAt > staleBefore) return;
 
     await this.sessionRepository.update(

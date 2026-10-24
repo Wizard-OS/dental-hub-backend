@@ -1,23 +1,24 @@
-import { apiMessage, type ApiMessage } from '../common/i18n/api-message';
 import {
   BadRequestException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { isUUID } from 'class-validator';
 import { Repository } from 'typeorm';
 import { Brackets } from 'typeorm';
-import { isUUID } from 'class-validator';
-import { Clinic } from '../clinics/entities/clinic.entity';
+
+import { Appointment } from '../appointments/entities/appointment.entity';
 import { ClinicMembership } from '../clinic-memberships/entities/clinic-membership.entity';
 import { ClinicMembershipRole } from '../clinic-memberships/interfaces/clinic-membership-role.enum';
+import { Clinic } from '../clinics/entities/clinic.entity';
+import { type ApiMessage, apiMessage } from '../common/i18n/api-message';
+import { SupportRequest } from '../help-center/entities/support-request.entity';
+import { Invoice } from '../invoices/entities/invoice.entity';
 import { ClinicSubscription } from '../membership/entities/clinic-subscription.entity';
 import { MembershipService } from '../membership/membership.service';
-import { Invoice } from '../invoices/entities/invoice.entity';
-import { Payment } from '../payments/entities/payment.entity';
 import { Patient } from '../patients/entities/patient.entity';
-import { Appointment } from '../appointments/entities/appointment.entity';
-import { SupportRequest } from '../help-center/entities/support-request.entity';
+import { Payment } from '../payments/entities/payment.entity';
 import { QueryBackofficeClinicsDto } from './dto/query-backoffice-clinics.dto';
 import { UpdateBackofficeClinicDto } from './dto/update-backoffice-clinic.dto';
 import { UpdateBackofficeSubscriptionDto } from './dto/update-backoffice-subscription.dto';
@@ -199,6 +200,7 @@ export class BackofficeClinicsService {
     this.assertUuid(id, apiMessage('api.messages.invalid_clinic_id'));
 
     const clinic = await this.clinicRepository.findOne({ where: { id } });
+
     if (!clinic) {
       throw new NotFoundException(
         apiMessage('api.messages.clinic_with_id_not_found', { id: id }),
@@ -206,6 +208,7 @@ export class BackofficeClinicsService {
     }
 
     Object.assign(clinic, dto);
+
     return await this.clinicRepository.save(clinic);
   }
 

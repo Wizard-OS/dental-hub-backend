@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+
 import { BillingInterval } from '../interfaces/billing-interval.enum';
 import type { MembershipQuote } from '../membership-offer';
 

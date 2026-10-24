@@ -8,18 +8,18 @@ import {
   Post,
 } from '@nestjs/common';
 import {
-  ApiTags,
-  ApiOperation,
-  ApiResponse,
   ApiBearerAuth,
-  ApiSecurity,
+  ApiOperation,
   ApiParam,
+  ApiResponse,
+  ApiSecurity,
+  ApiTags,
 } from '@nestjs/swagger';
 
-import { MessageTemplatesService } from './message-templates.service';
+import { AuthClinic, GetClinicId } from '../auth/decorators';
 import { CreateMessageTemplateDto } from './dto/create-message-template.dto';
 import { UpdateMessageTemplateDto } from './dto/update-message-template.dto';
-import { AuthClinic, GetClinicId } from '../auth/decorators';
+import { MessageTemplatesService } from './message-templates.service';
 
 @ApiTags('Message Templates')
 @ApiBearerAuth()

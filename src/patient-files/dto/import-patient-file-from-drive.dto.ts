@@ -1,4 +1,3 @@
-import { i18nValidationMessage } from 'nestjs-i18n';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsEnum,
@@ -7,6 +6,7 @@ import {
   IsUUID,
   MaxLength,
 } from 'class-validator';
+import { i18nValidationMessage } from 'nestjs-i18n';
 
 import { PatientFileType } from '../interfaces/patient-file-type.enum';
 

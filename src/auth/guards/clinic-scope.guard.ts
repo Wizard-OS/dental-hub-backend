@@ -1,4 +1,3 @@
-import { apiMessage } from '../../common/i18n/api-message';
 import {
   BadRequestException,
   CanActivate,
@@ -7,10 +6,11 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
 import { isUUID } from 'class-validator';
+import { Repository } from 'typeorm';
 
 import { ClinicMembership } from '../../clinic-memberships/entities/clinic-membership.entity';
+import { apiMessage } from '../../common/i18n/api-message';
 import type { AuthenticatedRequest } from '../interfaces';
 
 @Injectable()

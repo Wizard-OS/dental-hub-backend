@@ -1,16 +1,16 @@
-import { apiMessage } from '../../common/i18n/api-message';
-import { Reflector } from '@nestjs/core';
 import {
   CanActivate,
   ExecutionContext,
   ForbiddenException,
   Injectable,
 } from '@nestjs/common';
+import { Reflector } from '@nestjs/core';
 
-import { ClinicPermission } from '../interfaces';
-import { hasClinicPermission } from '../utils/clinic-permissions';
+import { apiMessage } from '../../common/i18n/api-message';
 import { META_CLINIC_PERMISSIONS } from '../decorators/clinic-permissions.decorator';
 import type { AuthenticatedRequest } from '../interfaces';
+import { ClinicPermission } from '../interfaces';
+import { hasClinicPermission } from '../utils/clinic-permissions';
 
 @Injectable()
 export class ClinicPermissionGuard implements CanActivate {

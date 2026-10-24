@@ -63,6 +63,7 @@ describe('CountriesService', () => {
     const mutableService = service as unknown as {
       cache: { expiresAt: number };
     };
+
     mutableService.cache.expiresAt = 0;
     fetchSpy.mockRejectedValueOnce(new Error('network down'));
 

@@ -1,9 +1,9 @@
 import { BadRequestException } from '@nestjs/common';
 
-import { AppointmentsService } from './appointments.service';
-import { AppointmentAvailabilityService } from '../clinics/appointment-availability.service';
-import { AppointmentStatus } from './interfaces/AppointmentStatus.enum';
 import { ClinicMembershipRole } from '../clinic-memberships/interfaces/clinic-membership-role.enum';
+import { AppointmentAvailabilityService } from '../clinics/appointment-availability.service';
+import { AppointmentsService } from './appointments.service';
+import { AppointmentStatus } from './interfaces/AppointmentStatus.enum';
 
 describe('AppointmentsService availability validation', () => {
   const clinicId = '69d0cbe5-f7e6-4928-99a9-cdf15c986b4f';
@@ -63,6 +63,7 @@ describe('AppointmentsService availability validation', () => {
               appointmentSettingsJson: null,
             });
           }
+
           return Promise.resolve(null);
         },
       ),
@@ -144,6 +145,7 @@ describe('AppointmentsService availability validation', () => {
         },
       },
     });
+
     appointmentRepository.save.mockRejectedValue({
       driverError: { code: '23P01' },
     });
@@ -277,6 +279,7 @@ describe('AppointmentsService availability validation', () => {
         },
       },
     });
+
     overlapQuery.getOne.mockResolvedValueOnce({ id: 'overlap' });
 
     await expect(

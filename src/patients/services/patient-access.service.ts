@@ -1,4 +1,3 @@
-import { apiMessage } from '../../common/i18n/api-message';
 import {
   ForbiddenException,
   Injectable,
@@ -7,17 +6,18 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Brackets, Repository, SelectQueryBuilder } from 'typeorm';
 
-import { Patient } from '../entities/patient.entity';
-import { ClinicPermission } from '../../auth/interfaces';
 import { Appointment } from '../../appointments/entities/appointment.entity';
 import { AppointmentStatus } from '../../appointments/interfaces/AppointmentStatus.enum';
-import { ClinicMembershipRole } from '../../clinic-memberships/interfaces/clinic-membership-role.enum';
+import { ClinicPermission } from '../../auth/interfaces';
 import {
   hasClinicPermission,
   isPrimaryClinicRole,
   isSecondaryClinicRole,
 } from '../../auth/utils/clinic-permissions';
+import { ClinicMembershipRole } from '../../clinic-memberships/interfaces/clinic-membership-role.enum';
+import { apiMessage } from '../../common/i18n/api-message';
 import { PatientProfessionalAssignment } from '../../patient-assignments/entities/patient-professional-assignment.entity';
+import { Patient } from '../entities/patient.entity';
 
 export interface ClinicAccessContext {
   clinicId: string;
@@ -222,6 +222,7 @@ export class PatientAccessService {
     if (!patient || this.canViewPatientContact(context)) return patient;
 
     const sanitized = patient as unknown as Record<string, unknown>;
+
     sanitized.email = null;
     sanitized.phone = null;
     sanitized.address = null;
@@ -231,6 +232,7 @@ export class PatientAccessService {
     sanitized.city = null;
     sanitized.postalCode = null;
     sanitized.emergencyContact = null;
+
     return patient;
   }
 

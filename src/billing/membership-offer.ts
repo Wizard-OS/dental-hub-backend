@@ -1,5 +1,6 @@
-import { apiMessage } from '../common/i18n/api-message';
 import { BadRequestException } from '@nestjs/common';
+
+import { apiMessage } from '../common/i18n/api-message';
 import { getEnv } from '../config/env';
 import { BillingInterval } from './interfaces/billing-interval.enum';
 
@@ -12,11 +13,13 @@ export function membershipQuote(
   withTrial = true,
 ) {
   const code = promotionCode?.trim().toUpperCase() || null;
+
   if (!Object.values(BillingInterval).includes(interval)) {
     throw new BadRequestException(
       apiMessage('api.messages.invalid_billing_interval'),
     );
   }
+
   if (
     code &&
     (code !== PROMOTION_CODE || interval !== BillingInterval.yearly)
@@ -25,8 +28,10 @@ export function membershipQuote(
       apiMessage('api.messages.promotion_is_not_valid_for_this_plan'),
     );
   }
+
   const subtotal = interval === BillingInterval.yearly ? 10000 : 1000;
   const discount = code ? 1000 : 0;
+
   return {
     planCode: 'premium' as const,
     name: 'DentalHub Premium',
@@ -54,6 +59,7 @@ export function offerPlanId(
   promotionCode?: string | null,
 ) {
   const quote = membershipQuote(interval, promotionCode);
+
   return getEnv(
     quote.promotionCode
       ? 'PAYPAL_PREMIUM_YEARLY_WELCOME_TRIAL_PLAN_ID'

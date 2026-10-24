@@ -40,6 +40,7 @@ export function buildClinicRootFolderName(
 
 export function buildPatientFolderName(patientId: string): string {
   const patientIdShort = shortId(patientId);
+
   return `patient-PAC-${patientIdShort.toUpperCase()}__${patientIdShort}`;
 }
 
@@ -47,8 +48,11 @@ export function folderForPatientFileType(
   type: PatientFileType,
 ): PatientDriveFolder {
   if (type === PatientFileType.PROFILE_PHOTO) return 'avatar';
+
   if (type === PatientFileType.RADIOGRAPHY) return 'radiographs';
+
   if (type === PatientFileType.IMAGE) return 'clinical-images';
+
   if (type === PatientFileType.PDF || type === PatientFileType.DOCUMENT) {
     return 'documents';
   }
@@ -60,11 +64,15 @@ export function patientFileTypeFromDriveFolder(
   folder: string,
 ): PatientFileType {
   if (folder === 'radiographs') return PatientFileType.RADIOGRAPHY;
+
   if (folder === 'avatar') return PatientFileType.PROFILE_PHOTO;
+
   if (folder === 'clinical-images') {
     return PatientFileType.IMAGE;
   }
+
   if (folder === 'documents') return PatientFileType.DOCUMENT;
+
   return PatientFileType.OTHER;
 }
 

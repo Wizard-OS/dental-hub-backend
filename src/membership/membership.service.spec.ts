@@ -1,14 +1,14 @@
-import { MembershipService } from './membership.service';
-import { MembershipEntitlementsService } from './membership-entitlements.service';
-import { MembershipCheckoutIntentService } from './membership-checkout-intent.service';
-import { MembershipLicenseService } from './membership-license.service';
 import { Clinic } from '../clinics/entities/clinic.entity';
+import type { OutboundMessagesService } from '../outbound-messages/outbound-messages.service';
 import { ClinicSubscription } from './entities/clinic-subscription.entity';
 import { ClinicSubscriptionAuditLog } from './entities/clinic-subscription-audit-log.entity';
-import type { OutboundMessagesService } from '../outbound-messages/outbound-messages.service';
 import { BillingProvider } from './interfaces/billing-provider.enum';
 import { MembershipPlanCode } from './interfaces/membership-plan-code.enum';
 import { SubscriptionStatus } from './interfaces/subscription-status.enum';
+import { MembershipService } from './membership.service';
+import { MembershipCheckoutIntentService } from './membership-checkout-intent.service';
+import { MembershipEntitlementsService } from './membership-entitlements.service';
+import { MembershipLicenseService } from './membership-license.service';
 
 describe('Provider trial entitlement', () => {
   let service: MembershipService;
@@ -22,6 +22,7 @@ describe('Provider trial entitlement', () => {
     Promise<unknown>,
     Parameters<OutboundMessagesService['create']>
   >;
+
   beforeEach(() => {
     subscription = {
       id: 'subscription-id',
@@ -45,13 +46,17 @@ describe('Provider trial entitlement', () => {
       }),
     };
     const manager: Record<string, unknown> = {};
+
     Object.assign(manager, {
       query: jest.fn(),
       getRepository: jest.fn((entity: unknown) => {
         if (entity === ClinicSubscription)
           return transactionSubscriptionRepository;
+
         if (entity === ClinicSubscriptionAuditLog) return auditLogRepository;
+
         if (entity === Clinic) return clinicRepository;
+
         throw new Error('Unexpected transaction repository');
       }),
       transaction: jest.fn((callback: (value: unknown) => unknown) =>
@@ -84,6 +89,7 @@ describe('Provider trial entitlement', () => {
       }),
       buildWarnings: jest.fn().mockReturnValue({}),
     };
+
     service = new MembershipService(
       repository as unknown as ConstructorParameters<
         typeof MembershipService
@@ -103,6 +109,7 @@ describe('Provider trial entitlement', () => {
   it('grants trial Premium only until the confirmed end date', async () => {
     const start = new Date();
     const end = new Date(start.getTime() + 14 * 86400000);
+
     await service.activateProviderSubscription({
       provider: BillingProvider.paypal,
       providerSubscriptionId: 'I-123',
@@ -178,6 +185,7 @@ describe('Provider trial entitlement', () => {
     });
 
     const [, message] = outboundMessageCreate.mock.calls[0];
+
     expect(message.payloadJson).toMatchObject({
       type: 'premium_license_issued',
     });

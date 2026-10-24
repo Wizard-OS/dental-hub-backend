@@ -1,14 +1,14 @@
-import { apiMessage } from '../../common/i18n/api-message';
-import { Reflector } from '@nestjs/core';
 import {
+  BadRequestException,
   CanActivate,
   ExecutionContext,
-  Injectable,
-  BadRequestException,
   ForbiddenException,
+  Injectable,
 } from '@nestjs/common';
+import { Reflector } from '@nestjs/core';
 import { Observable } from 'rxjs';
 
+import { apiMessage } from '../../common/i18n/api-message';
 import { META_ROLES } from '../decorators/role-protected.decorator';
 import type { AuthenticatedRequest } from '../interfaces';
 
@@ -25,6 +25,7 @@ export class UserRoleGuard implements CanActivate {
     ]);
 
     if (!validRoles) return true;
+
     if (validRoles.length === 0) return true;
 
     const req = context.switchToHttp().getRequest<AuthenticatedRequest>();

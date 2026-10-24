@@ -1,11 +1,12 @@
-import { apiMessage } from '../common/i18n/api-message';
 import { BadRequestException, Injectable } from '@nestjs/common';
-import { MembershipService } from '../membership/membership.service';
+
+import { apiMessage } from '../common/i18n/api-message';
 import { BillingProvider } from '../membership/interfaces/billing-provider.enum';
 import { SubscriptionStatus } from '../membership/interfaces/subscription-status.enum';
+import { MembershipService } from '../membership/membership.service';
+import { BillingSubscriptionReconciliationService } from './billing-subscription-reconciliation.service';
 import { PayPalBillingProvider } from './providers/paypal-billing.provider';
 import { MembershipRenewalsService } from './vault/membership-renewals.service';
-import { BillingSubscriptionReconciliationService } from './billing-subscription-reconciliation.service';
 
 @Injectable()
 export class BillingSubscriptionService {
@@ -19,6 +20,7 @@ export class BillingSubscriptionService {
   async confirm(clinicId: string, providerSubscriptionId?: string) {
     const subscription =
       await this.membershipService.ensureSubscription(clinicId);
+
     if (subscription.billingMode === 'vault') {
       if (
         providerSubscriptionId &&
@@ -29,9 +31,12 @@ export class BillingSubscriptionService {
             'api.messages.subscription_does_not_belong_to_this_clinic',
           ),
         );
+
       return this.renewals.processClinic(clinicId);
     }
+
     const id = providerSubscriptionId ?? subscription.providerSubscriptionId;
+
     if (
       !id ||
       id !== subscription.providerSubscriptionId ||
@@ -43,7 +48,9 @@ export class BillingSubscriptionService {
         ),
       );
     }
+
     const details = await this.paypalProvider.getSubscription(id);
+
     if (
       details.clinicId !== clinicId ||
       details.providerPlanId !== subscription.providerPlanId
@@ -54,6 +61,7 @@ export class BillingSubscriptionService {
         ),
       );
     }
+
     // Reuse the verified-provider synchronization path; no client-supplied status or amounts.
     await this.reconciliation.processPayPalEvent(
       this.paypalProvider,
@@ -64,14 +72,17 @@ export class BillingSubscriptionService {
       undefined,
       details,
     );
+
     return this.membershipService.getCurrent(clinicId);
   }
 
   async cancel(clinicId: string) {
     const subscription =
       await this.membershipService.ensureSubscription(clinicId);
+
     if (subscription.billingMode === 'vault')
       return this.renewals.cancel(clinicId);
+
     if (
       !subscription.providerSubscriptionId ||
       subscription.billingProvider !== BillingProvider.paypal
@@ -80,18 +91,22 @@ export class BillingSubscriptionService {
         apiMessage('api.messages.no_paypal_subscription_to_cancel'),
       );
     }
+
     const details = await this.paypalProvider.getSubscription(
       subscription.providerSubscriptionId,
     );
+
     if (details.clinicId !== clinicId)
       throw new BadRequestException(
         apiMessage('api.messages.subscription_ownership_mismatch'),
       );
+
     if (details.providerStatus !== 'CANCELLED') {
       await this.paypalProvider.cancelSubscription(
         subscription.providerSubscriptionId,
       );
     }
+
     return this.membershipService.markProviderSubscription({
       provider: BillingProvider.paypal,
       providerSubscriptionId: subscription.providerSubscriptionId,

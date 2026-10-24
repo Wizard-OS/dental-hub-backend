@@ -7,11 +7,11 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 
-import { Patient } from '../../patients/entities/patient.entity';
 import { Appointment } from '../../appointments/entities/appointment.entity';
-import { Invoice } from '../../invoices/entities/invoice.entity';
-import { ClinicMembership } from '../../clinic-memberships/entities/clinic-membership.entity';
 import { AppointmentType } from '../../appointments/entities/appointment-type.entity';
+import { ClinicMembership } from '../../clinic-memberships/entities/clinic-membership.entity';
+import { Invoice } from '../../invoices/entities/invoice.entity';
+import { Patient } from '../../patients/entities/patient.entity';
 
 @Entity('clinics')
 export class Clinic {

@@ -1,4 +1,7 @@
-import { getTrustedProxyHops } from './app-module-options';
+import {
+  createTypeOrmOptions,
+  getTrustedProxyHops,
+} from './app-module-options';
 import { normalizeDatabaseUrl } from './env';
 
 describe('security environment configuration', () => {
@@ -70,5 +73,59 @@ describe('security environment configuration', () => {
 
     process.env.TRUST_PROXY_HOPS = '1.5';
     expect(() => getTrustedProxyHops()).toThrow(/integer from 0 to 5/);
+  });
+
+  it('requires explicit database connection settings in production', () => {
+    const originalEnvironment = {
+      NODE_ENV: process.env.NODE_ENV,
+      DATABASE_URL: process.env.DATABASE_URL,
+      DB_HOST: process.env.DB_HOST,
+      DB_NAME: process.env.DB_NAME,
+      DB_USERNAME: process.env.DB_USERNAME,
+      DB_PASSWORD: process.env.DB_PASSWORD,
+      DB_SSL: process.env.DB_SSL,
+    };
+
+    try {
+      process.env.NODE_ENV = 'production';
+      delete process.env.DATABASE_URL;
+      delete process.env.DB_HOST;
+      delete process.env.DB_NAME;
+      delete process.env.DB_USERNAME;
+      delete process.env.DB_PASSWORD;
+
+      expect(() => createTypeOrmOptions()).toThrow(/DB_HOST/);
+
+      process.env.DB_HOST = 'db.example';
+      process.env.DB_NAME = 'dentalhub';
+      process.env.DB_USERNAME = 'dentalhub_app';
+      process.env.DB_PASSWORD = 'configured-secret';
+      process.env.DB_SSL = 'true';
+      expect(createTypeOrmOptions()).toMatchObject({
+        host: 'db.example',
+        database: 'dentalhub',
+        username: 'dentalhub_app',
+        password: 'configured-secret',
+        ssl: { rejectUnauthorized: true },
+      });
+
+      process.env.DB_SSL = 'false';
+      expect(() => createTypeOrmOptions()).toThrow(/require DB_SSL=true/);
+
+      process.env.DATABASE_URL =
+        'postgres://user:pass@db.example/dentalhub?sslmode=require';
+      const options = createTypeOrmOptions();
+
+      expect('url' in options).toBe(true);
+
+      if ('url' in options) {
+        expect(options.url).toContain('sslmode=verify-full');
+      }
+    } finally {
+      for (const [name, value] of Object.entries(originalEnvironment)) {
+        if (value === undefined) delete process.env[name];
+        else process.env[name] = value;
+      }
+    }
   });
 });

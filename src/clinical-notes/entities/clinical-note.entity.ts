@@ -1,18 +1,18 @@
-import { PatientExam } from '../../patient-exams/entities/patient-exam.entity';
-import { PatientFile } from '../../patient-files/entities/patient-file.entity';
 import {
   Column,
   CreateDateColumn,
   Entity,
   JoinColumn,
   ManyToOne,
-  PrimaryGeneratedColumn,
   OneToMany,
+  PrimaryGeneratedColumn,
 } from 'typeorm';
 
 import { User } from '../../auth/entities/user.entity';
-import { ClinicalRecord } from '../../clinical-records/entities/clinical-record.entity';
 import { ClinicMembership } from '../../clinic-memberships/entities/clinic-membership.entity';
+import { ClinicalRecord } from '../../clinical-records/entities/clinical-record.entity';
+import { PatientExam } from '../../patient-exams/entities/patient-exam.entity';
+import { PatientFile } from '../../patient-files/entities/patient-file.entity';
 
 @Entity('clinical_notes')
 export class ClinicalNote {

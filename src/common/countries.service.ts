@@ -1,4 +1,3 @@
-import { apiMessage } from './i18n/api-message';
 import {
   Injectable,
   InternalServerErrorException,
@@ -6,6 +5,7 @@ import {
 } from '@nestjs/common';
 
 import { getEnv } from '../config/env';
+import { apiMessage } from './i18n/api-message';
 import { CountryMetadata } from './interfaces/country-metadata.interface';
 
 interface RestCountriesResponse {
@@ -55,10 +55,12 @@ export class CountriesService {
 
     try {
       const countries = await this.fetchAllCountries();
+
       this.cache = {
         countries,
         expiresAt: Date.now() + CountriesService.cacheTtlMs,
       };
+
       return countries;
     } catch {
       if (this.cache) {
@@ -82,7 +84,9 @@ export class CountriesService {
 
     try {
       const country = await this.fetchCountryByCode(normalizedCode);
+
       this.mergeCountryIntoCache(country);
+
       return country;
     } catch (error) {
       const staleCountry = this.cache?.countries.find(
@@ -120,6 +124,7 @@ export class CountriesService {
       );
 
       const objects = response.data?.objects ?? [];
+
       countries.push(...objects.map((object) => this.mapCountry(object)));
       more = response.data?.meta?.more === true;
       offset += 100;
@@ -140,6 +145,7 @@ export class CountriesService {
     );
 
     const country = response.data?.objects?.[0];
+
     if (!country) {
       throw new ServiceUnavailableException(
         apiMessage('api.messages.country_metadata_is_unavailable'),

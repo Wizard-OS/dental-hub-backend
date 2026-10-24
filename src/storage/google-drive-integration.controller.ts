@@ -8,7 +8,13 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 
-import { AuthClinic, ClinicRoles, GetClinicId } from '../auth/decorators';
+import {
+  AuthClinic,
+  ClinicRoles,
+  GetClinicId,
+  GetUser,
+} from '../auth/decorators';
+import { User } from '../auth/entities/user.entity';
 import { ClinicMembershipRole } from '../clinic-memberships/interfaces/clinic-membership-role.enum';
 import { GoogleDriveOAuthCallbackDto } from './dto/google-drive-oauth-callback.dto';
 import { GoogleDriveIntegrationService } from './google-drive-integration.service';
@@ -36,11 +42,13 @@ export class GoogleDriveIntegrationController {
   @ApiQuery({ name: 'redirectUri', required: true })
   @ApiResponse({ status: 200, description: 'URL OAuth generada' })
   getOAuthUrl(
+    @GetUser() user: User,
     @GetClinicId() clinicId: string,
     @Query('redirectUri') redirectUri?: string,
   ) {
     return this.googleDriveIntegrationService.buildOAuthUrl(
       clinicId,
+      user.id,
       redirectUri,
     );
   }
@@ -49,13 +57,16 @@ export class GoogleDriveIntegrationController {
   @ApiOperation({ summary: 'Conectar Google Drive con código OAuth' })
   @ApiResponse({ status: 201, description: 'Google Drive conectado' })
   connect(
+    @GetUser() user: User,
     @GetClinicId() clinicId: string,
     @Body() dto: GoogleDriveOAuthCallbackDto,
   ) {
     return this.googleDriveIntegrationService.connect(
       clinicId,
+      user.id,
       dto.code,
       dto.redirectUri,
+      dto.state,
     );
   }
 

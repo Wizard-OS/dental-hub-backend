@@ -10,9 +10,10 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { Patient } from '../../patients/entities/patient.entity';
-import { PatientFile } from '../../patient-files/entities/patient-file.entity';
+
 import { ClinicalNote } from '../../clinical-notes/entities/clinical-note.entity';
+import { PatientFile } from '../../patient-files/entities/patient-file.entity';
+import { Patient } from '../../patients/entities/patient.entity';
 
 export enum PatientExamCategory {
   RADIOGRAPHY = 'radiography',

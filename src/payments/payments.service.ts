@@ -1,20 +1,20 @@
-import { apiMessage } from '../common/i18n/api-message';
 import {
   BadRequestException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
 import { isUUID } from 'class-validator';
+import { Repository } from 'typeorm';
 
-import { Payment } from './entities/payment.entity';
+import { apiMessage } from '../common/i18n/api-message';
 import { Invoice } from '../invoices/entities/invoice.entity';
+import { InvoiceStatus } from '../invoices/InvoiceStatus/InvoiceStatus.enum';
+import { Treatment } from '../treatments/entities/treatment.entity';
 import { CreatePaymentDto } from './dto/create-payment.dto';
 import { UpdatePaymentDto } from './dto/update-payment.dto';
 import { VoidPaymentDto } from './dto/void-payment.dto';
-import { InvoiceStatus } from '../invoices/InvoiceStatus/InvoiceStatus.enum';
-import { Treatment } from '../treatments/entities/treatment.entity';
+import { Payment } from './entities/payment.entity';
 
 @Injectable()
 export class PaymentsService {
@@ -59,6 +59,7 @@ export class PaymentsService {
       voidedAt: null,
       voidReason: null,
     });
+
     await this.paymentRepository.save(payment);
 
     await this.refreshInvoiceStatus(invoice.id);
@@ -99,6 +100,7 @@ export class PaymentsService {
 
   async update(clinicId: string, id: string, dto: UpdatePaymentDto) {
     const payment = await this.findOne(clinicId, id);
+
     if (payment.voidedAt) {
       throw new BadRequestException(
         apiMessage('api.messages.voided_payments_cannot_be_updated'),
@@ -141,6 +143,7 @@ export class PaymentsService {
     const saved = await this.paymentRepository.save(payment);
 
     await this.refreshInvoiceStatus(invoice.id);
+
     if (previousInvoiceId !== invoice.id) {
       await this.refreshInvoiceStatus(previousInvoiceId);
     }

@@ -1,7 +1,9 @@
-import { apiMessage } from '../i18n/api-message';
-import { BadRequestException } from '@nestjs/common';
 import { promises as fs } from 'fs';
 import * as path from 'path';
+
+import { BadRequestException } from '@nestjs/common';
+
+import { apiMessage } from '../i18n/api-message';
 import type { UploadedFile } from './uploaded-file.interface';
 
 export type AllowedUploadKind = 'image' | 'pdf' | 'text' | 'word';
@@ -95,6 +97,7 @@ async function detectFileType(
 
 async function normalizeStoredFileName(file: UploadedFile, extension: string) {
   const currentExtension = path.extname(file.filename).toLowerCase();
+
   if (currentExtension === extension) return;
 
   const baseName = currentExtension
@@ -112,11 +115,14 @@ function isPlainText(content: Buffer): boolean {
   if (content.length === 0) return false;
 
   let suspiciousBytes = 0;
+
   for (const byte of content) {
     if (byte === 0) return false;
+
     const isCommonWhitespace = byte === 9 || byte === 10 || byte === 13;
     const isPrintableAscii = byte >= 32 && byte <= 126;
     const isUtf8ContinuationOrMultibyte = byte >= 128;
+
     if (
       !isCommonWhitespace &&
       !isPrintableAscii &&

@@ -1,11 +1,10 @@
 import { INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
-
+import { I18nValidationPipe } from 'nestjs-i18n';
 import request from 'supertest';
 import { App } from 'supertest/types';
 
 import { AppModule } from '../src/app.module';
-import { I18nValidationPipe } from 'nestjs-i18n';
 import { I18nHttpExceptionFilter } from '../src/common/filters/i18n-http-exception.filter';
 import { I18nResponseInterceptor } from '../src/common/interceptors/i18n-response.interceptor';
 

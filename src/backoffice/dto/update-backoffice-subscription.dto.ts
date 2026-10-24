@@ -1,6 +1,6 @@
-import { i18nValidationMessage } from 'nestjs-i18n';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsEnum, IsOptional, IsString, MaxLength } from 'class-validator';
+import { i18nValidationMessage } from 'nestjs-i18n';
 
 import { MembershipPlanCode } from '../../membership/interfaces/membership-plan-code.enum';
 

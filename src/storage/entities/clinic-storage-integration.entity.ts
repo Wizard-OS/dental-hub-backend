@@ -6,8 +6,8 @@ import {
   JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
-  UpdateDateColumn,
   Unique,
+  UpdateDateColumn,
 } from 'typeorm';
 
 import { Clinic } from '../../clinics/entities/clinic.entity';

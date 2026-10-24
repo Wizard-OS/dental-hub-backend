@@ -1,4 +1,3 @@
-import { i18nValidationMessage } from 'nestjs-i18n';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import {
   ArrayNotEmpty,
@@ -7,6 +6,7 @@ import {
   IsEnum,
   IsOptional,
 } from 'class-validator';
+import { i18nValidationMessage } from 'nestjs-i18n';
 
 import { ValidRoles } from '../../auth/interfaces';
 

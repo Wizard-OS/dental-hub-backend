@@ -1,22 +1,23 @@
-import { NestFactory } from '@nestjs/core';
 import { Logger } from '@nestjs/common';
-import { I18nValidationPipe } from 'nestjs-i18n';
-import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
-import helmet from 'helmet';
-import { json, urlencoded } from 'express';
+import { NestFactory } from '@nestjs/core';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import type { Express } from 'express';
+import { json, urlencoded } from 'express';
+import helmet from 'helmet';
+import { I18nValidationPipe } from 'nestjs-i18n';
 
 import { AppModule } from './app.module';
 import { I18nHttpExceptionFilter } from './common/filters/i18n-http-exception.filter';
 import { I18nResponseInterceptor } from './common/interceptors/i18n-response.interceptor';
-import { getBooleanEnv, getEnv } from './config/env';
 import { getTrustedProxyHops } from './config/app-module-options';
+import { getBooleanEnv, getEnv } from './config/env';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const logger = new Logger('Bootstrap');
 
   const expressInstance = app.getHttpAdapter().getInstance() as Express;
+
   expressInstance.set('trust proxy', getTrustedProxyHops());
   app.setGlobalPrefix('api');
   app.use(helmet());
@@ -42,6 +43,7 @@ async function bootstrap() {
   app.useGlobalInterceptors(app.get(I18nResponseInterceptor));
 
   const port = Number(process.env.PORT ?? 3000);
+
   if (isSwaggerEnabled()) {
     const config = new DocumentBuilder()
       .setTitle('Dental Hub API')
@@ -57,6 +59,7 @@ async function bootstrap() {
       .build();
 
     const document = SwaggerModule.createDocument(app, config);
+
     SwaggerModule.setup('api/docs', app, document, {
       swaggerOptions: {
         persistAuthorization: false,
@@ -68,6 +71,7 @@ async function bootstrap() {
   await app.listen(port);
   logger.log(`App running on port ${port}`);
 }
+
 void bootstrap();
 
 function corsOrigin(
@@ -82,6 +86,7 @@ function corsOrigin(
     .filter(Boolean);
 
   if (allowedOrigins.includes(origin)) return callback(null, true);
+
   if (allowedOrigins.length === 0 && getEnv('NODE_ENV') !== 'production') {
     return callback(null, true);
   }

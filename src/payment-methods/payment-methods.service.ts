@@ -1,16 +1,16 @@
-import { apiMessage, type ApiMessage } from '../common/i18n/api-message';
 import {
   BadRequestException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
 import { isUUID } from 'class-validator';
+import { Repository } from 'typeorm';
 
-import { PaymentMethod } from './entities/payment-method.entity';
+import { type ApiMessage, apiMessage } from '../common/i18n/api-message';
 import { CreatePaymentMethodDto } from './dto/create-payment-method.dto';
 import { UpdatePaymentMethodDto } from './dto/update-payment-method.dto';
+import { PaymentMethod } from './entities/payment-method.entity';
 
 @Injectable()
 export class PaymentMethodsService {
@@ -69,7 +69,9 @@ export class PaymentMethodsService {
     dto: UpdatePaymentMethodDto,
   ): Promise<PaymentMethod> {
     const method = await this.findOne(userId, id);
+
     Object.assign(method, dto);
+
     return await this.paymentMethodRepository.save(method);
   }
 
@@ -84,6 +86,7 @@ export class PaymentMethodsService {
         where: { userId },
         order: { createdAt: 'ASC' },
       });
+
       if (remaining) {
         remaining.isDefault = true;
         await this.paymentMethodRepository.save(remaining);
@@ -101,6 +104,7 @@ export class PaymentMethodsService {
     await this.paymentMethodRepository.update({ userId }, { isDefault: false });
 
     method.isDefault = true;
+
     return await this.paymentMethodRepository.save(method);
   }
 }

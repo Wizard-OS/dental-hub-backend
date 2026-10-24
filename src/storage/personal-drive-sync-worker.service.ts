@@ -32,11 +32,13 @@ export class PersonalDriveSyncWorker
 
   async onApplicationShutdown() {
     if (this.timer) clearInterval(this.timer);
+
     await this.active;
   }
 
   runOnce() {
     if (this.active) return this.active;
+
     this.active = this.drive
       .syncConnectedIntegrations()
       .catch(() => {
@@ -45,6 +47,7 @@ export class PersonalDriveSyncWorker
       .finally(() => {
         this.active = undefined;
       });
+
     return this.active;
   }
 }

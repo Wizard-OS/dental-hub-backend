@@ -1,46 +1,35 @@
-import { apiMessage, type ApiMessage } from '../../common/i18n/api-message';
+import { createHash, randomBytes, timingSafeEqual } from 'crypto';
+import { createReadStream, createWriteStream, promises as fs } from 'fs';
+import * as os from 'os';
+import * as path from 'path';
+import { Readable, Transform } from 'stream';
+import { pipeline } from 'stream/promises';
+
 import {
   ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { IsNull, Repository } from 'typeorm';
-import { google, drive_v3 } from 'googleapis';
 import { OAuth2Client } from 'google-auth-library';
-import { createReadStream, createWriteStream, promises as fs } from 'fs';
-import { createHash, randomBytes, timingSafeEqual } from 'crypto';
-import { pipeline } from 'stream/promises';
-import { Readable, Transform } from 'stream';
-import * as path from 'path';
-import * as os from 'os';
-import { GoogleTokenVerifier } from './google-identity-verifier';
-import { PatientFile } from '../../patient-files/entities/patient-file.entity';
+import { drive_v3, google } from 'googleapis';
+import { IsNull, Repository } from 'typeorm';
+
+import { ClinicMembershipRole } from '../../clinic-memberships/interfaces/clinic-membership-role.enum';
 import { validateAndNormalizeUploadedFile } from '../../common/files/upload-validation';
 import type { UploadedFile } from '../../common/files/uploaded-file.interface';
+import { type ApiMessage, apiMessage } from '../../common/i18n/api-message';
+import { getEnv } from '../../config/env';
+import { PatientFile } from '../../patient-files/entities/patient-file.entity';
+import { PatientFileStorageStatus } from '../../patient-files/interfaces/patient-file-storage-status.enum';
+import { PatientFileSyncSource } from '../../patient-files/interfaces/patient-file-sync-source.enum';
+import { PatientFileType } from '../../patient-files/interfaces/patient-file-type.enum';
+import { appendPatientFileSyncAudit } from '../../patient-files/utils/patient-file-sync-audit.util';
 import { Patient } from '../../patients/entities/patient.entity';
 import {
   ClinicAccessContext,
   PatientAccessService,
 } from '../../patients/services/patient-access.service';
-import { ClinicMembershipRole } from '../../clinic-memberships/interfaces/clinic-membership-role.enum';
-import { PatientFileType } from '../../patient-files/interfaces/patient-file-type.enum';
-import { PatientFileStorageStatus } from '../../patient-files/interfaces/patient-file-storage-status.enum';
-import { PatientFileSyncSource } from '../../patient-files/interfaces/patient-file-sync-source.enum';
-import { appendPatientFileSyncAudit } from '../../patient-files/utils/patient-file-sync-audit.util';
-import { StorageProviderType } from '../interfaces/storage-provider-type.enum';
-import { StorageIntegrationStatus } from '../interfaces/storage-integration-status.enum';
-import { PatientFileDriveImport } from '../interfaces/patient-file-drive-import.interface';
-import {
-  StorageUploadInput,
-  StorageUploadResult,
-} from '../interfaces/storage-provider.interface';
-import { UserStorageIntegration } from '../entities/user-storage-integration.entity';
-import { DriveMigrationItem } from '../entities/drive-migration-item.entity';
-import { ClinicStorageIntegration } from '../entities/clinic-storage-integration.entity';
-import { GoogleDriveStorageProvider } from '../providers/google-drive-storage.provider';
-import { TokenEncryptionService } from '../token-encryption.service';
-import { getEnv } from '../../config/env';
 import { PersonalDrivePort } from '../application/personal-drive';
 import {
   DriveAuthorization,
@@ -48,6 +37,18 @@ import {
   PersonalDriveContext,
   PersonalDriveStatus,
 } from '../domain/personal-drive';
+import { ClinicStorageIntegration } from '../entities/clinic-storage-integration.entity';
+import { DriveMigrationItem } from '../entities/drive-migration-item.entity';
+import { UserStorageIntegration } from '../entities/user-storage-integration.entity';
+import { PatientFileDriveImport } from '../interfaces/patient-file-drive-import.interface';
+import { StorageIntegrationStatus } from '../interfaces/storage-integration-status.enum';
+import {
+  StorageUploadInput,
+  StorageUploadResult,
+} from '../interfaces/storage-provider.interface';
+import { StorageProviderType } from '../interfaces/storage-provider-type.enum';
+import { GoogleDriveStorageProvider } from '../providers/google-drive-storage.provider';
+import { TokenEncryptionService } from '../token-encryption.service';
 import {
   buildClinicRootFolderName,
   buildDriveFileName,
@@ -56,6 +57,7 @@ import {
   patientFileTypeFromDriveFolder,
   shortId,
 } from '../utils/drive-naming.util';
+import { GoogleTokenVerifier } from './google-identity-verifier';
 
 @Injectable()
 export class PersonalDriveStorage implements PersonalDrivePort {
@@ -87,6 +89,7 @@ export class PersonalDriveStorage implements PersonalDrivePort {
         'GOOGLE_NOT_CONFIGURED',
         apiMessage('api.messages.google_drive_is_not_configured'),
       );
+
     return new OAuth2Client(
       process.env.GOOGLE_DRIVE_CLIENT_ID,
       process.env.GOOGLE_DRIVE_CLIENT_SECRET,
@@ -102,6 +105,7 @@ export class PersonalDriveStorage implements PersonalDrivePort {
       .getToken(code)
       .catch((error: unknown) => {
         if (error instanceof ConflictException) throw error;
+
         throw this.error(
           'DRIVE_RECONNECT_REQUIRED',
           apiMessage(
@@ -110,6 +114,7 @@ export class PersonalDriveStorage implements PersonalDrivePort {
         );
       });
     const accessToken = tokens.access_token?.trim();
+
     if (!accessToken)
       throw this.error(
         'DRIVE_RECONNECT_REQUIRED',
@@ -148,6 +153,7 @@ export class PersonalDriveStorage implements PersonalDrivePort {
       );
 
     const identity = suppliedIdentity ?? exchangeIdentity;
+
     if (!identity)
       throw this.error(
         'DRIVE_RECONNECT_REQUIRED',
@@ -155,6 +161,7 @@ export class PersonalDriveStorage implements PersonalDrivePort {
           'api.messages.sign_in_to_google_again_and_allow_drive_access',
         ),
       );
+
     return {
       subject: identity.subject,
       email: identity.email,
@@ -170,6 +177,7 @@ export class PersonalDriveStorage implements PersonalDrivePort {
     authorization: DriveAuthorization,
   ): Promise<PersonalDriveStatus> {
     const existing = await this.credentialsByUser(userId);
+
     if (existing && existing.googleSubject !== authorization.subject)
       throw this.error(
         'DRIVE_ACCOUNT_MISMATCH',
@@ -177,6 +185,7 @@ export class PersonalDriveStorage implements PersonalDrivePort {
           'api.messages.reconnect_the_original_google_account_to_preserve_access_to_your_files',
         ),
       );
+
     if (!authorization.refreshToken && !existing?.encryptedRefreshToken)
       throw this.error(
         'DRIVE_RECONNECT_REQUIRED',
@@ -184,6 +193,7 @@ export class PersonalDriveStorage implements PersonalDrivePort {
           'api.messages.offline_drive_permission_is_missing_sign_in_to_google_again_and_allow',
         ),
       );
+
     const integration =
       existing ??
       this.integrations.create({
@@ -191,24 +201,29 @@ export class PersonalDriveStorage implements PersonalDrivePort {
         googleSubject: authorization.subject,
         rootFolderId: null,
       });
+
     integration.googleEmail = authorization.email;
     integration.encryptedAccessToken = this.tokens.encrypt(
       authorization.accessToken,
     );
+
     if (authorization.refreshToken)
       integration.encryptedRefreshToken = this.tokens.encrypt(
         authorization.refreshToken,
       );
+
     integration.tokenExpiresAt = authorization.expiresAt
       ? new Date(authorization.expiresAt)
       : null;
     integration.status = StorageIntegrationStatus.CONNECTED;
     // Create/validate folders before committing a connected status.
     const drive = await this.drive(integration);
+
     if (integration.rootFolderId) {
       const root = await drive.files
         .get({ fileId: integration.rootFolderId, fields: 'id,trashed' })
         .catch(() => null);
+
       if (!root || root.data.trashed)
         throw this.error(
           'DRIVE_FOLDER_UNAVAILABLE',
@@ -223,6 +238,7 @@ export class PersonalDriveStorage implements PersonalDrivePort {
         'root',
       );
     }
+
     integration.metadataJson = {
       ...integration.metadataJson,
       connectedAt: new Date().toISOString(),
@@ -231,15 +247,18 @@ export class PersonalDriveStorage implements PersonalDrivePort {
     const startToken = await drive.changes.getStartPageToken({
       fields: 'startPageToken',
     });
+
     integration.driveStartPageToken =
       startToken.data.startPageToken ?? integration.driveStartPageToken;
     await this.integrations.save(integration);
     await this.ensureChangeWatch(integration, drive).catch(() => undefined);
+
     return this.status(userId);
   }
 
   async status(userId: string): Promise<PersonalDriveStatus> {
     const integration = await this.integrations.findOneBy({ userId });
+
     return {
       provider: 'google_drive',
       connected: integration?.status === StorageIntegrationStatus.CONNECTED,
@@ -253,11 +272,13 @@ export class PersonalDriveStorage implements PersonalDrivePort {
 
   async disconnect(userId: string, confirmFilesBackedUp = false) {
     const integration = await this.credentialsByUser(userId);
+
     if (!integration) return;
 
     const attachedFiles = await this.files.count({
       where: { storageIntegrationId: integration.id },
     });
+
     if (attachedFiles > 0 && !confirmFilesBackedUp)
       throw this.error(
         'DRIVE_FILES_BACKUP_CONFIRMATION_REQUIRED',
@@ -269,6 +290,7 @@ export class PersonalDriveStorage implements PersonalDrivePort {
 
     if (integration.driveWatchChannelId && integration.driveWatchResourceId) {
       const drive = await this.drive(integration).catch(() => null);
+
       await drive?.channels
         .stop({
           requestBody: {
@@ -278,6 +300,7 @@ export class PersonalDriveStorage implements PersonalDrivePort {
         })
         .catch(() => undefined);
     }
+
     await this.integrations.update(
       { userId },
       {
@@ -308,6 +331,7 @@ export class PersonalDriveStorage implements PersonalDrivePort {
       throw new NotFoundException(
         apiMessage('api.messages.patient_file_is_not_stored_in_drive'),
       );
+
     const integration = await this.requireIntegration(
       file.storageIntegrationId,
     );
@@ -320,6 +344,7 @@ export class PersonalDriveStorage implements PersonalDrivePort {
     const currentModifiedAt = current.data.modifiedTime
       ? new Date(current.data.modifiedTime)
       : null;
+
     if (
       !currentModifiedAt ||
       !file.driveModifiedAt ||
@@ -349,6 +374,7 @@ export class PersonalDriveStorage implements PersonalDrivePort {
           },
         },
       );
+
       await this.files.save(
         this.files.create({
           ...file,
@@ -357,6 +383,7 @@ export class PersonalDriveStorage implements PersonalDrivePort {
           externalMetadataJson,
         }),
       );
+
       throw this.error(
         'DRIVE_SYNC_CONFLICT',
         apiMessage(
@@ -413,6 +440,7 @@ export class PersonalDriveStorage implements PersonalDrivePort {
         'id,name,mimeType,size,md5Checksum,modifiedTime,parents,description,appProperties',
     });
     const metadata = response.data;
+
     return {
       storageProvider: StorageProviderType.GOOGLE_DRIVE,
       storageIntegrationId: integration.id,
@@ -440,6 +468,7 @@ export class PersonalDriveStorage implements PersonalDrivePort {
       throw new NotFoundException(
         apiMessage('api.messages.patient_file_is_not_stored_in_drive'),
       );
+
     const integration = await this.requireIntegration(
       file.storageIntegrationId,
     );
@@ -452,6 +481,7 @@ export class PersonalDriveStorage implements PersonalDrivePort {
           'id,name,mimeType,size,md5Checksum,modifiedTime,headRevisionId,parents,description,appProperties',
       })
     ).data;
+
     if (file.driveFolderId && !metadata.parents?.includes(file.driveFolderId)) {
       metadata = (
         await drive.files.update({
@@ -466,6 +496,7 @@ export class PersonalDriveStorage implements PersonalDrivePort {
         })
       ).data;
     }
+
     return {
       storageProvider: StorageProviderType.GOOGLE_DRIVE,
       storageIntegrationId: integration.id,
@@ -493,6 +524,7 @@ export class PersonalDriveStorage implements PersonalDrivePort {
       throw new NotFoundException(
         apiMessage('api.messages.patient_file_is_not_stored_in_drive'),
       );
+
     const integration = await this.requireIntegration(
       file.storageIntegrationId,
     );
@@ -501,6 +533,7 @@ export class PersonalDriveStorage implements PersonalDrivePort {
       fileId: file.driveFileId,
       fields: 'revisions(id,modifiedTime,keepForever,size)',
     });
+
     return (response.data.revisions ?? []).flatMap((revision) =>
       revision.id
         ? [
@@ -520,6 +553,7 @@ export class PersonalDriveStorage implements PersonalDrivePort {
       throw new NotFoundException(
         apiMessage('api.messages.patient_file_is_not_stored_in_drive'),
       );
+
     const integration = await this.requireIntegration(
       file.storageIntegrationId,
     );
@@ -528,6 +562,7 @@ export class PersonalDriveStorage implements PersonalDrivePort {
       { fileId: file.driveFileId, revisionId, alt: 'media' },
       { responseType: 'stream' },
     );
+
     return response.data;
   }
 
@@ -536,6 +571,7 @@ export class PersonalDriveStorage implements PersonalDrivePort {
     userId: string,
   ): Promise<StorageUploadResult> {
     const integration = await this.requireUserIntegration(userId);
+
     return this.withDrive(integration, async (drive) => {
       const clinic = await this.legacyDrive.findOrCreateFolder(
         drive,
@@ -565,6 +601,7 @@ export class PersonalDriveStorage implements PersonalDrivePort {
           'files(id,name,size,md5Checksum,mimeType,modifiedTime,headRevisionId)',
         pageSize: 2,
       });
+
       if ((existing.data.files?.length ?? 0) > 1)
         throw this.error(
           'DRIVE_DUPLICATE_FILE',
@@ -572,6 +609,7 @@ export class PersonalDriveStorage implements PersonalDrivePort {
             'api.messages.duplicate_drive_files_need_attention_before_migration_can_continue',
           ),
         );
+
       const metadata =
         existing.data.files?.[0] ??
         (
@@ -601,6 +639,7 @@ export class PersonalDriveStorage implements PersonalDrivePort {
           })
         ).data;
       const content = await fs.readFile(input.file.path);
+
       if (
         !metadata.id ||
         Number(metadata.size) !== content.length ||
@@ -612,6 +651,7 @@ export class PersonalDriveStorage implements PersonalDrivePort {
             'api.messages.drive_upload_could_not_be_verified_retry_the_upload',
           ),
         );
+
       return {
         storageProvider: StorageProviderType.GOOGLE_DRIVE,
         storageIntegrationId: integration.id,
@@ -644,6 +684,7 @@ export class PersonalDriveStorage implements PersonalDrivePort {
       where: { id: input.patientId, clinicId: input.clinicId },
       relations: { clinic: true },
     });
+
     if (!patient)
       throw new NotFoundException(apiMessage('api.messages.patient_missing'));
 
@@ -660,6 +701,7 @@ export class PersonalDriveStorage implements PersonalDrivePort {
       },
       select: { id: true },
     });
+
     if (alreadyImported)
       throw this.error(
         'DRIVE_FILE_ALREADY_IMPORTED',
@@ -667,6 +709,7 @@ export class PersonalDriveStorage implements PersonalDrivePort {
           'api.messages.this_drive_file_is_already_attached_to_a_patient_record',
         ),
       );
+
     const allowedMimeTypes = new Set([
       'application/msword',
       'application/pdf',
@@ -677,6 +720,7 @@ export class PersonalDriveStorage implements PersonalDrivePort {
       'image/webp',
       'text/plain',
     ]);
+
     if (
       !source.data.id ||
       source.data.trashed ||
@@ -698,6 +742,7 @@ export class PersonalDriveStorage implements PersonalDrivePort {
     const originalName = source.data.name || input.patientFileId;
     const safeName = path.basename(originalName).replace(/[\\/\0]/g, '_');
     const temporaryPath = path.join(temporaryDirectory, safeName);
+
     try {
       const media = await drive.files.get(
         { fileId: input.sourceDriveFileId, alt: 'media' },
@@ -709,13 +754,17 @@ export class PersonalDriveStorage implements PersonalDrivePort {
         transform(chunk: Buffer, _encoding, callback) {
           bytesRead += chunk.length;
           contentHash.update(chunk);
+
           if (bytesRead > 10 * 1024 * 1024) {
             callback(new Error('Drive import exceeded the file size limit'));
+
             return;
           }
+
           callback(null, chunk);
         },
       });
+
       await pipeline(
         media.data,
         enforceSizeLimit,
@@ -749,6 +798,7 @@ export class PersonalDriveStorage implements PersonalDrivePort {
         filename: path.basename(temporaryPath),
         path: temporaryPath,
       };
+
       await validateAndNormalizeUploadedFile(file, [
         'image',
         'pdf',
@@ -806,6 +856,7 @@ export class PersonalDriveStorage implements PersonalDrivePort {
             'id,name,mimeType,size,md5Checksum,modifiedTime,headRevisionId,parents,description,appProperties',
         })
       ).data;
+
       if (!moved.id)
         throw this.error(
           'DRIVE_IMPORT_MOVE_FAILED',
@@ -813,6 +864,7 @@ export class PersonalDriveStorage implements PersonalDrivePort {
             'api.messages.the_selected_drive_file_could_not_be_moved_into_the_patient_folder',
           ),
         );
+
       return {
         storageProvider: StorageProviderType.GOOGLE_DRIVE,
         storageIntegrationId: integration.id,
@@ -848,6 +900,7 @@ export class PersonalDriveStorage implements PersonalDrivePort {
     const previousParents = metadata.driveImportSourceParents;
     const previousProperties = metadata.driveImportSourceAppProperties;
     const managedFolderId = metadata.driveImportManagedFolderId;
+
     if (
       !driveFileId ||
       !integrationId ||
@@ -858,6 +911,7 @@ export class PersonalDriveStorage implements PersonalDrivePort {
 
     const integration = await this.requireIntegration(integrationId);
     const drive = await this.drive(integration);
+
     await drive.files.update({
       fileId: driveFileId,
       addParents:
@@ -880,12 +934,14 @@ export class PersonalDriveStorage implements PersonalDrivePort {
       throw new NotFoundException(
         apiMessage('api.messages.patient_file_is_unavailable'),
       );
+
     if (!file.storageIntegrationId) {
       const legacy = await this.legacyIntegrations.findOneBy({
         clinicId,
         provider: StorageProviderType.GOOGLE_DRIVE,
         status: StorageIntegrationStatus.CONNECTED,
       });
+
       if (!legacy)
         throw this.error(
           'DRIVE_RECONNECT_REQUIRED',
@@ -893,8 +949,10 @@ export class PersonalDriveStorage implements PersonalDrivePort {
             'api.messages.the_original_clinic_drive_connection_is_unavailable',
           ),
         );
+
       try {
         const drive = await this.legacyDrive.getDrive(legacy);
+
         return (
           await drive.files.get(
             { fileId: file.driveFileId, alt: 'media' },
@@ -906,6 +964,7 @@ export class PersonalDriveStorage implements PersonalDrivePort {
           throw new NotFoundException(
             apiMessage('api.messages.this_drive_file_is_unavailable'),
           );
+
         throw this.error(
           'LEGACY_DRIVE_UNAVAILABLE',
           apiMessage(
@@ -914,9 +973,11 @@ export class PersonalDriveStorage implements PersonalDrivePort {
         );
       }
     }
+
     const integration = await this.requireIntegration(
       file.storageIntegrationId,
     );
+
     return this.withDrive(
       integration,
       async (drive) =>
@@ -931,6 +992,7 @@ export class PersonalDriveStorage implements PersonalDrivePort {
 
   async trash(integrationId: string, fileId: string) {
     const integration = await this.requireIntegration(integrationId);
+
     await this.withDrive(integration, async (drive) => {
       await drive.files.update({
         fileId,
@@ -980,6 +1042,7 @@ export class PersonalDriveStorage implements PersonalDrivePort {
           .andWhere('file."storageIntegrationId" IS NULL')
           .getCount()
       : 0;
+
     return {
       total: complete + candidates.length,
       migrated: complete,
@@ -999,8 +1062,10 @@ export class PersonalDriveStorage implements PersonalDrivePort {
     const integration = await this.requireUserIntegration(userId);
     const candidates = await this.migrationCandidates(userId, context.clinicId);
     let attempted = 0;
+
     for (const file of candidates) {
       if (attempted >= 10) break;
+
       await this.migrations
         .createQueryBuilder()
         .insert()
@@ -1035,9 +1100,12 @@ export class PersonalDriveStorage implements PersonalDrivePort {
           },
         )
         .execute();
+
       if (!claim.affected) continue;
+
       attempted++;
       let patientAccessAvailable: boolean;
+
       try {
         await this.access.assertPatientAccessible(
           this.context(context),
@@ -1050,6 +1118,7 @@ export class PersonalDriveStorage implements PersonalDrivePort {
       } catch {
         patientAccessAvailable = false;
       }
+
       if (!patientAccessAvailable) {
         await this.finishMigration(
           integration.id,
@@ -1062,6 +1131,7 @@ export class PersonalDriveStorage implements PersonalDrivePort {
 
       const directory = path.resolve(process.cwd(), 'uploads', 'patient-files');
       const localSource = path.resolve(directory, file.storedName);
+
       if (
         file.storageProvider === StorageProviderType.LOCAL &&
         !localSource.startsWith(directory + path.sep)
@@ -1076,8 +1146,10 @@ export class PersonalDriveStorage implements PersonalDrivePort {
       }
 
       let temporary: string | undefined;
+
       try {
         let source = file.path;
+
         if (file.storageProvider === StorageProviderType.GOOGLE_DRIVE) {
           temporary = await fs.mkdtemp(
             path.join(os.tmpdir(), 'dental-drive-migrate-'),
@@ -1085,12 +1157,15 @@ export class PersonalDriveStorage implements PersonalDrivePort {
           source = path.join(temporary, 'source');
           const stream = await this.download(file, context.clinicId);
           const { createWriteStream } = await import('fs');
+
           await pipeline(stream, createWriteStream(source));
         } else {
           source = localSource;
         }
+
         const content = await fs.readFile(source);
         const checksum = createHash('sha256').update(content).digest('hex');
+
         if (file.checksum && file.checksum !== checksum) {
           await this.finishMigration(
             integration.id,
@@ -1100,6 +1175,7 @@ export class PersonalDriveStorage implements PersonalDrivePort {
           );
           continue;
         }
+
         const result = await this.upload(
           {
             clinicId: context.clinicId,
@@ -1126,6 +1202,7 @@ export class PersonalDriveStorage implements PersonalDrivePort {
           },
           userId,
         );
+
         await this.files.manager.transaction(async (manager) => {
           const update = await manager
             .getRepository(PatientFile)
@@ -1148,8 +1225,10 @@ export class PersonalDriveStorage implements PersonalDrivePort {
               },
             )
             .execute();
+
           if (update.affected !== 1)
             throw new Error('File was changed during migration');
+
           await manager
             .getRepository(Patient)
             .update(
@@ -1163,6 +1242,7 @@ export class PersonalDriveStorage implements PersonalDrivePort {
               { status: 'complete', error: null, leaseUntil: null },
             );
         });
+
         if (file.storageProvider === StorageProviderType.LOCAL)
           await fs.unlink(source).catch(() => undefined);
       } catch {
@@ -1176,11 +1256,13 @@ export class PersonalDriveStorage implements PersonalDrivePort {
         if (temporary) await fs.rm(temporary, { recursive: true, force: true });
       }
     }
+
     return this.migrationStatus(userId, context);
   }
 
   async sync(userId: string, context: PersonalDriveContext) {
     const integration = await this.requireUserIntegration(userId);
+
     return {
       provider: 'google_drive' as const,
       ...(await this.syncIntegration(
@@ -1207,6 +1289,7 @@ export class PersonalDriveStorage implements PersonalDrivePort {
     for (const integration of integrations) {
       try {
         const drive = await this.drive(integration);
+
         await this.ensureChangeWatch(integration, drive);
         await this.syncIntegration(integration, drive);
       } catch {
@@ -1233,8 +1316,10 @@ export class PersonalDriveStorage implements PersonalDrivePort {
       .getOne();
 
     if (!integration?.driveWatchTokenHash) return false;
+
     const receivedHash = createHash('sha256').update(channelToken).digest();
     const expectedHash = Buffer.from(integration.driveWatchTokenHash, 'hex');
+
     if (
       expectedHash.length !== receivedHash.length ||
       !timingSafeEqual(receivedHash, expectedHash)
@@ -1242,7 +1327,9 @@ export class PersonalDriveStorage implements PersonalDrivePort {
       return false;
 
     const drive = await this.drive(integration);
+
     await this.syncIntegration(integration, drive);
+
     return true;
   }
 
@@ -1259,6 +1346,7 @@ export class PersonalDriveStorage implements PersonalDrivePort {
     const lock = new Promise<void>((resolve) => {
       release = resolve;
     });
+
     this.integrationSyncLocks.set(integration.id, lock);
     try {
       return await this.syncIntegrationUnlocked(
@@ -1270,6 +1358,7 @@ export class PersonalDriveStorage implements PersonalDrivePort {
     } finally {
       if (this.integrationSyncLocks.get(integration.id) === lock)
         this.integrationSyncLocks.delete(integration.id);
+
       release();
     }
   }
@@ -1281,15 +1370,18 @@ export class PersonalDriveStorage implements PersonalDrivePort {
     advanceCursor = true,
   ) {
     const drive = existingDrive ?? (await this.drive(integration));
+
     if (!integration.driveStartPageToken) {
       const startToken = await drive.changes.getStartPageToken({
         fields: 'startPageToken',
       });
+
       if (advanceCursor) {
         integration.driveStartPageToken =
           startToken.data.startPageToken ?? null;
         await this.integrations.save(integration);
       }
+
       return this.reconcileKnownFiles(integration, drive, clinicId);
     }
 
@@ -1297,8 +1389,10 @@ export class PersonalDriveStorage implements PersonalDrivePort {
     let scanned = 0;
     let updated = 0;
     let unavailable = 0;
+
     while (pageToken) {
       let response: { data: drive_v3.Schema$ChangeList };
+
       try {
         response = await drive.changes.list({
           pageToken,
@@ -1308,19 +1402,23 @@ export class PersonalDriveStorage implements PersonalDrivePort {
         });
       } catch (error) {
         if (this.statusCode(error) !== 410) throw error;
+
         const startToken = await drive.changes.getStartPageToken({
           fields: 'startPageToken',
         });
+
         if (advanceCursor) {
           integration.driveStartPageToken =
             startToken.data.startPageToken ?? null;
           await this.integrations.save(integration);
         }
+
         const reconciled = await this.reconcileKnownFiles(
           integration,
           drive,
           clinicId,
         );
+
         return { ...reconciled, scanned: reconciled.scanned + scanned };
       }
 
@@ -1331,12 +1429,14 @@ export class PersonalDriveStorage implements PersonalDrivePort {
           change,
           clinicId,
         );
+
         scanned += result.scanned;
         updated += result.updated;
         unavailable += result.unavailable;
       }
 
       pageToken = response.data.nextPageToken ?? undefined;
+
       if (advanceCursor) {
         integration.driveStartPageToken =
           response.data.newStartPageToken ??
@@ -1347,6 +1447,7 @@ export class PersonalDriveStorage implements PersonalDrivePort {
     }
 
     const syncedAt = new Date().toISOString();
+
     integration.metadataJson = advanceCursor
       ? { ...integration.metadataJson, lastSyncAt: syncedAt }
       : {
@@ -1360,6 +1461,7 @@ export class PersonalDriveStorage implements PersonalDrivePort {
           },
         };
     await this.integrations.save(integration);
+
     return { scanned, updated, unavailable };
   }
 
@@ -1370,6 +1472,7 @@ export class PersonalDriveStorage implements PersonalDrivePort {
     clinicId?: string,
   ) {
     if (!change.fileId) return { scanned: 0, updated: 0, unavailable: 0 };
+
     const file = await this.files.findOne({
       where: {
         storageIntegrationId: integration.id,
@@ -1377,6 +1480,7 @@ export class PersonalDriveStorage implements PersonalDrivePort {
         ...(clinicId ? { patient: { clinicId } } : {}),
       },
     });
+
     if (!file) return { scanned: 0, updated: 0, unavailable: 0 };
 
     if (change.removed || change.file?.trashed) {
@@ -1385,6 +1489,7 @@ export class PersonalDriveStorage implements PersonalDrivePort {
         file.syncSource === PatientFileSyncSource.APP
       )
         return { scanned: 1, updated: 0, unavailable: 1 };
+
       const externalMetadataJson = appendPatientFileSyncAudit(
         file.externalMetadataJson,
         {
@@ -1399,6 +1504,7 @@ export class PersonalDriveStorage implements PersonalDrivePort {
           },
         },
       );
+
       await this.files.save(
         this.files.create({
           ...file,
@@ -1409,6 +1515,7 @@ export class PersonalDriveStorage implements PersonalDrivePort {
           externalMetadataJson,
         }),
       );
+
       return { scanned: 1, updated: 0, unavailable: 1 };
     }
 
@@ -1436,6 +1543,7 @@ export class PersonalDriveStorage implements PersonalDrivePort {
           metadata.parents ?? [],
         )
       : null;
+
     if (associationChanged || !managedFolder) {
       const reason = associationChanged
         ? 'drive_file_association_changed'
@@ -1453,6 +1561,7 @@ export class PersonalDriveStorage implements PersonalDrivePort {
           },
         },
       );
+
       await this.files.save(
         this.files.create({
           ...file,
@@ -1465,12 +1574,14 @@ export class PersonalDriveStorage implements PersonalDrivePort {
           externalMetadataJson,
         }),
       );
+
       return {
         scanned: 1,
         updated: 0,
         unavailable: managedFolder ? 0 : 1,
       };
     }
+
     const before = {
       name: file.storedName,
       description: file.description,
@@ -1502,6 +1613,7 @@ export class PersonalDriveStorage implements PersonalDrivePort {
       md5Checksum: metadata.md5Checksum ?? null,
       headRevisionId: metadata.headRevisionId ?? null,
     };
+
     if (changed) {
       const previousVersions = Array.isArray(
         file.externalMetadataJson?.driveVersionHistory,
@@ -1515,6 +1627,7 @@ export class PersonalDriveStorage implements PersonalDrivePort {
         Boolean(file.externalMetadataJson?.md5Checksum) &&
         Boolean(metadata.md5Checksum) &&
         file.externalMetadataJson.md5Checksum !== metadata.md5Checksum;
+
       if (contentChanged) {
         externalMetadataJson = {
           ...externalMetadataJson,
@@ -1530,13 +1643,16 @@ export class PersonalDriveStorage implements PersonalDrivePort {
           ].slice(-50),
         };
       }
+
       externalMetadataJson = appendPatientFileSyncAudit(externalMetadataJson, {
         event: 'drive_file_changed',
         source: 'drive',
         details: { before, after },
       });
     }
+
     const pendingReview = file.syncReviewRequired;
+
     await this.files.save(
       this.files.create({
         ...file,
@@ -1559,6 +1675,7 @@ export class PersonalDriveStorage implements PersonalDrivePort {
         externalMetadataJson,
       }),
     );
+
     return {
       scanned: 1,
       updated: 1,
@@ -1579,6 +1696,7 @@ export class PersonalDriveStorage implements PersonalDrivePort {
         .then((response) => response.data)
         .catch(() => null);
       const categoryName = categoryFolder?.name;
+
       if (
         !categoryFolder ||
         !categoryName ||
@@ -1591,27 +1709,35 @@ export class PersonalDriveStorage implements PersonalDrivePort {
         ].includes(categoryName)
       )
         continue;
+
       const patientFolderId = categoryFolder.parents?.[0];
+
       if (!patientFolderId) continue;
+
       const patientFolder = await drive.files
         .get({ fileId: patientFolderId, fields: 'id,name,parents' })
         .then((response) => response.data)
         .catch(() => null);
+
       if (
         patientFolder?.name !== buildPatientFolderName(patientId) ||
         !patientFolder.parents?.[0]
       )
         continue;
+
       const patientsFolder = await drive.files
         .get({ fileId: patientFolder.parents[0], fields: 'id,name,parents' })
         .then((response) => response.data)
         .catch(() => null);
+
       if (patientsFolder?.name !== 'patients' || !patientsFolder.parents?.[0])
         continue;
+
       const clinicFolder = await drive.files
         .get({ fileId: patientsFolder.parents[0], fields: 'id,name,parents' })
         .then((response) => response.data)
         .catch(() => null);
+
       if (
         !clinicFolder?.parents?.includes(integration.rootFolderId ?? '') ||
         !clinicFolder.name?.startsWith(
@@ -1619,11 +1745,13 @@ export class PersonalDriveStorage implements PersonalDrivePort {
         )
       )
         continue;
+
       return {
         folderId,
         type: patientFileTypeFromDriveFolder(categoryName),
       };
     }
+
     return null;
   }
 
@@ -1640,8 +1768,10 @@ export class PersonalDriveStorage implements PersonalDrivePort {
     });
     let updated = 0;
     let unavailable = 0;
+
     for (const file of files) {
       if (!file.driveFileId) continue;
+
       try {
         const metadata = await drive.files.get({
           fileId: file.driveFileId,
@@ -1657,10 +1787,12 @@ export class PersonalDriveStorage implements PersonalDrivePort {
           },
           clinicId,
         );
+
         updated += result.updated;
         unavailable += result.unavailable;
       } catch (error) {
         if (this.statusCode(error) !== 404) throw error;
+
         await this.files.save(
           this.files.create({
             ...file,
@@ -1687,6 +1819,7 @@ export class PersonalDriveStorage implements PersonalDrivePort {
         unavailable++;
       }
     }
+
     return { scanned: files.length, updated, unavailable };
   }
 
@@ -1695,7 +1828,9 @@ export class PersonalDriveStorage implements PersonalDrivePort {
     drive: drive_v3.Drive,
   ) {
     const address = getEnv('GOOGLE_DRIVE_WEBHOOK_URL');
+
     if (!address || !integration.driveStartPageToken) return;
+
     if (
       integration.driveWatchChannelId &&
       integration.driveWatchExpiresAt &&
@@ -1716,6 +1851,7 @@ export class PersonalDriveStorage implements PersonalDrivePort {
         expiration: String(requestedExpiration),
       },
     });
+
     integration.driveWatchChannelId = channelId;
     integration.driveWatchResourceId = response.data.resourceId ?? null;
     integration.driveWatchTokenHash = createHash('sha256')
@@ -1739,6 +1875,7 @@ export class PersonalDriveStorage implements PersonalDrivePort {
       order: { createdAt: 'ASC' },
     });
   }
+
   private finishMigration(
     integrationId: string,
     fileId: string,
@@ -1750,9 +1887,11 @@ export class PersonalDriveStorage implements PersonalDrivePort {
       { status, error, leaseUntil: null },
     );
   }
+
   private context(value: PersonalDriveContext): ClinicAccessContext {
     return { ...value, role: value.role as ClinicMembershipRole };
   }
+
   private credentialsByUser(userId: string) {
     return this.integrations
       .createQueryBuilder('integration')
@@ -1763,8 +1902,10 @@ export class PersonalDriveStorage implements PersonalDrivePort {
       .where('integration.userId = :userId', { userId })
       .getOne();
   }
+
   private async requireUserIntegration(userId: string) {
     const integration = await this.credentialsByUser(userId);
+
     if (
       !integration ||
       integration.status !== StorageIntegrationStatus.CONNECTED ||
@@ -1776,8 +1917,10 @@ export class PersonalDriveStorage implements PersonalDrivePort {
           'api.messages.connect_your_google_drive_before_uploading_patient_files',
         ),
       );
+
     return integration;
   }
+
   private async requireIntegration(id: string) {
     const integration = await this.integrations
       .createQueryBuilder('integration')
@@ -1789,6 +1932,7 @@ export class PersonalDriveStorage implements PersonalDrivePort {
       .where('integration.id = :id', { id })
       .andWhere('owner.isActive = true')
       .getOne();
+
     if (
       !integration ||
       integration.status !== StorageIntegrationStatus.CONNECTED ||
@@ -1800,10 +1944,13 @@ export class PersonalDriveStorage implements PersonalDrivePort {
           'api.messages.the_file_owner_needs_to_reconnect_google_drive',
         ),
       );
+
     return integration;
   }
+
   private async drive(integration: UserStorageIntegration) {
     const client = this.oauth();
+
     client.setCredentials({
       access_token: integration.encryptedAccessToken
         ? this.tokens.decrypt(integration.encryptedAccessToken)
@@ -1815,6 +1962,7 @@ export class PersonalDriveStorage implements PersonalDrivePort {
     });
     // Await refresh persistence before returning an API client; don't create unhandled promises in an SDK event listener.
     await client.getAccessToken();
+
     if (integration.id && client.credentials.access_token) {
       integration.encryptedAccessToken = this.tokens.encrypt(
         client.credentials.access_token,
@@ -1827,8 +1975,10 @@ export class PersonalDriveStorage implements PersonalDrivePort {
         tokenExpiresAt: integration.tokenExpiresAt,
       });
     }
+
     return google.drive({ version: 'v3', auth: client });
   }
+
   private async withDrive<T>(
     integration: UserStorageIntegration,
     action: (drive: drive_v3.Drive) => Promise<T>,
@@ -1841,6 +1991,7 @@ export class PersonalDriveStorage implements PersonalDrivePort {
         error instanceof NotFoundException
       )
         throw error;
+
       const status = this.statusCode(error);
       const data =
         typeof error === 'object' && error !== null && 'response' in error
@@ -1848,10 +1999,12 @@ export class PersonalDriveStorage implements PersonalDrivePort {
               (error as { response?: { data?: unknown } }).response?.data ?? {},
             )
           : '';
+
       if (status === 401 || data.includes('invalid_grant')) {
         await this.integrations.update(integration.id, {
           status: StorageIntegrationStatus.ERROR,
         });
+
         throw this.error(
           'DRIVE_RECONNECT_REQUIRED',
           apiMessage(
@@ -1859,10 +2012,12 @@ export class PersonalDriveStorage implements PersonalDrivePort {
           ),
         );
       }
+
       if (status === 404)
         throw new NotFoundException(
           apiMessage('api.messages.this_drive_file_is_unavailable'),
         );
+
       if (status === 403)
         throw this.error(
           'DRIVE_ACCESS_DENIED',
@@ -1870,6 +2025,7 @@ export class PersonalDriveStorage implements PersonalDrivePort {
             'api.messages.drive_access_or_storage_quota_is_unavailable_check_your_google_account_and',
           ),
         );
+
       throw this.error(
         'DRIVE_UNAVAILABLE',
         apiMessage(
@@ -1878,17 +2034,21 @@ export class PersonalDriveStorage implements PersonalDrivePort {
       );
     }
   }
+
   private statusCode(error: unknown): number | undefined {
     if (typeof error !== 'object' || error === null) return undefined;
+
     const value = error as {
       code?: string | number;
       response?: { status?: number };
     };
+
     return (
       value.response?.status ??
       (typeof value.code === 'number' ? value.code : undefined)
     );
   }
+
   private error(code: string, message: ApiMessage) {
     return new ConflictException({ code, message });
   }

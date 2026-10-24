@@ -1,22 +1,21 @@
-import { apiMessage } from '../common/i18n/api-message';
 import { Injectable } from '@nestjs/common';
-import { DataSource, Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
-
 import * as bcrypt from 'bcrypt';
+import { DataSource, Repository } from 'typeorm';
 
-import { initialData } from './data/seed-data';
-import { User } from '../auth/entities/user.entity';
-import { Clinic } from '../clinics/entities/clinic.entity';
-import { Patient } from '../patients/entities/patient.entity';
-import { Invoice } from '../invoices/entities/invoice.entity';
-import { Payment } from '../payments/entities/payment.entity';
-import { InvoiceItem } from '../invoices/entities/invoice-item.entity';
 import { Appointment } from '../appointments/entities/appointment.entity';
 import { AppointmentType } from '../appointments/entities/appointment-type.entity';
-import { PatientFile } from '../patient-files/entities/patient-file.entity';
-import { OdontogramEntry } from '../odontogram/entities/odontogram-entry.entity';
+import { User } from '../auth/entities/user.entity';
 import { ClinicMembership } from '../clinic-memberships/entities/clinic-membership.entity';
+import { Clinic } from '../clinics/entities/clinic.entity';
+import { apiMessage } from '../common/i18n/api-message';
+import { Invoice } from '../invoices/entities/invoice.entity';
+import { InvoiceItem } from '../invoices/entities/invoice-item.entity';
+import { OdontogramEntry } from '../odontogram/entities/odontogram-entry.entity';
+import { PatientFile } from '../patient-files/entities/patient-file.entity';
+import { Patient } from '../patients/entities/patient.entity';
+import { Payment } from '../payments/entities/payment.entity';
+import { initialData } from './data/seed-data';
 
 @Injectable()
 export class SeedService {
@@ -64,6 +63,7 @@ export class SeedService {
     const memberships = await this.insertMemberships(users, clinics);
     const patients = await this.insertPatients(clinics);
     const appointmentTypes = await this.insertAppointmentTypes(clinics);
+
     await this.insertAppointments(
       patients,
       appointmentTypes,
@@ -71,6 +71,7 @@ export class SeedService {
       clinics,
     );
     const invoices = await this.insertInvoices(patients, clinics);
+
     await this.insertInvoiceItems(invoices);
     await this.insertPayments(invoices, memberships);
     await this.insertOdontogramEntries(patients, memberships);
@@ -186,6 +187,7 @@ export class SeedService {
     );
 
     const byUserCode = new Map<string, ClinicMembership>();
+
     initialData.memberships.forEach((membership, idx) => {
       byUserCode.set(membership.userCode, dbMemberships[idx]);
     });
@@ -258,6 +260,7 @@ export class SeedService {
     await this.appointmentRepository.save(
       initialData.appointments.map((appointment) => {
         const membership = memberships.get(appointment.professionalUserCode)!;
+
         return this.appointmentRepository.create({
           clinicId: clinics.get(appointment.clinicCode)!.id,
           patientId: patients.get(appointment.patientCode)!.id,

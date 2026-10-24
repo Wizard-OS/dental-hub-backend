@@ -1,4 +1,5 @@
-import { apiMessage } from '../../common/i18n/api-message';
+import { randomUUID } from 'crypto';
+
 import {
   BadRequestException,
   ConflictException,
@@ -7,25 +8,26 @@ import {
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { isUUID } from 'class-validator';
-import { MembershipEnrollment } from '../entities/membership-enrollment.entity';
-import { randomUUID } from 'crypto';
 import { DataSource, EntityManager } from 'typeorm';
+
+import { apiMessage } from '../../common/i18n/api-message';
 import { ClinicSubscription } from '../../membership/entities/clinic-subscription.entity';
 import { ClinicSubscriptionAuditLog } from '../../membership/entities/clinic-subscription-audit-log.entity';
-import { MembershipService } from '../../membership/membership.service';
+import { BillingProvider } from '../../membership/interfaces/billing-provider.enum';
 import { MembershipPlanCode } from '../../membership/interfaces/membership-plan-code.enum';
 import { SubscriptionStatus } from '../../membership/interfaces/subscription-status.enum';
-import { BillingProvider } from '../../membership/interfaces/billing-provider.enum';
-import { BillingInterval } from '../interfaces/billing-interval.enum';
-import { MembershipPaymentMethod } from '../entities/membership-payment-method.entity';
+import { MembershipService } from '../../membership/membership.service';
 import { MembershipCharge } from '../entities/membership-charge.entity';
+import { MembershipEnrollment } from '../entities/membership-enrollment.entity';
+import { MembershipPaymentMethod } from '../entities/membership-payment-method.entity';
+import { BillingInterval } from '../interfaces/billing-interval.enum';
+import { membershipQuote } from '../membership-offer';
+import { withBillingLock } from './billing-lock';
 import {
   MembershipPaymentMethodsService,
   methodSummary,
 } from './membership-payment-methods.service';
 import { PayPalVaultProvider, VaultOrder } from './paypal-vault.provider';
-import { withBillingLock } from './billing-lock';
-import { membershipQuote } from '../membership-offer';
 
 export function billingPeriodEnd(
   anchor: Date,
@@ -34,6 +36,7 @@ export function billingPeriodEnd(
 ) {
   const date = new Date(anchor);
   const day = date.getUTCDate();
+
   date.setUTCDate(1);
   date.setUTCMonth(
     date.getUTCMonth() +
@@ -42,7 +45,9 @@ export function billingPeriodEnd(
   const lastDay = new Date(
     Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 0),
   ).getUTCDate();
+
   date.setUTCDate(Math.min(day, lastDay));
+
   return date;
 }
 const BILLABLE_STATUSES = [
@@ -77,14 +82,17 @@ export class MembershipRenewalsService {
       throw new ServiceUnavailableException(
         apiMessage('api.messages.paypal_credentials_are_not_configured'),
       );
+
     if (!input.acceptRecurringBilling)
       throw new BadRequestException(
         apiMessage('api.messages.recurring_billing_consent_is_required'),
       );
+
     await this.membership.ensureSubscription(clinicId);
     await withBillingLock(this.db, clinicId, async (manager) => {
       const repo = manager.getRepository(ClinicSubscription);
       const sub = await repo.findOneByOrFail({ clinicId });
+
       if (sub.checkoutRequestId === input.requestId) {
         if (
           sub.selectedPaymentMethodId !== input.paymentMethodId ||
@@ -99,8 +107,10 @@ export class MembershipRenewalsService {
               'api.messages.request_id_already_used_with_different_checkout_options',
             ),
           );
+
         return;
       }
+
       if (
         await manager
           .getRepository(MembershipEnrollment)
@@ -111,6 +121,7 @@ export class MembershipRenewalsService {
             'api.messages.request_id_belongs_to_a_previous_enrollment',
           ),
         );
+
       if (
         (sub.providerSubscriptionId &&
           BILLABLE_STATUSES.concat(SubscriptionStatus.suspended).includes(
@@ -121,26 +132,32 @@ export class MembershipRenewalsService {
         throw new ConflictException(
           apiMessage('api.messages.a_membership_already_exists'),
         );
+
       const eligible =
         !sub.trialStartedAt && !sub.licenseIssuedAt && !sub.recurringConsentAt;
       const trial = input.startTrial ?? eligible;
+
       if (trial && !eligible)
         throw new ConflictException(
           apiMessage('api.messages.the_clinic_has_already_used_its_trial'),
         );
+
       if (input.promotionCode && (!eligible || !trial))
         throw new BadRequestException(
           apiMessage('api.messages.welcome_promotion_requires_the_first_trial'),
         );
+
       const quote = membershipQuote(input.interval, input.promotionCode, trial);
       const method = await this.methods.requireMethod(
         manager,
         clinicId,
         input.paymentMethodId,
       );
+
       await this.methods.verify(method);
       const now = new Date();
       const previousPlanCode = sub.planCode;
+
       sub.billingMode = 'vault';
       sub.billingProvider = BillingProvider.paypal;
       sub.providerSubscriptionId = `V-${randomUUID()}`;
@@ -157,10 +174,12 @@ export class MembershipRenewalsService {
         : now;
       sub.nextChargeAt = sub.billingAnchorAt;
       sub.paidCycles = 0;
+
       if (trial) {
         sub.trialStartedAt = now;
         sub.trialEndsAt = sub.billingAnchorAt;
       }
+
       sub.currentPeriodStart = now;
       sub.currentPeriodEnd = sub.billingAnchorAt;
       sub.planCode = trial
@@ -205,6 +224,7 @@ export class MembershipRenewalsService {
       });
     });
     const membership = await this.membership.getCurrent(clinicId);
+
     return {
       status:
         membership.status === SubscriptionStatus.incomplete
@@ -219,10 +239,12 @@ export class MembershipRenewalsService {
       const sub = await manager
         .getRepository(ClinicSubscription)
         .findOneByOrFail({ clinicId });
+
       if (sub.billingMode !== 'vault')
         throw new BadRequestException(
           apiMessage('api.messages.not_a_saved_method_membership'),
         );
+
       sub.status = SubscriptionStatus.canceled;
       sub.planCode = MembershipPlanCode.free;
       sub.cancelAtPeriodEnd = false;
@@ -232,6 +254,7 @@ export class MembershipRenewalsService {
       sub.providerStatus = 'VAULT_CANCELED';
       await manager.getRepository(ClinicSubscription).save(sub);
     });
+
     return this.membership.getCurrent(clinicId);
   }
 
@@ -243,6 +266,7 @@ export class MembershipRenewalsService {
 
   async processDue() {
     if (!this.provider.configured) return;
+
     const subs = await this.db
       .getRepository(ClinicSubscription)
       .createQueryBuilder('s')
@@ -262,6 +286,7 @@ export class MembershipRenewalsService {
       .orderBy('s.nextChargeAt', 'ASC')
       .take(50)
       .getMany();
+
     for (const sub of subs) {
       try {
         await this.processClinic(sub.clinicId);
@@ -279,33 +304,43 @@ export class MembershipRenewalsService {
       throw new ServiceUnavailableException(
         apiMessage('api.messages.paypal_credentials_are_not_configured'),
       );
+
     await withBillingLock(this.db, clinicId, async (manager) => {
       const sub = await manager
         .getRepository(ClinicSubscription)
         .findOneBy({ clinicId });
+
       if (!sub)
         throw new NotFoundException(
           apiMessage('api.messages.membership_not_found'),
         );
+
       if (sub.billingMode !== 'vault')
         throw new BadRequestException(
           apiMessage('api.messages.not_a_saved_method_membership'),
         );
+
       const now = new Date();
+
       if (reconcile) {
         const charge = await manager
           .getRepository(MembershipCharge)
           .findOneBy({ id: reconcile.chargeId, clinicId });
+
         if (!charge)
           throw new NotFoundException(
             apiMessage('api.messages.charge_not_found'),
           );
+
         const order = await this.provider.getOrder(reconcile.orderId);
+
         this.validateOrder(charge, order);
+
         if (charge.providerOrderId && charge.providerOrderId !== order.id)
           throw new ConflictException(
             apiMessage('api.messages.charge_already_has_a_different_order'),
           );
+
         charge.providerOrderId = order.id;
         await manager.getRepository(MembershipCharge).save(charge);
         const reconciled =
@@ -314,20 +349,24 @@ export class MembershipRenewalsService {
           BILLABLE_STATUSES.includes(sub.status)
             ? await this.provider.captureOrder(order.id, charge.id)
             : order;
+
         await this.settle(
           manager,
           sub,
           charge,
           reconciled === order ? order : await this.provider.getOrder(order.id),
         );
+
         return;
       }
+
       if (
         !BILLABLE_STATUSES.includes(sub.status) ||
         !sub.nextChargeAt ||
         sub.nextChargeAt > now
       )
         return;
+
       if (
         !sub.checkoutQuote ||
         !sub.billingAnchorAt ||
@@ -337,11 +376,13 @@ export class MembershipRenewalsService {
         throw new BadRequestException(
           apiMessage('api.messages.incomplete_billing_agreement'),
         );
+
       const repo = manager.getRepository(MembershipCharge);
       let charge = await repo.findOneBy({
         agreementId: sub.providerSubscriptionId,
         cycle: sub.paidCycles,
       });
+
       if (!charge)
         charge = await repo.save(
           repo.create({
@@ -362,6 +403,7 @@ export class MembershipRenewalsService {
             nextAttemptAt: now,
           }),
         );
+
       if (
         charge.status === 'paid' ||
         charge.status === 'refunded' ||
@@ -370,6 +412,7 @@ export class MembershipRenewalsService {
         charge.attempts >= 5
       )
         return;
+
       if (
         !charge.providerOrderId &&
         charge.firstAttemptAt &&
@@ -378,13 +421,16 @@ export class MembershipRenewalsService {
         charge.status = 'action_required';
         charge.error = 'RECONCILIATION_REQUIRED';
         await repo.save(charge);
+
         return;
       }
+
       charge.firstAttemptAt ??= now;
       charge.attempts += 1;
       await repo.save(charge); // Durable before any financial request.
       try {
         let order: VaultOrder;
+
         if (charge.providerOrderId)
           order = await this.provider.getOrder(charge.providerOrderId);
         else {
@@ -393,6 +439,7 @@ export class MembershipRenewalsService {
             clinicId,
             sub.selectedPaymentMethodId,
           );
+
           await this.methods.verify(method);
           order = await this.provider.createOrder({
             chargeId: charge.id,
@@ -404,12 +451,14 @@ export class MembershipRenewalsService {
           charge.providerOrderId = order.id;
           await repo.save(charge); // Persist the order before capturing it.
         }
+
         if (order.status === 'APPROVED') {
           const method = await this.methods.requireMethod(
             manager,
             clinicId,
             sub.selectedPaymentMethodId,
           );
+
           await this.methods.verify(method);
           await this.provider.captureOrder(order.id, charge.id, {
             type: method.type,
@@ -417,6 +466,7 @@ export class MembershipRenewalsService {
           });
           order = await this.provider.getOrder(order.id);
         }
+
         await this.settle(manager, sub, charge, order);
       } catch {
         charge.status = charge.attempts >= 5 ? 'action_required' : 'failed';
@@ -430,6 +480,7 @@ export class MembershipRenewalsService {
         await manager.getRepository(ClinicSubscription).save(sub);
       }
     });
+
     return this.membership.getCurrent(clinicId);
   }
 
@@ -438,13 +489,16 @@ export class MembershipRenewalsService {
       const charge = await manager
         .getRepository(MembershipCharge)
         .findOneBy({ id: chargeId, clinicId });
+
       if (!charge)
         throw new NotFoundException(
           apiMessage('api.messages.charge_not_found'),
         );
+
       const sub = await manager
         .getRepository(ClinicSubscription)
         .findOneByOrFail({ clinicId });
+
       if (
         sub.providerSubscriptionId !== charge.agreementId ||
         !BILLABLE_STATUSES.includes(sub.status)
@@ -452,10 +506,12 @@ export class MembershipRenewalsService {
         throw new ConflictException(
           apiMessage('api.messages.the_agreement_is_no_longer_billable'),
         );
+
       if (['paid', 'refunded'].includes(charge.status))
         throw new ConflictException(
           apiMessage('api.messages.this_charge_cannot_be_retried'),
         );
+
       if (
         !charge.providerOrderId &&
         charge.firstAttemptAt &&
@@ -466,11 +522,13 @@ export class MembershipRenewalsService {
             'api.messages.reconcile_the_provider_order_before_retrying_an_uncertain_payment',
           ),
         );
+
       charge.status = 'pending';
       charge.attempts = 0;
       charge.nextAttemptAt = new Date();
       await manager.getRepository(MembershipCharge).save(charge);
     });
+
     return this.processClinic(clinicId);
   }
 
@@ -484,14 +542,20 @@ export class MembershipRenewalsService {
       eventType === 'CHECKOUT.ORDER.APPROVED'
         ? resource.id
         : related?.related_ids?.order_id;
+
     if (typeof orderId !== 'string') return;
+
     const order = await this.provider.getOrder(orderId);
     const id = order.purchase_units?.[0]?.custom_id;
+
     if (!id || !isUUID(id)) return;
+
     const charge = await this.db
       .getRepository(MembershipCharge)
       .findOneBy({ id });
+
     if (!charge) return; // An unrelated merchant order is not a membership.
+
     return this.processClinic(charge.clinicId, {
       chargeId: charge.id,
       orderId,
@@ -500,6 +564,7 @@ export class MembershipRenewalsService {
 
   private validateOrder(charge: MembershipCharge, order: VaultOrder) {
     const unit = order.purchase_units?.[0];
+
     if (
       !order.id ||
       order.purchase_units?.length !== 1 ||
@@ -522,7 +587,9 @@ export class MembershipRenewalsService {
     this.validateOrder(charge, order);
     const captures = order.purchase_units![0].payments?.captures ?? [];
     const capture = captures.length === 1 ? captures[0] : undefined;
+
     if (charge.status === 'refunded') return;
+
     if (
       capture &&
       ['REFUNDED', 'PARTIALLY_REFUNDED'].includes(capture.status)
@@ -530,6 +597,7 @@ export class MembershipRenewalsService {
       charge.status = 'refunded';
       charge.error = 'PAYMENT_REFUNDED';
       await manager.getRepository(MembershipCharge).save(charge);
+
       if (
         sub.providerSubscriptionId === charge.agreementId &&
         sub.paidCycles === charge.cycle + 1 &&
@@ -539,9 +607,12 @@ export class MembershipRenewalsService {
         sub.providerStatus = 'VAULT_PAYMENT_REFUNDED';
         await manager.getRepository(ClinicSubscription).save(sub);
       }
+
       return;
     }
+
     if (charge.status === 'paid' && capture?.status === 'COMPLETED') return;
+
     if (
       order.status === 'COMPLETED' &&
       capture?.status === 'COMPLETED' &&
@@ -549,6 +620,7 @@ export class MembershipRenewalsService {
       Math.round(Number(capture.amount.value) * 100) === charge.amount
     ) {
       if (charge.status === 'paid') return;
+
       charge.status = 'paid';
       charge.providerCaptureId = capture.id;
       charge.paidAt = new Date();
@@ -557,6 +629,7 @@ export class MembershipRenewalsService {
       charge.nextAttemptAt = null;
       await manager.transaction(async (tx) => {
         await tx.getRepository(MembershipCharge).save(charge);
+
         // A late capture can settle the ledger after cancellation, but never re-enable renewal.
         if (
           sub.providerSubscriptionId === charge.agreementId &&
@@ -573,8 +646,10 @@ export class MembershipRenewalsService {
           await tx.getRepository(ClinicSubscription).save(sub);
         }
       });
+
       return;
     }
+
     charge.approvalUrl =
       order.links?.find((l) => ['payer-action', 'approve'].includes(l.rel))
         ?.href ?? null;
@@ -584,6 +659,7 @@ export class MembershipRenewalsService {
       ? 'PAYER_APPROVAL_REQUIRED'
       : 'PAYMENT_NOT_COMPLETED';
     await manager.getRepository(MembershipCharge).save(charge);
+
     if (
       sub.providerSubscriptionId === charge.agreementId &&
       BILLABLE_STATUSES.includes(sub.status)

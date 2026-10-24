@@ -1,4 +1,3 @@
-import { apiMessage } from '../common/i18n/api-message';
 import {
   BadRequestException,
   Injectable,
@@ -9,18 +8,19 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { isUUID } from 'class-validator';
 import { DataSource, Repository } from 'typeorm';
 
-import { Clinic } from './entities/clinic.entity';
-import { CreateClinicDto } from './dto/create-clinic.dto';
-import { UpdateClinicDto } from './dto/update-clinic.dto';
-import { UpdateAppointmentSettingsDto } from './dto/update-appointment-settings.dto';
+import { ClinicMembership } from '../clinic-memberships/entities/clinic-membership.entity';
+import { ClinicMembershipRole } from '../clinic-memberships/interfaces/clinic-membership-role.enum';
+import { CountriesService } from '../common/countries.service';
+import { apiMessage } from '../common/i18n/api-message';
+import { CountryMetadata } from '../common/interfaces/country-metadata.interface';
 import {
   AppointmentAvailabilityService,
   ClinicScheduleContext,
 } from './appointment-availability.service';
-import { ClinicMembership } from '../clinic-memberships/entities/clinic-membership.entity';
-import { ClinicMembershipRole } from '../clinic-memberships/interfaces/clinic-membership-role.enum';
-import { CountriesService } from '../common/countries.service';
-import { CountryMetadata } from '../common/interfaces/country-metadata.interface';
+import { CreateClinicDto } from './dto/create-clinic.dto';
+import { UpdateAppointmentSettingsDto } from './dto/update-appointment-settings.dto';
+import { UpdateClinicDto } from './dto/update-clinic.dto';
+import { Clinic } from './entities/clinic.entity';
 
 @Injectable()
 export class ClinicsService {
@@ -123,6 +123,7 @@ export class ClinicsService {
     const clinic = await this.clinicRepository.findOne({
       where: { id, isActive: true },
     });
+
     if (!clinic)
       throw new NotFoundException(
         apiMessage('api.messages.clinic_with_id_not_found', { id: id }),
@@ -140,6 +141,7 @@ export class ClinicsService {
 
     const clinic = await this.findOne(id);
     const clinicData = await this.applyCountryDefaults(updateClinicDto);
+
     Object.assign(clinic, clinicData);
 
     try {
@@ -198,7 +200,9 @@ export class ClinicsService {
     this.ensureClinicScope(scopedClinicId, id);
 
     const clinic = await this.findOne(id);
+
     clinic.isActive = false;
+
     return await this.clinicRepository.save(clinic);
   }
 

@@ -1,23 +1,23 @@
-import { apiMessage } from '../common/i18n/api-message';
-import { QueryClinicalNotesDto } from './dto/query-clinical-notes.dto';
-import { PatientFileStorageStatus } from '../patient-files/interfaces/patient-file-storage-status.enum';
 import {
   BadRequestException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
 import { isUUID } from 'class-validator';
+import { Repository } from 'typeorm';
 
-import { ClinicalNote } from './entities/clinical-note.entity';
 import { ClinicalRecord } from '../clinical-records/entities/clinical-record.entity';
-import { CreateClinicalNoteDto } from './dto/create-clinical-note.dto';
-import { UpdateClinicalNoteDto } from './dto/update-clinical-note.dto';
+import { apiMessage } from '../common/i18n/api-message';
+import { PatientFileStorageStatus } from '../patient-files/interfaces/patient-file-storage-status.enum';
 import {
   ClinicAccessContext,
   PatientAccessService,
 } from '../patients/services/patient-access.service';
+import { CreateClinicalNoteDto } from './dto/create-clinical-note.dto';
+import { QueryClinicalNotesDto } from './dto/query-clinical-notes.dto';
+import { UpdateClinicalNoteDto } from './dto/update-clinical-note.dto';
+import { ClinicalNote } from './entities/clinical-note.entity';
 
 @Injectable()
 export class ClinicalNotesService {
@@ -42,6 +42,7 @@ export class ClinicalNotesService {
       dto.clinicalRecordId,
       context.clinicId,
     );
+
     await this.patientAccessService.assertPatientAccessible(
       context,
       record.patientId,
@@ -67,6 +68,7 @@ export class ClinicalNotesService {
       .getMany();
 
     const allowed: ClinicalNote[] = [];
+
     for (const note of notes) {
       try {
         await this.patientAccessService.assertPatientAccessible(
@@ -82,6 +84,7 @@ export class ClinicalNotesService {
         // Filter inaccessible patients out of collection results.
       }
     }
+
     return allowed;
   }
 
@@ -91,10 +94,12 @@ export class ClinicalNotesService {
     dto: QueryClinicalNotesDto,
   ) {
     await this.patientAccessService.assertPatientAccessible(context, patientId);
+
     if (dto.from && dto.to && new Date(dto.from) > new Date(dto.to))
       throw new BadRequestException(
         apiMessage('api.messages.from_must_be_before_to'),
       );
+
     const query = this.clinicalNoteRepository
       .createQueryBuilder('note')
       .innerJoin('note.clinicalRecord', 'record')
@@ -113,26 +118,33 @@ export class ClinicalNotesService {
         'examFile.storageStatus = :available',
       )
       .where('record.patientId = :patientId', { patientId });
+
     if (dto.authorMembershipId)
       query.andWhere('note.authorMembershipId = :authorId', {
         authorId: dto.authorMembershipId,
       });
+
     if (dto.clinicalNoteId)
       query.andWhere('note.id = :noteId', { noteId: dto.clinicalNoteId });
+
     if (dto.from)
       query.andWhere('note.occurredAt >= :from', { from: dto.from });
+
     if (dto.to) query.andWhere('note.occurredAt <= :to', { to: dto.to });
+
     if (dto.search)
       query.andWhere(
         '(note.title ILIKE :search OR note.content ILIKE :search OR note.reason ILIKE :search)',
         { search: `%${dto.search}%` },
       );
+
     const [items, total] = await query
       .orderBy('note.occurredAt', 'DESC')
       .addOrderBy('note.id', 'DESC')
       .skip(dto.offset)
       .take(dto.limit)
       .getManyAndCount();
+
     return { items, total, limit: dto.limit, offset: dto.offset };
   }
 
@@ -192,13 +204,16 @@ export class ClinicalNotesService {
     }
 
     Object.assign(note, dto);
+
     return await this.clinicalNoteRepository.save(note);
   }
 
   async remove(context: ClinicAccessContext, id: string) {
     this.patientAccessService.assertCanManageClinical(context);
     const note = await this.findOne(context, id);
+
     await this.clinicalNoteRepository.remove(note);
+
     return {
       message: apiMessage('api.messages.clinical_note_removed', { id: id }),
     };

@@ -35,6 +35,7 @@ describe('ProfessionalSpecialtiesService', () => {
           where?.isActive === undefined
             ? records
             : records.filter((record) => record.isActive === where.isActive);
+
         return [...filtered].sort((a, b) => a.name.localeCompare(b.name));
       }),
       findOne: jest.fn(
@@ -55,11 +56,13 @@ describe('ProfessionalSpecialtiesService', () => {
       })),
       save: jest.fn((record: ProfessionalSpecialty) => {
         const index = records.findIndex((item) => item.id === record.id);
+
         if (index >= 0) {
           records[index] = record;
         } else {
           records.push(record);
         }
+
         return record;
       }),
     };

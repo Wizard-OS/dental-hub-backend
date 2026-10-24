@@ -1,10 +1,10 @@
 import {
+  Body,
   Controller,
   Delete,
   Get,
   Param,
   Post,
-  Body,
   Query,
 } from '@nestjs/common';
 import {
@@ -23,8 +23,8 @@ import {
   GetClinicMembershipId,
 } from '../auth/decorators';
 import { ClinicMembershipRole } from '../clinic-memberships/interfaces/clinic-membership-role.enum';
-import { PatientAssignmentsService } from './patient-assignments.service';
 import { CreatePatientAssignmentDto } from './dto/create-patient-assignment.dto';
+import { PatientAssignmentsService } from './patient-assignments.service';
 
 @ApiTags('Patient Assignments')
 @ApiBearerAuth()

@@ -162,6 +162,7 @@ describe('Membership limits (e2e)', () => {
         .expect(201);
 
       if (i === 0) archivedPatientId = patient.body.id;
+
       if (i === 1) storagePatientId = patient.body.id;
     }
 

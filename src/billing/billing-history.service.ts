@@ -101,6 +101,7 @@ export class BillingHistoryService {
         const date = record.date.slice(0, 10);
         const status = record.status.toUpperCase().padEnd(8, ' ');
         const amount = record.amount.padStart(10, ' ');
+
         return `${date}  ${status}  ${amount}  ${record.title}`;
       }),
       ...(records.length ? [] : ['No billing records found.']),
@@ -141,6 +142,7 @@ export class BillingHistoryService {
     const textCommands = pageLines
       .map((line, index) => {
         const y = 780 - index * 16;
+
         return `1 0 0 1 50 ${y} Tm (${this.escapePdfText(line)}) Tj`;
       })
       .join('\n');
@@ -162,6 +164,7 @@ export class BillingHistoryService {
     });
 
     const xrefOffset = Buffer.byteLength(pdf);
+
     pdf += `xref\n0 ${objects.length + 1}\n`;
     pdf += '0000000000 65535 f \n';
     offsets.slice(1).forEach((offset) => {

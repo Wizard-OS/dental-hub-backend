@@ -1,9 +1,9 @@
 import { UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
-import { JwtStrategy } from './jwt.strategy';
 import { User } from '../entities/user.entity';
 import { ValidRoles } from '../interfaces';
+import { JwtStrategy } from './jwt.strategy';
 
 describe('JwtStrategy', () => {
   const userId = 'user-1';

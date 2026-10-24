@@ -1,20 +1,20 @@
-import { apiMessage } from '../common/i18n/api-message';
 import {
   BadRequestException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
 import { isUUID } from 'class-validator';
+import { Repository } from 'typeorm';
 
-import { Reminder } from './entities/reminder.entity';
 import { Appointment } from '../appointments/entities/appointment.entity';
+import { apiMessage } from '../common/i18n/api-message';
 import { MessageTemplate } from '../message-templates/entities/message-template.entity';
 import { CreateReminderDto } from './dto/create-reminder.dto';
 import { UpdateReminderDto } from './dto/update-reminder.dto';
-import { ReminderType } from './interfaces/reminder-type.enum';
+import { Reminder } from './entities/reminder.entity';
 import { ReminderStatus } from './interfaces/reminder-status.enum';
+import { ReminderType } from './interfaces/reminder-type.enum';
 
 @Injectable()
 export class RemindersService {
@@ -105,8 +105,10 @@ export class RemindersService {
 
   async remove(clinicId: string, id: string) {
     const reminder = await this.findOne(clinicId, id);
+
     reminder.status = ReminderStatus.CANCELLED;
     await this.reminderRepository.save(reminder);
+
     return {
       message: apiMessage('api.messages.reminder_cancelled', { id: id }),
     };

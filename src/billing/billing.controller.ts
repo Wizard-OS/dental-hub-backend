@@ -1,5 +1,6 @@
+import type { IncomingHttpHeaders } from 'http';
+
 import { Body, Controller, Headers, Post } from '@nestjs/common';
-import { Throttle } from '@nestjs/throttler';
 import {
   ApiBearerAuth,
   ApiOperation,
@@ -7,7 +8,7 @@ import {
   ApiSecurity,
   ApiTags,
 } from '@nestjs/swagger';
-import type { IncomingHttpHeaders } from 'http';
+import { Throttle } from '@nestjs/throttler';
 
 import {
   AuthClinic,

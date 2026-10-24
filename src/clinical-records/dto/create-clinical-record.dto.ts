@@ -1,6 +1,6 @@
-import { i18nValidationMessage } from 'nestjs-i18n';
-import { IsIn, IsOptional, IsString, IsUUID } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsIn, IsOptional, IsString, IsUUID } from 'class-validator';
+import { i18nValidationMessage } from 'nestjs-i18n';
 
 export class CreateClinicalRecordDto {
   @ApiProperty({ description: 'UUID del paciente' })

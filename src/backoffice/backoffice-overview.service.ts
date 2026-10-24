@@ -1,15 +1,16 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Clinic } from '../clinics/entities/clinic.entity';
+
 import { User } from '../auth/entities/user.entity';
-import { Invoice } from '../invoices/entities/invoice.entity';
-import { Payment } from '../payments/entities/payment.entity';
-import { ClinicSubscription } from '../membership/entities/clinic-subscription.entity';
+import { Clinic } from '../clinics/entities/clinic.entity';
 import {
   SupportRequest,
   SupportRequestStatus,
 } from '../help-center/entities/support-request.entity';
+import { Invoice } from '../invoices/entities/invoice.entity';
+import { ClinicSubscription } from '../membership/entities/clinic-subscription.entity';
+import { Payment } from '../payments/entities/payment.entity';
 
 @Injectable()
 export class BackofficeOverviewService {
@@ -124,6 +125,7 @@ export class BackofficeOverviewService {
   ) {
     return rows.reduce<Record<string, number>>((acc, row) => {
       acc[row[key]] = Number(row.count ?? 0);
+
       return acc;
     }, {});
   }

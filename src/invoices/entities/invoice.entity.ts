@@ -10,10 +10,10 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 
+import { Clinic } from '../../clinics/entities/clinic.entity';
 import { Patient } from '../../patients/entities/patient.entity';
 import { Payment } from '../../payments/entities/payment.entity';
 import { InvoiceStatus } from '../InvoiceStatus/InvoiceStatus.enum';
-import { Clinic } from '../../clinics/entities/clinic.entity';
 import { InvoiceItem } from './invoice-item.entity';
 
 @Entity('invoices')

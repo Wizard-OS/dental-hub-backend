@@ -1,4 +1,3 @@
-import { apiMessage } from '../common/i18n/api-message';
 import {
   BadRequestException,
   Injectable,
@@ -7,6 +6,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
+import { apiMessage } from '../common/i18n/api-message';
 import { CreateProfessionalSpecialtyDto } from './dto/create-professional-specialty.dto';
 import { UpdateProfessionalSpecialtyDto } from './dto/update-professional-specialty.dto';
 import { ProfessionalSpecialty } from './entities/professional-specialty.entity';
@@ -32,6 +32,7 @@ export class ProfessionalSpecialtiesService {
     const existing = await this.specialtyRepository.findOne({
       where: { code },
     });
+
     if (existing) {
       throw new BadRequestException(
         apiMessage('api.messages.professional_specialty_already_exists'),
@@ -49,15 +50,21 @@ export class ProfessionalSpecialtiesService {
 
   async update(id: string, dto: UpdateProfessionalSpecialtyDto) {
     const specialty = await this.findOne(id);
+
     if (dto.name !== undefined) specialty.name = dto.name.trim();
+
     if (dto.code !== undefined) specialty.code = this.normalizeCode(dto.code);
+
     if (dto.isActive !== undefined) specialty.isActive = dto.isActive;
+
     return this.specialtyRepository.save(specialty);
   }
 
   async remove(id: string) {
     const specialty = await this.findOne(id);
+
     specialty.isActive = false;
+
     return this.specialtyRepository.save(specialty);
   }
 
@@ -65,21 +72,25 @@ export class ProfessionalSpecialtiesService {
     const specialty = await this.specialtyRepository.findOne({
       where: { id, isActive: true },
     });
+
     if (!specialty) {
       throw new BadRequestException(
         apiMessage('api.messages.professional_specialty_is_not_valid'),
       );
     }
+
     return specialty;
   }
 
   private async findOne(id: string) {
     const specialty = await this.specialtyRepository.findOne({ where: { id } });
+
     if (!specialty) {
       throw new NotFoundException(
         apiMessage('api.messages.professional_specialty_not_found'),
       );
     }
+
     return specialty;
   }
 

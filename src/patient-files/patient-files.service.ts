@@ -1,4 +1,7 @@
-import { apiMessage } from '../common/i18n/api-message';
+import { createHash, randomUUID } from 'crypto';
+import { promises as fs } from 'fs';
+import * as path from 'path';
+
 import {
   BadRequestException,
   ConflictException,
@@ -7,30 +10,28 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { promises as fs } from 'fs';
-import * as path from 'path';
-import { createHash, randomUUID } from 'crypto';
 
+import { User } from '../auth/entities/user.entity';
+import { deleteUploadedFile } from '../common/files/upload-cleanup';
+import { validateAndNormalizeUploadedFile } from '../common/files/upload-validation';
+import type { UploadedFile } from '../common/files/uploaded-file.interface';
+import { apiMessage } from '../common/i18n/api-message';
+import { MembershipService } from '../membership/membership.service';
 import { Patient } from '../patients/entities/patient.entity';
-import { PatientFile } from './entities/patient-file.entity';
-import { CreatePatientFileDto } from './dto/create-patient-file.dto';
-import { PatientFileStorageStatus } from './interfaces/patient-file-storage-status.enum';
-import { PatientFileSyncSource } from './interfaces/patient-file-sync-source.enum';
-import { PatientFileType } from './interfaces/patient-file-type.enum';
 import {
   ClinicAccessContext,
   PatientAccessService,
 } from '../patients/services/patient-access.service';
-import { MembershipService } from '../membership/membership.service';
 import { StorageProviderType } from '../storage/interfaces/storage-provider-type.enum';
 import { StorageService } from '../storage/storage.service';
-import { validateAndNormalizeUploadedFile } from '../common/files/upload-validation';
-import { deleteUploadedFile } from '../common/files/upload-cleanup';
-import type { UploadedFile } from '../common/files/uploaded-file.interface';
-import { PatientFileScopeService } from './services/patient-file-scope.service';
+import { CreatePatientFileDto } from './dto/create-patient-file.dto';
 import { ImportPatientFileFromDriveDto } from './dto/import-patient-file-from-drive.dto';
 import { UpdatePatientFileDto } from './dto/update-patient-file.dto';
-import { User } from '../auth/entities/user.entity';
+import { PatientFile } from './entities/patient-file.entity';
+import { PatientFileStorageStatus } from './interfaces/patient-file-storage-status.enum';
+import { PatientFileSyncSource } from './interfaces/patient-file-sync-source.enum';
+import { PatientFileType } from './interfaces/patient-file-type.enum';
+import { PatientFileScopeService } from './services/patient-file-scope.service';
 import { appendPatientFileSyncAudit } from './utils/patient-file-sync-audit.util';
 
 export interface GeneratedPatientFileInput {
@@ -95,6 +96,7 @@ export class PatientFilesService {
           patientId,
           context.clinicId,
         );
+
         await this.membershipService.assertCanStoreFile(
           context.clinicId,
           file.size,
@@ -108,6 +110,7 @@ export class PatientFilesService {
         });
 
         const fileType = dto.type ?? this.inferFileType(file.mimetype);
+
         return this.uploadAndSaveFile({
           context,
           patient,
@@ -138,6 +141,7 @@ export class PatientFilesService {
       patientId,
       context.clinicId,
     );
+
     await this.patientFileScope.assertRelationsForPatient({
       patientId,
       clinicId: context.clinicId,
@@ -172,6 +176,7 @@ export class PatientFilesService {
       const externalMetadataJson = {
         ...(storageResult.externalMetadataJson ?? {}),
       };
+
       delete externalMetadataJson.driveImportSourceParents;
       delete externalMetadataJson.driveImportSourceAppProperties;
       delete externalMetadataJson.driveImportManagedFolderId;
@@ -218,9 +223,11 @@ export class PatientFilesService {
           },
         },
       );
+
       return await this.patientFileRepository.save(patientFile);
     } catch (error) {
       await this.storageService.rollbackDriveImport(storageResult);
+
       throw error;
     }
   }
@@ -251,6 +258,7 @@ export class PatientFilesService {
           patientId,
           context.clinicId,
         );
+
         await this.membershipService.assertCanStoreFile(
           context.clinicId,
           file.size,
@@ -276,11 +284,13 @@ export class PatientFilesService {
           )
           .catch(async (error: unknown) => {
             await this.compensateStoredFile(savedFile, context.clinicId);
+
             throw error;
           });
 
         if (!result.affected) {
           await this.compensateStoredFile(savedFile, context.clinicId);
+
           throw new NotFoundException(
             apiMessage('api.messages.patient_not_found', {
               patientId: patientId,
@@ -312,6 +322,7 @@ export class PatientFilesService {
           patientId,
           context.clinicId,
         );
+
         await this.membershipService.assertCanStoreFile(
           context.clinicId,
           input.size,
@@ -326,6 +337,7 @@ export class PatientFilesService {
         });
 
         const file = this.toGeneratedUploadFile(input);
+
         return this.uploadAndSaveFile({
           context,
           patient,
@@ -389,6 +401,7 @@ export class PatientFilesService {
       type: patientFile.type,
     };
     const originalName = dto.originalName?.trim();
+
     if (originalName && /[\\/]/.test(originalName)) {
       throw new BadRequestException(
         apiMessage('api.messages.file_name_must_not_contain_a_path'),
@@ -411,6 +424,7 @@ export class PatientFilesService {
           patient,
         },
       );
+
       patientFile.storedName = updated.storedName;
       patientFile.driveFolderId = updated.driveFolderId ?? null;
       patientFile.driveModifiedAt = updated.driveModifiedAt ?? null;
@@ -418,9 +432,12 @@ export class PatientFilesService {
     }
 
     if (dto.type) patientFile.type = dto.type;
+
     if (originalName) patientFile.originalName = originalName;
+
     if (dto.description !== undefined)
       patientFile.description = dto.description;
+
     patientFile.externalMetadataJson = appendPatientFileSyncAudit(
       patientFile.externalMetadataJson,
       {
@@ -441,12 +458,14 @@ export class PatientFilesService {
     patientFile.syncSource = PatientFileSyncSource.APP;
     patientFile.syncReviewRequired = false;
     patientFile.syncReviewReason = null;
+
     return this.patientFileRepository.save(patientFile);
   }
 
   async restoreFromDrive(context: ClinicAccessContext, id: string) {
     this.patientAccessService.assertCanManageClinical(context);
     const patientFile = await this.findOne(context, id);
+
     if (patientFile.storageProvider !== StorageProviderType.GOOGLE_DRIVE) {
       throw new BadRequestException(
         apiMessage('api.messages.only_google_drive_files_can_be_restored'),
@@ -454,6 +473,7 @@ export class PatientFilesService {
     }
 
     const updated = await this.storageService.restoreDriveFile(patientFile);
+
     patientFile.storageStatus = PatientFileStorageStatus.AVAILABLE;
     patientFile.syncSource = PatientFileSyncSource.APP;
     patientFile.syncReviewRequired = false;
@@ -474,15 +494,18 @@ export class PatientFilesService {
         details: { membershipId: context.membershipId },
       },
     );
+
     return this.patientFileRepository.save(patientFile);
   }
 
   async listDriveRevisions(context: ClinicAccessContext, id: string) {
     const patientFile = await this.findOne(context, id);
+
     if (patientFile.storageProvider !== StorageProviderType.GOOGLE_DRIVE)
       throw new BadRequestException(
         apiMessage('api.messages.only_google_drive_files_have_revisions'),
       );
+
     return this.storageService.listDriveRevisions(patientFile);
   }
 
@@ -492,10 +515,12 @@ export class PatientFilesService {
     revisionId: string,
   ) {
     const patientFile = await this.findOne(context, id);
+
     if (patientFile.storageProvider !== StorageProviderType.GOOGLE_DRIVE)
       throw new BadRequestException(
         apiMessage('api.messages.only_google_drive_files_have_revisions'),
       );
+
     return {
       stream: await this.storageService.downloadDriveRevision(
         patientFile,
@@ -557,6 +582,7 @@ export class PatientFilesService {
   ) {
     this.patientAccessService.assertCanManageClinical(context);
     const patientFile = await this.findOne(context, id);
+
     if (
       patientFile.storageProvider === StorageProviderType.GOOGLE_DRIVE &&
       !confirmDriveTrash
@@ -576,6 +602,7 @@ export class PatientFilesService {
     });
 
     patientFile.storageStatus = PatientFileStorageStatus.UNAVAILABLE;
+
     if (patientFile.storageProvider === StorageProviderType.GOOGLE_DRIVE) {
       patientFile.externalMetadataJson = appendPatientFileSyncAudit(
         patientFile.externalMetadataJson,
@@ -589,6 +616,7 @@ export class PatientFilesService {
       patientFile.syncReviewRequired = false;
       patientFile.syncReviewReason = null;
     }
+
     await this.patientFileRepository.manager.transaction(async (manager) => {
       await manager.getRepository(PatientFile).save(patientFile);
       await manager
@@ -704,6 +732,7 @@ export class PatientFilesService {
           { cause: compensationError },
         );
       }
+
       throw error;
     }
   }
@@ -713,9 +742,11 @@ export class PatientFilesService {
     clinicId: string,
   ) {
     patientFile.storageStatus = PatientFileStorageStatus.UNAVAILABLE;
+
     if (patientFile.storageProvider === StorageProviderType.GOOGLE_DRIVE) {
       patientFile.syncSource = PatientFileSyncSource.DRIVE_UPDATE;
     }
+
     await this.patientFileRepository.save(patientFile);
     await this.storageService.markUnavailable(patientFile.storageProvider, {
       clinicId,
@@ -723,6 +754,7 @@ export class PatientFilesService {
       driveFileId: patientFile.driveFileId,
       storageIntegrationId: patientFile.storageIntegrationId,
     });
+
     if (patientFile.storageProvider === StorageProviderType.LOCAL) {
       await this.patientFileRepository.softRemove(patientFile);
     }
@@ -736,20 +768,25 @@ export class PatientFilesService {
       return await action();
     } catch (error) {
       await deleteUploadedFile(getFilePath());
+
       throw error;
     }
   }
 
   private inferFileType(mimeType: string): PatientFileType {
     if (mimeType.startsWith('image/')) return PatientFileType.IMAGE;
+
     if (mimeType === 'application/pdf') return PatientFileType.PDF;
+
     return PatientFileType.OTHER;
   }
 
   private async calculateChecksum(filePath: string): Promise<string> {
     const hash = createHash('sha256');
     const content = await fs.readFile(filePath);
+
     hash.update(content);
+
     return hash.digest('hex');
   }
 

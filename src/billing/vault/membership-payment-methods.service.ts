@@ -1,4 +1,3 @@
-import { apiMessage } from '../../common/i18n/api-message';
 import {
   BadRequestException,
   ConflictException,
@@ -6,14 +5,16 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { DataSource, EntityManager, IsNull } from 'typeorm';
+
+import { apiMessage } from '../../common/i18n/api-message';
+import { ClinicSubscription } from '../../membership/entities/clinic-subscription.entity';
+import { SubscriptionStatus } from '../../membership/interfaces/subscription-status.enum';
+import { CreateMembershipPaymentMethodDto } from '../dto/membership-payment-method.dto';
 import { MembershipPaymentMethod } from '../entities/membership-payment-method.entity';
 import { MembershipSetupSession } from '../entities/membership-setup-session.entity';
-import { ClinicSubscription } from '../../membership/entities/clinic-subscription.entity';
-import { PayPalVaultProvider, VaultResource } from './paypal-vault.provider';
-import { withBillingLock } from './billing-lock';
-import { CreateMembershipPaymentMethodDto } from '../dto/membership-payment-method.dto';
 import { PayPalRequestError } from '../providers/paypal-billing.provider';
-import { SubscriptionStatus } from '../../membership/interfaces/subscription-status.enum';
+import { withBillingLock } from './billing-lock';
+import { PayPalVaultProvider, VaultResource } from './paypal-vault.provider';
 
 export function methodSummary(method: MembershipPaymentMethod) {
   return {
@@ -30,14 +31,19 @@ export function methodExpired(
   at = new Date(),
 ) {
   if (method.type !== 'card') return false;
+
   if (!method.expiry || !/^\d{4}-(0[1-9]|1[0-2])$/.test(method.expiry))
     return true;
+
   const [year, month] = method.expiry.split('-').map(Number);
+
   return new Date(Date.UTC(year, month, 1)) <= at;
 }
 export function maskedEmail(value?: string) {
   if (!value || !value.includes('@')) return null;
+
   const [local, domain] = value.split('@');
+
   return `${local.slice(0, Math.min(3, Math.max(1, local.length - 1)))}***@${domain}`;
 }
 
@@ -53,6 +59,7 @@ export class MembershipPaymentMethodsService {
       where: { clinicId, deletedAt: IsNull() },
       order: { createdAt: 'ASC' },
     });
+
     return {
       methods: methods.map((m) => ({
         ...methodSummary(m),
@@ -75,16 +82,19 @@ export class MembershipPaymentMethodsService {
         clinicId,
         requestId: dto.requestId,
       });
+
       if (session && session.type !== dto.type)
         throw new ConflictException(
           apiMessage(
             'api.messages.request_id_already_used_for_another_payment_method_type',
           ),
         );
+
       if (session && session.expiresAt <= new Date())
         throw new ConflictException(
           apiMessage('api.messages.setup_expired_use_a_new_request_id'),
         );
+
       if (!session)
         session = await repo.save(
           repo.create({
@@ -94,6 +104,7 @@ export class MembershipPaymentMethodsService {
             expiresAt: new Date(Date.now() + 2 * 3600000),
           }),
         );
+
       if (!session.providerSetupTokenId) {
         const previous = await manager
           .getRepository(MembershipPaymentMethod)
@@ -108,16 +119,19 @@ export class MembershipPaymentMethodsService {
           session.id,
           previous?.providerCustomerId,
         );
+
         if (!result.id)
           throw new BadRequestException(
             apiMessage('api.messages.paypal_did_not_return_a_setup_token'),
           );
+
         session.providerSetupTokenId = result.id;
         session.approvalUrl =
           result.links?.find((l) => ['approve', 'payer-action'].includes(l.rel))
             ?.href ?? null;
         await repo.save(session);
       }
+
       return {
         setupSessionId: session.id,
         setupTokenId: session.providerSetupTokenId,
@@ -134,22 +148,27 @@ export class MembershipPaymentMethodsService {
     return withBillingLock(this.db, clinicId, async (manager) => {
       const sessions = manager.getRepository(MembershipSetupSession);
       const session = await sessions.findOneBy({ id: sessionId, clinicId });
+
       if (!session)
         throw new NotFoundException(
           apiMessage('api.messages.setup_session_not_found'),
         );
+
       if (session.paymentMethodId)
         return methodSummary(
           await this.requireMethod(manager, clinicId, session.paymentMethodId),
         );
+
       if (session.expiresAt <= new Date() || !session.providerSetupTokenId)
         throw new BadRequestException(
           apiMessage('api.messages.setup_session_expired_or_not_initialized'),
         );
+
       if (!session.approvedCustomerId) {
         const setup = await this.provider.getSetup(
           session.providerSetupTokenId,
         );
+
         if (
           setup.id !== session.providerSetupTokenId ||
           setup.status !== 'APPROVED' ||
@@ -158,6 +177,7 @@ export class MembershipPaymentMethodsService {
           throw new BadRequestException(
             apiMessage('api.messages.payment_method_approval_is_required'),
           );
+
         if (
           setup.customer.merchant_customer_id &&
           setup.customer.merchant_customer_id !== clinicId
@@ -165,25 +185,31 @@ export class MembershipPaymentMethodsService {
           throw new BadRequestException(
             apiMessage('api.messages.setup_customer_mismatch'),
           );
+
         session.approvedCustomerId = setup.customer.id;
         session.status = 'approved';
         await sessions.save(session);
       }
+
       if (!session.providerPaymentTokenId) {
         const exchanged = await this.provider.exchangeSetup(
           session.providerSetupTokenId,
           session.id,
         );
+
         if (!exchanged.id)
           throw new BadRequestException(
             apiMessage('api.messages.paypal_did_not_return_a_payment_token'),
           );
+
         session.providerPaymentTokenId = exchanged.id;
         await sessions.save(session);
       }
+
       const token = await this.provider.getToken(
         session.providerPaymentTokenId,
       );
+
       if (
         !token.customer?.id ||
         token.customer.id !== session.approvedCustomerId ||
@@ -192,13 +218,16 @@ export class MembershipPaymentMethodsService {
         throw new BadRequestException(
           apiMessage('api.messages.vault_customer_mismatch'),
         );
+
       const existing = await manager
         .getRepository(MembershipPaymentMethod)
         .findOneBy({ providerTokenId: token.id });
+
       if (existing && (existing.clinicId !== clinicId || existing.deletedAt))
         throw new ConflictException(
           apiMessage('api.messages.payment_token_already_used'),
         );
+
       const metadata = this.metadata(token, session.type);
       const method =
         existing ??
@@ -208,21 +237,26 @@ export class MembershipPaymentMethodsService {
           providerCustomerId: token.customer.id,
           ...metadata,
         });
+
       if (methodExpired(method))
         throw new BadRequestException(
           apiMessage('api.messages.card_is_expired'),
         );
+
       return manager.transaction(async (tx) => {
         if (!existing)
           method.isDefault = !(await tx
             .getRepository(MembershipPaymentMethod)
             .existsBy({ clinicId, isDefault: true, deletedAt: IsNull() }));
+
         const saved = await tx
           .getRepository(MembershipPaymentMethod)
           .save(method);
+
         session.paymentMethodId = saved.id;
         session.status = 'completed';
         await tx.getRepository(MembershipSetupSession).save(session);
+
         return methodSummary(saved);
       });
     });
@@ -231,10 +265,12 @@ export class MembershipPaymentMethodsService {
   async select(clinicId: string, id: string) {
     return withBillingLock(this.db, clinicId, async (manager) => {
       const method = await this.requireMethod(manager, clinicId, id);
+
       await this.verify(method);
       const sub = await manager
         .getRepository(ClinicSubscription)
         .findOneBy({ clinicId });
+
       if (
         sub?.billingMode === 'subscription' &&
         sub.providerSubscriptionId &&
@@ -248,6 +284,7 @@ export class MembershipPaymentMethodsService {
           ),
         );
       }
+
       await manager.transaction(async (tx) => {
         await tx
           .getRepository(MembershipPaymentMethod)
@@ -255,12 +292,14 @@ export class MembershipPaymentMethodsService {
         await tx
           .getRepository(MembershipPaymentMethod)
           .update({ id, clinicId }, { isDefault: true });
+
         if (sub?.billingMode === 'vault') {
           sub.selectedPaymentMethodId = id;
           sub.paymentMethodSummary = methodSummary(method);
           await tx.getRepository(ClinicSubscription).save(sub);
         }
       });
+
       return { ...methodSummary(method), isDefault: true };
     });
   }
@@ -273,14 +312,18 @@ export class MembershipPaymentMethodsService {
         .addSelect(['m.providerTokenId', 'm.providerCustomerId'])
         .where('m.id = :id AND m.clinicId = :clinicId', { id, clinicId })
         .getOne();
+
       if (!method)
         throw new NotFoundException(
           apiMessage('api.messages.payment_method_not_found'),
         );
+
       if (method.deletedAt) return { deleted: true };
+
       const sub = await manager
         .getRepository(ClinicSubscription)
         .findOneBy({ clinicId });
+
       if (
         sub?.selectedPaymentMethodId === id &&
         ![SubscriptionStatus.canceled, SubscriptionStatus.expired].includes(
@@ -292,6 +335,7 @@ export class MembershipPaymentMethodsService {
             'api.messages.select_another_method_or_cancel_the_membership_before_removing_this_method',
           ),
         );
+
       try {
         await this.provider.deleteToken(method.providerTokenId);
       } catch (error) {
@@ -303,6 +347,7 @@ export class MembershipPaymentMethodsService {
       method.deletedAt = new Date();
       method.isDefault = false;
       await manager.getRepository(MembershipPaymentMethod).save(method);
+
       return { deleted: true };
     });
   }
@@ -317,16 +362,21 @@ export class MembershipPaymentMethodsService {
         clinicId,
       })
       .getOne();
+
     if (!method)
       throw new NotFoundException(
         apiMessage('api.messages.payment_method_not_found'),
       );
+
     if (methodExpired(method))
       throw new BadRequestException(apiMessage('api.messages.card_is_expired'));
+
     return method;
   }
+
   async verify(method: MembershipPaymentMethod) {
     const token = await this.provider.getToken(method.providerTokenId);
+
     if (
       token.id !== method.providerTokenId ||
       token.customer?.id !== method.providerCustomerId
@@ -334,21 +384,28 @@ export class MembershipPaymentMethodsService {
       throw new BadRequestException(
         apiMessage('api.messages.payment_token_ownership_mismatch'),
       );
+
     const metadata = this.metadata(token, method.type);
+
     if (methodExpired(metadata))
       throw new BadRequestException(apiMessage('api.messages.card_is_expired'));
+
     Object.assign(method, metadata);
   }
+
   private metadata(token: VaultResource, type: 'card' | 'paypal') {
     const card = token.payment_source?.card;
+
     if (type === 'card' && (!card || !/^\d{4}$/.test(card.last_digits ?? '')))
       throw new BadRequestException(
         apiMessage('api.messages.verified_card_details_missing'),
       );
+
     if (type === 'paypal' && !token.payment_source?.paypal)
       throw new BadRequestException(
         apiMessage('api.messages.verified_paypal_wallet_missing'),
       );
+
     return {
       type,
       brand: card?.brand ?? null,

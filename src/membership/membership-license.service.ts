@@ -1,5 +1,6 @@
-import { Injectable } from '@nestjs/common';
 import { createHash, randomBytes } from 'crypto';
+
+import { Injectable } from '@nestjs/common';
 
 import { getEnv } from '../config/env';
 

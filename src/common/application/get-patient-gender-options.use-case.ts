@@ -1,5 +1,5 @@
-import { Gender } from '../interfaces/gender.enum';
 import type { PatientGenderOption } from '../domain/patient-gender-option';
+import { Gender } from '../interfaces/gender.enum';
 import type { PatientGenderLabelTranslator } from './ports/patient-gender-label-translator.port';
 
 const availableGenders = [

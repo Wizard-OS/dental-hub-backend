@@ -10,13 +10,13 @@ import {
 } from 'typeorm';
 
 import { User } from '../../auth/entities/user.entity';
-import { AppointmentType } from './appointment-type.entity';
+import { ClinicMembership } from '../../clinic-memberships/entities/clinic-membership.entity';
 import { Clinic } from '../../clinics/entities/clinic.entity';
 import { Patient } from '../../patients/entities/patient.entity';
 import { Reminder } from '../../reminders/entities/reminder.entity';
-import { AppointmentStatus } from '../interfaces/AppointmentStatus.enum';
-import { ClinicMembership } from '../../clinic-memberships/entities/clinic-membership.entity';
 import { AppointmentConfirmationStatus } from '../interfaces/appointment-confirmation-status.enum';
+import { AppointmentStatus } from '../interfaces/AppointmentStatus.enum';
+import { AppointmentType } from './appointment-type.entity';
 
 @Entity('appointments')
 export class Appointment {

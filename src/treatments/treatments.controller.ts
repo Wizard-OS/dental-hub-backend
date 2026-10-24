@@ -8,17 +8,14 @@ import {
   Post,
 } from '@nestjs/common';
 import {
-  ApiTags,
-  ApiOperation,
-  ApiResponse,
   ApiBearerAuth,
-  ApiSecurity,
+  ApiOperation,
   ApiParam,
+  ApiResponse,
+  ApiSecurity,
+  ApiTags,
 } from '@nestjs/swagger';
 
-import { TreatmentsService } from './treatments.service';
-import { CreateTreatmentDto } from './dto/create-treatment.dto';
-import { UpdateTreatmentDto } from './dto/update-treatment.dto';
 import {
   AuthClinic,
   ClinicRoles,
@@ -29,6 +26,9 @@ import {
 } from '../auth/decorators';
 import { ClinicMembershipRole } from '../clinic-memberships/interfaces/clinic-membership-role.enum';
 import { ClinicAccessContext } from '../patients/services/patient-access.service';
+import { CreateTreatmentDto } from './dto/create-treatment.dto';
+import { UpdateTreatmentDto } from './dto/update-treatment.dto';
+import { TreatmentsService } from './treatments.service';
 
 @ApiTags('Treatments')
 @ApiBearerAuth()

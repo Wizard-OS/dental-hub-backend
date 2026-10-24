@@ -1,19 +1,19 @@
-import { apiMessage } from '../common/i18n/api-message';
 import {
   BadRequestException,
   Injectable,
   InternalServerErrorException,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { isUUID } from 'class-validator';
 import { Brackets, Repository } from 'typeorm';
 
-import { isUUID } from 'class-validator';
-
-import { Patient } from './entities/patient.entity';
+import { apiMessage } from '../common/i18n/api-message';
 import { CreatePatientDto } from './dto/create-patient.dto';
-import { UpdatePatientDto } from './dto/update-patient.dto';
 import { QueryPatientsDto } from './dto/query-patients.dto';
+import { UpdatePatientDto } from './dto/update-patient.dto';
+import { Patient } from './entities/patient.entity';
 import {
   ClinicAccessContext,
   PatientAccessService,
@@ -21,6 +21,8 @@ import {
 
 @Injectable()
 export class PatientsService {
+  private readonly logger = new Logger(PatientsService.name);
+
   constructor(
     @InjectRepository(Patient)
     private readonly patientRepository: Repository<Patient>,
@@ -49,6 +51,7 @@ export class PatientsService {
         ...createPatientDto,
         clinicId: context.clinicId,
       });
+
       return await this.patientRepository.save(patient);
     } catch (error) {
       this.handleDBErrors(error);
@@ -160,6 +163,7 @@ export class PatientsService {
 
     try {
       Object.assign(patient, updatePatientDto);
+
       return await this.patientRepository.save(patient);
     } catch (error) {
       this.handleDBErrors(error);
@@ -169,7 +173,9 @@ export class PatientsService {
   async remove(context: ClinicAccessContext, id: string) {
     this.patientAccessService.assertCanManagePatients(context);
     const patient = await this.findOne(context, id);
+
     await this.patientRepository.softRemove(patient);
+
     return { message: apiMessage('api.messages.patient_archived', { id: id }) };
   }
 
@@ -193,6 +199,7 @@ export class PatientsService {
 
     patient.deletedAt = null;
     const saved = await this.patientRepository.save(patient);
+
     return this.patientAccessService.sanitizePatient(saved, context);
   }
 
@@ -203,7 +210,15 @@ export class PatientsService {
       );
     }
 
-    console.log(error);
+    const errorCode =
+      typeof error === 'object' &&
+      error !== null &&
+      'code' in error &&
+      typeof error.code === 'string'
+        ? error.code
+        : 'unknown';
+
+    this.logger.error(`Database operation failed (code: ${errorCode})`);
 
     throw new InternalServerErrorException(
       apiMessage('api.messages.please_check_server_logs'),

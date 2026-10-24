@@ -1,19 +1,19 @@
-import { apiMessage } from '../common/i18n/api-message';
 import {
   BadRequestException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { EntityManager, Repository } from 'typeorm';
 import { isUUID } from 'class-validator';
+import { EntityManager, Repository } from 'typeorm';
 
-import { OutboundMessage } from './entities/outbound-message.entity';
+import { Appointment } from '../appointments/entities/appointment.entity';
+import { apiMessage } from '../common/i18n/api-message';
+import { MessageTemplate } from '../message-templates/entities/message-template.entity';
+import { Patient } from '../patients/entities/patient.entity';
 import { CreateOutboundMessageDto } from './dto/create-outbound-message.dto';
 import { UpdateOutboundMessageDto } from './dto/update-outbound-message.dto';
-import { Patient } from '../patients/entities/patient.entity';
-import { Appointment } from '../appointments/entities/appointment.entity';
-import { MessageTemplate } from '../message-templates/entities/message-template.entity';
+import { OutboundMessage } from './entities/outbound-message.entity';
 import { OutboundMessageStatus } from './interfaces/outbound-message-status.enum';
 
 @Injectable()
@@ -49,12 +49,14 @@ export class OutboundMessagesService {
         clinicId,
         transactionManager,
       );
+
     if (dto.appointmentId)
       await this.assertAppointmentInClinic(
         dto.appointmentId,
         clinicId,
         transactionManager,
       );
+
     if (dto.templateId)
       await this.assertTemplateInClinic(
         dto.templateId,
@@ -114,8 +116,10 @@ export class OutboundMessagesService {
 
     if (dto.patientId)
       await this.assertPatientInClinic(dto.patientId, clinicId);
+
     if (dto.appointmentId)
       await this.assertAppointmentInClinic(dto.appointmentId, clinicId);
+
     if (dto.templateId)
       await this.assertTemplateInClinic(dto.templateId, clinicId);
 
@@ -130,8 +134,10 @@ export class OutboundMessagesService {
 
   async remove(clinicId: string, id: string) {
     const outboundMessage = await this.findOne(clinicId, id);
+
     outboundMessage.status = OutboundMessageStatus.CANCELLED;
     await this.outboundMessageRepository.save(outboundMessage);
+
     return {
       message: apiMessage('api.messages.outbound_message_cancelled', {
         id: id,

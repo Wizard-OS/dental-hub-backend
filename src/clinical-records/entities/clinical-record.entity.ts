@@ -8,8 +8,8 @@ import {
   PrimaryGeneratedColumn,
 } from 'typeorm';
 
-import { Patient } from '../../patients/entities/patient.entity';
 import { ClinicalNote } from '../../clinical-notes/entities/clinical-note.entity';
+import { Patient } from '../../patients/entities/patient.entity';
 import { TreatmentSession } from '../../treatment-sessions/entities/treatment-session.entity';
 
 @Entity('clinical_records')

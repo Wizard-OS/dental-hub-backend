@@ -1,6 +1,5 @@
-import { i18nValidationMessage } from 'nestjs-i18n';
-import { apiMessage } from '../common/i18n/api-message';
 import { pipeline } from 'stream/promises';
+
 import {
   Body,
   Controller,
@@ -14,10 +13,6 @@ import {
   UploadedFile,
   UseInterceptors,
 } from '@nestjs/common';
-import { Throttle } from '@nestjs/throttler';
-import type { Request } from 'express';
-import type { Response } from 'express';
-import type { Express } from 'express';
 import {
   ApiBearerAuth,
   ApiBody,
@@ -29,15 +24,13 @@ import {
   ApiSecurity,
   ApiTags,
 } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { IsBoolean, IsOptional } from 'class-validator';
+import type { Request } from 'express';
+import type { Response } from 'express';
+import type { Express } from 'express';
+import { i18nValidationMessage } from 'nestjs-i18n';
 
-import { PatientFilesService } from './patient-files.service';
-import { CreatePatientFileDto } from './dto/create-patient-file.dto';
-import {
-  createUploadInterceptor,
-  timestampedUploadName,
-} from '../common/files/upload-interceptors';
-import { buildRequestBaseUrl } from '../common/http/request-url';
 import {
   AuthClinic,
   ClinicRoles,
@@ -49,9 +42,17 @@ import {
 } from '../auth/decorators';
 import { User } from '../auth/entities/user.entity';
 import { ClinicMembershipRole } from '../clinic-memberships/interfaces/clinic-membership-role.enum';
+import {
+  createUploadInterceptor,
+  timestampedUploadName,
+} from '../common/files/upload-interceptors';
+import { buildRequestBaseUrl } from '../common/http/request-url';
+import { apiMessage } from '../common/i18n/api-message';
 import { ClinicAccessContext } from '../patients/services/patient-access.service';
+import { CreatePatientFileDto } from './dto/create-patient-file.dto';
 import { ImportPatientFileFromDriveDto } from './dto/import-patient-file-from-drive.dto';
 import { UpdatePatientFileDto } from './dto/update-patient-file.dto';
+import { PatientFilesService } from './patient-files.service';
 
 class DeletePatientFileDto {
   @ApiPropertyOptional({
@@ -116,6 +117,7 @@ export class PatientFilesController {
     @Req() request: Request,
   ) {
     const baseUrl = buildRequestBaseUrl(request);
+
     return this.patientFilesService.create(
       this.context(clinicId, membershipId, role, permissionsJson),
       patientId,
@@ -182,6 +184,7 @@ export class PatientFilesController {
     @Req() request: Request,
   ) {
     const baseUrl = buildRequestBaseUrl(request);
+
     return this.patientFilesService.createProfilePhoto(
       this.context(clinicId, membershipId, role, permissionsJson),
       patientId,
@@ -295,12 +298,14 @@ export class PatientFilesController {
       id,
       revisionId,
     );
+
     response.setHeader('Content-Type', revision.mimeType);
     response.setHeader(
       'Content-Disposition',
       `attachment; filename="${encodeURIComponent(revision.originalName)}"`,
     );
     response.setHeader('Cache-Control', 'private, no-store');
+
     return pipeline(revision.stream, response);
   }
 
@@ -327,7 +332,9 @@ export class PatientFilesController {
       `attachment; filename="${encodeURIComponent(file.originalName)}"`,
     );
     response.setHeader('Cache-Control', 'private, no-store');
+
     if (file.stream) return pipeline(file.stream, response);
+
     return response.sendFile(file.path);
   }
 

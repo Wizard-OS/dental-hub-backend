@@ -1,6 +1,6 @@
-import { i18nValidationMessage } from 'nestjs-i18n';
-import { Transform } from 'class-transformer';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import type { TransformFnParams } from 'class-transformer';
+import { Transform } from 'class-transformer';
 import {
   IsBoolean,
   IsInt,
@@ -8,11 +8,11 @@ import {
   IsString,
   IsUUID,
   Matches,
-  Min,
   MaxLength,
+  Min,
   ValidateIf,
 } from 'class-validator';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { i18nValidationMessage } from 'nestjs-i18n';
 
 export class CreateAppointmentTypeDto {
   @ApiPropertyOptional({
@@ -26,6 +26,7 @@ export class CreateAppointmentTypeDto {
   @ApiProperty({ example: 'Limpieza', description: 'Nombre del tipo de cita' })
   @Transform(({ value }: TransformFnParams) => {
     const transformValue: unknown = value;
+
     return typeof transformValue === 'string'
       ? transformValue.trim()
       : transformValue;

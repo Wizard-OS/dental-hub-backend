@@ -8,12 +8,12 @@ import {
   Post,
 } from '@nestjs/common';
 import {
-  ApiTags,
-  ApiOperation,
-  ApiResponse,
   ApiBearerAuth,
+  ApiOperation,
   ApiParam,
+  ApiResponse,
   ApiSecurity,
+  ApiTags,
 } from '@nestjs/swagger';
 
 import {

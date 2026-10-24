@@ -1,9 +1,9 @@
 import { BadRequestException, ForbiddenException } from '@nestjs/common';
 
-import { ClinicsService } from './clinics.service';
-import { AppointmentAvailabilityService } from './appointment-availability.service';
-import { NotificationChannel } from '../common/interfaces/notification-channel.enum';
 import { ClinicMembershipRole } from '../clinic-memberships/interfaces/clinic-membership-role.enum';
+import { NotificationChannel } from '../common/interfaces/notification-channel.enum';
+import { AppointmentAvailabilityService } from './appointment-availability.service';
+import { ClinicsService } from './clinics.service';
 
 describe('ClinicsService appointment settings', () => {
   const professionalMembershipId = '9e9b76d6-d03a-4abf-a607-f46ffbc70148';
@@ -308,6 +308,7 @@ describe('ClinicsService appointment settings', () => {
     expect(response.settings.scheduling.bufferBetweenAppointmentsMin).toBe(0);
     const savedMembership =
       clinicMembershipRepository.save.mock.calls.at(-1)?.[0];
+
     expect(savedMembership).toMatchObject({
       appointmentSettingsJson: {
         scheduling: { bufferBetweenAppointmentsMin: 0 },

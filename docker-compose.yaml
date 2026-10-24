@@ -1,18 +1,22 @@
 services:
   db:
-    image: postgres:14.3
+    image: postgres:18.6
     restart: always
     ports:
-      - '${DB_PORT:-5432}:5432'
+      - '127.0.0.1:${DB_PORT:-5432}:5432'
     environment:
       POSTGRES_USER: ${DB_USERNAME:-postgres}
       POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
       POSTGRES_DB: ${DB_NAME:-DentalHubDB}
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U ${DB_USERNAME:-postgres} -d ${DB_NAME:-DentalHubDB}']
+      test:
+        [
+          'CMD-SHELL',
+          'pg_isready -U ${DB_USERNAME:-postgres} -d ${DB_NAME:-DentalHubDB}',
+        ]
       interval: 5s
       timeout: 3s
       retries: 10
     container_name: dental_hub_db
     volumes:
-      - ./postgres:/var/lib/postgresql/data
+      - ./postgres-18:/var/lib/postgresql

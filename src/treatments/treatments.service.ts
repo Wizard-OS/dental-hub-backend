@@ -1,23 +1,23 @@
-import { apiMessage } from '../common/i18n/api-message';
 import {
   BadRequestException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
 import { isUUID } from 'class-validator';
+import { Repository } from 'typeorm';
 
-import { Treatment } from './entities/treatment.entity';
-import { Patient } from '../patients/entities/patient.entity';
-import { CreateTreatmentDto } from './dto/create-treatment.dto';
-import { UpdateTreatmentDto } from './dto/update-treatment.dto';
 import { ClinicMembership } from '../clinic-memberships/entities/clinic-membership.entity';
+import { apiMessage } from '../common/i18n/api-message';
 import { Invoice } from '../invoices/entities/invoice.entity';
+import { Patient } from '../patients/entities/patient.entity';
 import {
   ClinicAccessContext,
   PatientAccessService,
 } from '../patients/services/patient-access.service';
+import { CreateTreatmentDto } from './dto/create-treatment.dto';
+import { UpdateTreatmentDto } from './dto/update-treatment.dto';
+import { Treatment } from './entities/treatment.entity';
 
 @Injectable()
 export class TreatmentsService {
@@ -44,12 +44,14 @@ export class TreatmentsService {
       dto.patientId,
     );
     await this.assertDoctorInClinic(dto.doctorId, context.clinicId);
+
     if (dto.professionalMembershipId) {
       await this.assertMembershipInClinic(
         dto.professionalMembershipId,
         context.clinicId,
       );
     }
+
     if (dto.invoiceId) {
       await this.assertInvoiceForPatient(
         dto.invoiceId,
@@ -76,6 +78,7 @@ export class TreatmentsService {
       .getMany();
 
     const allowed: Treatment[] = [];
+
     for (const treatment of treatments) {
       try {
         await this.patientAccessService.assertPatientAccessible(
@@ -87,6 +90,7 @@ export class TreatmentsService {
         // Filter inaccessible patients out of collection results.
       }
     }
+
     return allowed;
   }
 
@@ -152,6 +156,7 @@ export class TreatmentsService {
 
     const nextPatientId = dto.patientId ?? treatment.patientId;
     const nextInvoiceId = dto.invoiceId ?? treatment.invoiceId;
+
     if (nextInvoiceId) {
       await this.assertInvoiceForPatient(
         nextInvoiceId,
@@ -161,14 +166,17 @@ export class TreatmentsService {
     }
 
     Object.assign(treatment, dto);
+
     return await this.treatmentRepository.save(treatment);
   }
 
   async remove(context: ClinicAccessContext, id: string) {
     this.patientAccessService.assertCanManageClinical(context);
     const treatment = await this.findOne(context, id);
+
     treatment.isActive = false;
     await this.treatmentRepository.save(treatment);
+
     return {
       message: apiMessage('api.messages.treatment_archived', { id: id }),
     };

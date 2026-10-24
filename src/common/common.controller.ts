@@ -1,13 +1,12 @@
 import { Controller, Get, Query } from '@nestjs/common';
 import {
-  ApiTags,
+  ApiBearerAuth,
   ApiOperation,
   ApiResponse,
-  ApiBearerAuth,
   ApiSecurity,
+  ApiTags,
 } from '@nestjs/swagger';
 
-import { CommonService } from './common.service';
 import {
   AuthClinic,
   ClinicPermissions,
@@ -16,6 +15,7 @@ import {
 } from '../auth/decorators';
 import { ClinicPermission } from '../auth/interfaces';
 import { ClinicMembershipRole } from '../clinic-memberships/interfaces/clinic-membership-role.enum';
+import { CommonService } from './common.service';
 
 @ApiTags('Common')
 @ApiBearerAuth()

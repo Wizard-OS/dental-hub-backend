@@ -6,13 +6,14 @@ import {
   HttpStatus,
   Logger,
 } from '@nestjs/common';
+import type { Response } from 'express';
 import {
   I18nContext,
   I18nService,
-  I18nValidationException,
   I18nValidationError,
+  I18nValidationException,
 } from 'nestjs-i18n';
-import type { Response } from 'express';
+
 import {
   ApiMessage,
   apiMessage,
@@ -33,6 +34,7 @@ export class I18nHttpExceptionFilter implements ExceptionFilter {
     const response = host.switchToHttp().getResponse<Response>();
     const lang =
       I18nContext.current(host)?.lang ?? I18nContext.current()?.lang ?? 'en';
+
     if (exception instanceof I18nValidationException) {
       response.status(exception.getStatus()).json({
         statusCode: exception.getStatus(),
@@ -43,8 +45,10 @@ export class I18nHttpExceptionFilter implements ExceptionFilter {
         ),
         error: exception.getResponse(),
       });
+
       return;
     }
+
     if (!(exception instanceof HttpException)) {
       this.logger.error(
         exception instanceof Error ? exception.stack : 'Unhandled API error',
@@ -52,26 +56,34 @@ export class I18nHttpExceptionFilter implements ExceptionFilter {
       response
         .status(500)
         .json({ statusCode: 500, message: this.statusMessage(500, lang) });
+
       return;
     }
+
     const status = exception.getStatus();
     const body = exception.getResponse();
+
     if (body instanceof ApiMessage) {
       response.status(status).json({
         statusCode: status,
         message: this.translator.translate(body, lang),
         error: this.statusLabel(status),
       });
+
       return;
     }
+
     if (typeof body === 'string') {
       response.status(status).json({
         statusCode: status,
         message: this.statusMessage(status, lang),
       });
+
       return;
     }
+
     const payload = body as Record<string, unknown>;
+
     response.status(status).json({
       ...payload,
       message:
@@ -103,7 +115,9 @@ export class I18nHttpExceptionFilter implements ExceptionFilter {
               }),
             );
           }
+
           if (translated) return parent ? `${parent}.${message}` : message;
+
           const separator = message.indexOf('|');
           const key = separator < 0 ? message : message.slice(0, separator);
           const args =
@@ -119,9 +133,11 @@ export class I18nHttpExceptionFilter implements ExceptionFilter {
               args: { property: error.property, ...args },
             }),
           );
+
           return parent ? `${parent}.${text}` : text;
         },
       );
+
       return [
         ...messages,
         ...this.validationMessages(
@@ -143,6 +159,7 @@ export class I18nHttpExceptionFilter implements ExceptionFilter {
       : status >= 500
         ? 500
         : 400;
+
     return this.translator.translate(
       apiMessage(`api.http.${code}` as ApiMessageKey),
       lang,

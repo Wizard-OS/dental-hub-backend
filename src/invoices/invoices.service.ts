@@ -1,4 +1,3 @@
-import { apiMessage } from '../common/i18n/api-message';
 import {
   BadRequestException,
   Injectable,
@@ -6,16 +5,17 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
 import { isUUID } from 'class-validator';
+import { Repository } from 'typeorm';
 
-import { Invoice } from './entities/invoice.entity';
-import { InvoiceItem } from './entities/invoice-item.entity';
+import { apiMessage } from '../common/i18n/api-message';
 import { Patient } from '../patients/entities/patient.entity';
 import { Treatment } from '../treatments/entities/treatment.entity';
 import { CreateInvoiceDto } from './dto/create-invoice.dto';
-import { UpdateInvoiceDto } from './dto/update-invoice.dto';
 import { CreateInvoiceItemDto } from './dto/create-invoice-item.dto';
+import { UpdateInvoiceDto } from './dto/update-invoice.dto';
+import { Invoice } from './entities/invoice.entity';
+import { InvoiceItem } from './entities/invoice-item.entity';
 import { InvoiceStatus } from './InvoiceStatus/InvoiceStatus.enum';
 
 @Injectable()
@@ -38,6 +38,7 @@ export class InvoicesService {
     this.ensureClinicScope(clinicId, dto.clinicId);
 
     await this.assertPatientInClinic(dto.patientId, clinicId);
+
     if (dto.treatmentId) {
       await this.assertTreatmentForPatient(
         dto.treatmentId,
@@ -119,11 +120,13 @@ export class InvoicesService {
     const invoice = await this.findOne(clinicId, id);
 
     if (dto.clinicId) this.ensureClinicScope(clinicId, dto.clinicId);
+
     if (dto.patientId)
       await this.assertPatientInClinic(dto.patientId, clinicId);
 
     const nextPatientId = dto.patientId ?? invoice.patientId;
     const nextTreatmentId = dto.treatmentId ?? invoice.treatmentId;
+
     if (nextTreatmentId) {
       await this.assertTreatmentForPatient(
         nextTreatmentId,
@@ -144,13 +147,16 @@ export class InvoicesService {
     Object.assign(invoice, dto, { subtotal, totalAmount });
 
     const savedInvoice = await this.invoiceRepository.save(invoice);
+
     return this.resolveInvoiceStatus(savedInvoice);
   }
 
   async remove(clinicId: string, id: string) {
     const invoice = await this.findOne(clinicId, id);
+
     invoice.status = InvoiceStatus.CANCELLED;
     await this.invoiceRepository.save(invoice);
+
     return {
       message: apiMessage('api.messages.invoice_cancelled', { id: id }),
     };
@@ -203,6 +209,7 @@ export class InvoicesService {
     if (!invoice) return;
 
     const resolved = this.resolveInvoiceStatus(invoice);
+
     await this.invoiceRepository.update(invoiceId, { status: resolved.status });
   }
 
@@ -218,6 +225,7 @@ export class InvoicesService {
 
     const totalRaw =
       subtotalRaw - Number(invoice.discount) + Number(invoice.tax);
+
     invoice.totalAmount = totalRaw.toFixed(2);
 
     await this.invoiceRepository.save(invoice);
@@ -275,11 +283,13 @@ export class InvoicesService {
 
     if (paidAmount >= total && total > 0) {
       invoice.status = InvoiceStatus.PAID;
+
       return invoice;
     }
 
     if (paidAmount > 0 && paidAmount < total) {
       invoice.status = InvoiceStatus.PARTIALLY_PAID;
+
       return invoice;
     }
 
@@ -289,10 +299,12 @@ export class InvoicesService {
 
     if (invoice.dueAt && new Date(invoice.dueAt) < new Date()) {
       invoice.status = InvoiceStatus.OVERDUE;
+
       return invoice;
     }
 
     invoice.status = InvoiceStatus.PENDING;
+
     return invoice;
   }
 

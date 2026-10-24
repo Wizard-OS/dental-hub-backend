@@ -2,8 +2,8 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
-import { SupportRequest } from './entities/support-request.entity';
 import { CreateSupportRequestDto } from './dto/create-support-request.dto';
+import { SupportRequest } from './entities/support-request.entity';
 
 @Injectable()
 export class HelpCenterService {
@@ -76,6 +76,7 @@ export class HelpCenterService {
       ...dto,
       userId,
     });
+
     return await this.supportRequestRepository.save(request);
   }
 

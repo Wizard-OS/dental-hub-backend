@@ -1,4 +1,3 @@
-import { apiMessage } from '../common/i18n/api-message';
 import {
   BadRequestException,
   Injectable,
@@ -6,9 +5,11 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
-import { PatientExam } from './entities/patient-exam.entity';
-import { PatientFile } from '../patient-files/entities/patient-file.entity';
+
 import { ClinicalNote } from '../clinical-notes/entities/clinical-note.entity';
+import { apiMessage } from '../common/i18n/api-message';
+import { PatientFile } from '../patient-files/entities/patient-file.entity';
+import { PatientFileStorageStatus } from '../patient-files/interfaces/patient-file-storage-status.enum';
 import {
   ClinicAccessContext,
   PatientAccessService,
@@ -18,7 +19,7 @@ import {
   UpdatePatientExamDto,
 } from './dto/create-patient-exam.dto';
 import { QueryPatientExamsDto } from './dto/query-patient-exams.dto';
-import { PatientFileStorageStatus } from '../patient-files/interfaces/patient-file-storage-status.enum';
+import { PatientExam } from './entities/patient-exam.entity';
 
 @Injectable()
 export class PatientExamsService {
@@ -44,6 +45,7 @@ export class PatientExamsService {
       ...fields,
       fileIds,
     });
+
     return this.exams.save(this.exams.create({ ...fields, patientId, files }));
   }
 
@@ -53,11 +55,13 @@ export class PatientExamsService {
     dto: QueryPatientExamsDto,
   ) {
     await this.access.assertPatientAccessible(context, patientId);
+
     if (dto.from && dto.to && new Date(dto.from) > new Date(dto.to)) {
       throw new BadRequestException(
         apiMessage('api.messages.from_must_be_before_to'),
       );
     }
+
     const query = this.exams
       .createQueryBuilder('exam')
       .leftJoinAndSelect(
@@ -67,23 +71,30 @@ export class PatientExamsService {
         { available: PatientFileStorageStatus.AVAILABLE },
       )
       .where('exam.patientId = :patientId', { patientId });
+
     if (dto.category)
       query.andWhere('exam.category = :category', { category: dto.category });
+
     if (dto.clinicalNoteId)
       query.andWhere('exam.clinicalNoteId = :noteId', {
         noteId: dto.clinicalNoteId,
       });
+
     if (dto.from)
       query.andWhere('exam.performedAt >= :from', { from: dto.from });
+
     if (dto.to) query.andWhere('exam.performedAt <= :to', { to: dto.to });
+
     if (dto.search)
       query.andWhere('exam.title ILIKE :search', { search: `%${dto.search}%` });
+
     const [items, total] = await query
       .orderBy('exam.performedAt', 'DESC')
       .addOrderBy('exam.id', 'DESC')
       .skip(dto.offset)
       .take(dto.limit)
       .getManyAndCount();
+
     return { items, total, limit: dto.limit, offset: dto.offset };
   }
 
@@ -93,13 +104,16 @@ export class PatientExamsService {
       where: { id, patientId },
       relations: { files: true },
     });
+
     if (!exam)
       throw new NotFoundException(
         apiMessage('api.messages.patient_exam_not_found'),
       );
+
     exam.files = exam.files.filter(
       (file) => file.storageStatus === PatientFileStorageStatus.AVAILABLE,
     );
+
     return exam;
   }
 
@@ -113,17 +127,22 @@ export class PatientExamsService {
     const exam = await this.findOne(context, patientId, id);
     const { fileIds, ...fields } = dto;
     const files = await this.validateRelations(patientId, dto);
+
     Object.assign(exam, fields);
+
     // Do not rewrite attachment relations when only changing metadata.
     if (fileIds !== undefined) exam.files = files;
     else delete (exam as Partial<PatientExam>).files;
+
     return this.exams.save(exam);
   }
 
   async remove(context: ClinicAccessContext, patientId: string, id: string) {
     this.access.assertCanManageClinical(context);
     const exam = await this.findOne(context, patientId, id);
+
     await this.exams.remove(exam);
+
     return {
       message: apiMessage('api.messages.patient_exam_removed', { id: id }),
     };
@@ -137,12 +156,15 @@ export class PatientExamsService {
       const note = await this.notes.findOne({
         where: { id: dto.clinicalNoteId, clinicalRecord: { patientId } },
       });
+
       if (!note)
         throw new BadRequestException(
           apiMessage('api.messages.clinical_note_does_not_belong_to_patient'),
         );
     }
+
     if (!dto.fileIds?.length) return [];
+
     const files = await this.files.find({
       where: {
         id: In(dto.fileIds),
@@ -150,12 +172,14 @@ export class PatientExamsService {
         storageStatus: PatientFileStorageStatus.AVAILABLE,
       },
     });
+
     if (files.length !== dto.fileIds.length)
       throw new BadRequestException(
         apiMessage(
           'api.messages.all_files_must_be_available_and_belong_to_patient',
         ),
       );
+
     return files;
   }
 }

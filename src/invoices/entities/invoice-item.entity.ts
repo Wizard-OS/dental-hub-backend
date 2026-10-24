@@ -6,8 +6,8 @@ import {
   PrimaryGeneratedColumn,
 } from 'typeorm';
 
-import { Invoice } from './invoice.entity';
 import { InvoiceItemType } from '../interfaces/invoice-item-type.enum';
+import { Invoice } from './invoice.entity';
 
 @Entity('invoice_items')
 export class InvoiceItem {

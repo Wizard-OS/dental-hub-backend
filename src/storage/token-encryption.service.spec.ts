@@ -1,4 +1,4 @@
-import { BadRequestException } from '@nestjs/common';
+import { InternalServerErrorException } from '@nestjs/common';
 
 import { TokenEncryptionService } from './token-encryption.service';
 
@@ -10,7 +10,7 @@ describe('TokenEncryptionService', () => {
   });
 
   it('encrypts and decrypts token values with AES-GCM', () => {
-    process.env.INTEGRATION_TOKEN_ENCRYPTION_KEY = 'test-secret';
+    process.env.INTEGRATION_TOKEN_ENCRYPTION_KEY = 'a'.repeat(64);
     const service = new TokenEncryptionService();
 
     const encrypted = service.encrypt('refresh-token');
@@ -23,6 +23,17 @@ describe('TokenEncryptionService', () => {
     delete process.env.INTEGRATION_TOKEN_ENCRYPTION_KEY;
     const service = new TokenEncryptionService();
 
-    expect(() => service.encrypt('refresh-token')).toThrow(BadRequestException);
+    expect(() => service.encrypt('refresh-token')).toThrow(
+      InternalServerErrorException,
+    );
+  });
+
+  it('rejects encryption keys shorter than 32 bytes', () => {
+    process.env.INTEGRATION_TOKEN_ENCRYPTION_KEY = 'test-secret';
+    const service = new TokenEncryptionService();
+
+    expect(() => service.encrypt('refresh-token')).toThrow(
+      InternalServerErrorException,
+    );
   });
 });

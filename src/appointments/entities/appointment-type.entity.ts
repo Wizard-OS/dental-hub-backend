@@ -9,8 +9,8 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 
-import { Appointment } from './appointment.entity';
 import { Clinic } from '../../clinics/entities/clinic.entity';
+import { Appointment } from './appointment.entity';
 
 @Entity('appointment_types')
 export class AppointmentType {

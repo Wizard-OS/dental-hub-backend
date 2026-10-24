@@ -8,18 +8,18 @@ import {
   Post,
 } from '@nestjs/common';
 import {
-  ApiTags,
-  ApiOperation,
-  ApiResponse,
   ApiBearerAuth,
-  ApiSecurity,
+  ApiOperation,
   ApiParam,
+  ApiResponse,
+  ApiSecurity,
+  ApiTags,
 } from '@nestjs/swagger';
 
-import { RemindersService } from './reminders.service';
+import { AuthClinic, GetClinicId } from '../auth/decorators';
 import { CreateReminderDto } from './dto/create-reminder.dto';
 import { UpdateReminderDto } from './dto/update-reminder.dto';
-import { AuthClinic, GetClinicId } from '../auth/decorators';
+import { RemindersService } from './reminders.service';
 
 @ApiTags('Reminders')
 @ApiBearerAuth()

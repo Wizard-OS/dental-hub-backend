@@ -3080,7 +3080,7 @@
             "description": "",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"serverAuthCode\": \"{{serverAuthCode}}\"\n}",
+              "raw": "{\n  \"serverAuthCode\": \"{{serverAuthCode}}\",\n  \"idToken\": \"{{idToken}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -3143,7 +3143,7 @@
             "description": "Conectar Google Drive con código OAuth",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"code\": \"{{code}}\",\n  \"redirectUri\": \"https://app.dentalhub.example/integrations/google-drive/callback\"\n}",
+              "raw": "{\n  \"code\": \"{{code}}\",\n  \"redirectUri\": \"https://app.dentalhub.example/integrations/google-drive/callback\",\n  \"state\": \"{{state}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"

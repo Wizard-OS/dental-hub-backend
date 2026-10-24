@@ -8,18 +8,14 @@ import {
   Post,
 } from '@nestjs/common';
 import {
-  ApiTags,
-  ApiOperation,
-  ApiResponse,
   ApiBearerAuth,
-  ApiSecurity,
+  ApiOperation,
   ApiParam,
+  ApiResponse,
+  ApiSecurity,
+  ApiTags,
 } from '@nestjs/swagger';
 
-import { PaymentsService } from './payments.service';
-import { CreatePaymentDto } from './dto/create-payment.dto';
-import { UpdatePaymentDto } from './dto/update-payment.dto';
-import { VoidPaymentDto } from './dto/void-payment.dto';
 import {
   AuthClinic,
   ClinicPermissions,
@@ -28,6 +24,10 @@ import {
 } from '../auth/decorators';
 import { ClinicPermission } from '../auth/interfaces';
 import { ClinicMembershipRole } from '../clinic-memberships/interfaces/clinic-membership-role.enum';
+import { CreatePaymentDto } from './dto/create-payment.dto';
+import { UpdatePaymentDto } from './dto/update-payment.dto';
+import { VoidPaymentDto } from './dto/void-payment.dto';
+import { PaymentsService } from './payments.service';
 
 @ApiTags('Payments')
 @ApiBearerAuth()

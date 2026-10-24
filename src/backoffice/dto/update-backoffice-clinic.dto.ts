@@ -1,6 +1,6 @@
-import { i18nValidationMessage } from 'nestjs-i18n';
 import { ApiPropertyOptional, PartialType } from '@nestjs/swagger';
 import { IsBoolean, IsOptional } from 'class-validator';
+import { i18nValidationMessage } from 'nestjs-i18n';
 
 import { CreateClinicDto } from '../../clinics/dto/create-clinic.dto';
 

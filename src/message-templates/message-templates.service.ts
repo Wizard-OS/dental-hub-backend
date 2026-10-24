@@ -1,16 +1,16 @@
-import { apiMessage } from '../common/i18n/api-message';
 import {
   BadRequestException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
 import { isUUID } from 'class-validator';
+import { Repository } from 'typeorm';
 
-import { MessageTemplate } from './entities/message-template.entity';
+import { apiMessage } from '../common/i18n/api-message';
 import { CreateMessageTemplateDto } from './dto/create-message-template.dto';
 import { UpdateMessageTemplateDto } from './dto/update-message-template.dto';
+import { MessageTemplate } from './entities/message-template.entity';
 import { MessageTemplateStatus } from './interfaces/message-template-status.enum';
 
 @Injectable()
@@ -74,13 +74,16 @@ export class MessageTemplatesService {
     }
 
     Object.assign(template, dto);
+
     return await this.messageTemplateRepository.save(template);
   }
 
   async remove(clinicId: string, id: string) {
     const template = await this.findOne(clinicId, id);
+
     template.status = MessageTemplateStatus.INACTIVE;
     await this.messageTemplateRepository.save(template);
+
     return {
       message: apiMessage('api.messages.message_template_archived', { id: id }),
     };

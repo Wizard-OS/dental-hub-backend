@@ -1,27 +1,28 @@
-import { apiMessage } from '../common/i18n/api-message';
+import { randomUUID } from 'crypto';
+import { promises as fs } from 'fs';
+import * as path from 'path';
+
 import {
   BadRequestException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { promises as fs } from 'fs';
-import * as path from 'path';
-import { randomUUID } from 'crypto';
 import { Repository } from 'typeorm';
 
-import { Patient } from '../patients/entities/patient.entity';
-import { Treatment } from '../treatments/entities/treatment.entity';
 import { ClinicalNote } from '../clinical-notes/entities/clinical-note.entity';
+import { apiMessage } from '../common/i18n/api-message';
 import { PatientFileType } from '../patient-files/interfaces/patient-file-type.enum';
 import { PatientFilesService } from '../patient-files/patient-files.service';
-import { OdontogramEntry } from './entities/odontogram-entry.entity';
-import { UpdateOdontogramToothDto } from './dto/update-odontogram-tooth.dto';
-import { GenerateOdontogramPdfDto } from './dto/generate-odontogram-pdf.dto';
+import { Patient } from '../patients/entities/patient.entity';
 import {
   ClinicAccessContext,
   PatientAccessService,
 } from '../patients/services/patient-access.service';
+import { Treatment } from '../treatments/entities/treatment.entity';
+import { GenerateOdontogramPdfDto } from './dto/generate-odontogram-pdf.dto';
+import { UpdateOdontogramToothDto } from './dto/update-odontogram-tooth.dto';
+import { OdontogramEntry } from './entities/odontogram-entry.entity';
 import { ToothStatus } from './interfaces/tooth-status.enum';
 import { ToothSurface } from './interfaces/tooth-surface.enum';
 import { OdontogramPdfService } from './odontogram-pdf.service';
@@ -259,6 +260,7 @@ export class OdontogramService {
     }
 
     await this.odontogramRepository.remove(entry);
+
     return {
       message: apiMessage('api.messages.odontogram_entry_deleted', {
         entryId: entryId,
@@ -284,12 +286,14 @@ export class OdontogramService {
       generatedAt,
     });
     const uploadDir = path.join(process.cwd(), 'uploads', 'patient-files');
+
     await fs.mkdir(uploadDir, { recursive: true });
 
     const safeDate = generatedAt.toISOString().slice(0, 10);
     const originalName = `odontograma-${patient.firstName}-${patient.lastName}-${safeDate}.pdf`;
     const filename = `${Date.now()}-${randomUUID()}-odontogram.pdf`;
     const filePath = path.join(uploadDir, filename);
+
     await fs.writeFile(filePath, pdf);
 
     return await this.patientFilesService.createGenerated(
@@ -345,6 +349,7 @@ export class OdontogramService {
     patientId: string,
   ) {
     const patient = await this.findPatientInClinic(patientId, context.clinicId);
+
     return this.patientAccessService.sanitizePatient(patient, context);
   }
 

@@ -1,18 +1,18 @@
-import { apiMessage } from '../common/i18n/api-message';
 import {
   BadRequestException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
 import { isUUID } from 'class-validator';
+import { Repository } from 'typeorm';
 
-import { TreatmentSession } from './entities/treatment-session.entity';
-import { Treatment } from '../treatments/entities/treatment.entity';
 import { ClinicalRecord } from '../clinical-records/entities/clinical-record.entity';
+import { apiMessage } from '../common/i18n/api-message';
+import { Treatment } from '../treatments/entities/treatment.entity';
 import { CreateTreatmentSessionDto } from './dto/create-treatment-session.dto';
 import { UpdateTreatmentSessionDto } from './dto/update-treatment-session.dto';
+import { TreatmentSession } from './entities/treatment-session.entity';
 
 @Injectable()
 export class TreatmentSessionsService {
@@ -112,6 +112,7 @@ export class TreatmentSessionsService {
     }
 
     Object.assign(session, dto);
+
     if (dto.performedAt) {
       session.performedAt = new Date(dto.performedAt);
     }
@@ -121,7 +122,9 @@ export class TreatmentSessionsService {
 
   async remove(clinicId: string, id: string) {
     const session = await this.findOne(clinicId, id);
+
     await this.treatmentSessionRepository.remove(session);
+
     return {
       message: apiMessage('api.messages.treatment_session_removed', { id: id }),
     };

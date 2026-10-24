@@ -2,6 +2,8 @@ overrides:
   qs: 6.16.0
   proxy-addr: 2.0.8
   nestjs-i18n>chokidar: 4.0.3
+  '@nestjs/platform-express>express': 5.3.0
+  '@nestjs/platform-express>multer': 2.5.0
 
 allowBuilds:
   '@nestjs/core': true

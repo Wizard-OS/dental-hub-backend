@@ -11,15 +11,15 @@ import {
   OneToMany,
   OneToOne,
   PrimaryGeneratedColumn,
-  UpdateDateColumn,
   Unique,
+  UpdateDateColumn,
 } from 'typeorm';
 
-import { Gender } from '../../common/interfaces/gender.enum';
 import { Appointment } from '../../appointments/entities/appointment.entity';
 import { ClinicalRecord } from '../../clinical-records/entities/clinical-record.entity';
-import { Invoice } from '../../invoices/entities/invoice.entity';
 import { Clinic } from '../../clinics/entities/clinic.entity';
+import { Gender } from '../../common/interfaces/gender.enum';
+import { Invoice } from '../../invoices/entities/invoice.entity';
 import { PatientFile } from '../../patient-files/entities/patient-file.entity';
 
 @Entity('patients')

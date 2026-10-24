@@ -84,6 +84,7 @@ describe('User sessions by device (e2e)', () => {
     const desktopSession = sessions.find(
       (session) => session.deviceName === 'MacBook Pro 16"',
     );
+
     if (!desktopSession) {
       throw new Error('Expected desktop session to be present');
     }

@@ -7,6 +7,7 @@ import {
   ManyToOne,
   PrimaryGeneratedColumn,
 } from 'typeorm';
+
 import { Clinic } from '../../clinics/entities/clinic.entity';
 
 @Entity('membership_enrollments')

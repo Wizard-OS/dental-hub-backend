@@ -1,16 +1,17 @@
-import { i18nValidationMessage } from 'nestjs-i18n';
-import { MembershipQuoteDto } from './membership-quote.dto';
 import { ApiProperty } from '@nestjs/swagger';
 import {
   Equals,
+  IsBoolean,
   IsIn,
+  IsOptional,
   IsString,
   IsUUID,
   Matches,
   MaxLength,
-  IsOptional,
-  IsBoolean,
 } from 'class-validator';
+import { i18nValidationMessage } from 'nestjs-i18n';
+
+import { MembershipQuoteDto } from './membership-quote.dto';
 
 export class CreateMembershipPaymentMethodDto {
   @ApiProperty({ enum: ['card', 'paypal'] })

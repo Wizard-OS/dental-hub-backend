@@ -1,10 +1,10 @@
-import { i18nValidationMessage } from 'nestjs-i18n';
-import { IsDateString, IsEnum, IsOptional, IsUUID } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsDateString, IsEnum, IsOptional, IsUUID } from 'class-validator';
+import { i18nValidationMessage } from 'nestjs-i18n';
 
-import { ReminderType } from '../interfaces/reminder-type.enum';
 import { NotificationChannel } from '../../common/interfaces/notification-channel.enum';
 import { ReminderStatus } from '../interfaces/reminder-status.enum';
+import { ReminderType } from '../interfaces/reminder-type.enum';
 
 export class CreateReminderDto {
   @ApiProperty({ description: 'UUID de la cita' })

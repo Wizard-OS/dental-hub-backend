@@ -1,19 +1,20 @@
-import { apiMessage } from '../common/i18n/api-message';
 import { ConflictException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+
 import { ClinicMembership } from '../clinic-memberships/entities/clinic-membership.entity';
+import { apiMessage } from '../common/i18n/api-message';
 import { PatientFile } from '../patient-files/entities/patient-file.entity';
+import { PatientFileType } from '../patient-files/interfaces/patient-file-type.enum';
+import { Patient } from '../patients/entities/patient.entity';
 import { PersonalDriveStorage } from './infrastructure/personal-drive-storage';
-import { StorageProviderType } from './interfaces/storage-provider-type.enum';
+import { PatientFileDriveImport } from './interfaces/patient-file-drive-import.interface';
 import {
   StorageUploadInput,
   StorageUploadResult,
 } from './interfaces/storage-provider.interface';
+import { StorageProviderType } from './interfaces/storage-provider-type.enum';
 import { StorageProviderRegistry } from './storage-provider-registry.service';
-import { PatientFileDriveImport } from './interfaces/patient-file-drive-import.interface';
-import { Patient } from '../patients/entities/patient.entity';
-import { PatientFileType } from '../patient-files/interfaces/patient-file-type.enum';
 
 @Injectable()
 export class StorageService {
@@ -23,12 +24,14 @@ export class StorageService {
     private readonly providerRegistry: StorageProviderRegistry,
     private readonly personalDrive: PersonalDriveStorage,
   ) {}
+
   async upload(input: StorageUploadInput): Promise<StorageUploadResult> {
     const uploader = await this.memberships.findOneBy({
       id: input.uploadedByMembershipId,
       clinicId: input.clinicId,
       isActive: true,
     });
+
     if (!uploader)
       throw new ConflictException({
         code: 'UPLOAD_IDENTITY_REQUIRED',
@@ -36,6 +39,7 @@ export class StorageService {
           'api.messages.the_uploader_membership_is_unavailable',
         ),
       });
+
     return this.personalDrive.upload(input, uploader.userId);
   }
 
@@ -47,6 +51,7 @@ export class StorageService {
       clinicId: input.clinicId,
       isActive: true,
     });
+
     if (!uploader)
       throw new ConflictException({
         code: 'UPLOAD_IDENTITY_REQUIRED',
@@ -54,6 +59,7 @@ export class StorageService {
           'api.messages.the_uploader_membership_is_unavailable',
         ),
       });
+
     return this.personalDrive.importFromDrive(input, uploader.userId);
   }
 
@@ -86,6 +92,7 @@ export class StorageService {
   downloadDriveRevision(file: PatientFile, revisionId: string) {
     return this.personalDrive.downloadRevision(file, revisionId);
   }
+
   async markUnavailable(
     providerType: StorageProviderType,
     file: {
@@ -100,8 +107,10 @@ export class StorageService {
         file.storageIntegrationId,
         file.driveFileId,
       );
+
     await this.providerRegistry.get(providerType).markUnavailable(file);
   }
+
   downloadDrive(file: PatientFile, clinicId: string) {
     return this.personalDrive.download(file, clinicId);
   }

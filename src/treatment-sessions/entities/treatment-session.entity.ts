@@ -6,8 +6,8 @@ import {
   PrimaryGeneratedColumn,
 } from 'typeorm';
 
-import { Treatment } from '../../treatments/entities/treatment.entity';
 import { ClinicalRecord } from '../../clinical-records/entities/clinical-record.entity';
+import { Treatment } from '../../treatments/entities/treatment.entity';
 
 @Entity('treatment_sessions')
 export class TreatmentSession {

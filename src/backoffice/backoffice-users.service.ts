@@ -1,17 +1,18 @@
-import { apiMessage, type ApiMessage } from '../common/i18n/api-message';
 import {
   BadRequestException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { isUUID } from 'class-validator';
 import { Repository } from 'typeorm';
 import { Brackets } from 'typeorm';
-import { isUUID } from 'class-validator';
+
 import { User } from '../auth/entities/user.entity';
 import { ValidRoles } from '../auth/interfaces';
-import { UserSession } from '../user-sessions/entities/user-session.entity';
+import { type ApiMessage, apiMessage } from '../common/i18n/api-message';
 import { SupportRequest } from '../help-center/entities/support-request.entity';
+import { UserSession } from '../user-sessions/entities/user-session.entity';
 import { QueryBackofficeUsersDto } from './dto/query-backoffice-users.dto';
 import { UpdateBackofficeUserDto } from './dto/update-backoffice-user.dto';
 
@@ -107,6 +108,7 @@ export class BackofficeUsersService {
     this.assertUuid(id, apiMessage('api.messages.invalid_user_id'));
 
     const user = await this.userRepository.findOne({ where: { id } });
+
     if (!user) {
       throw new NotFoundException(
         apiMessage('api.messages.user_with_id_not_found', { id: id }),
@@ -118,6 +120,7 @@ export class BackofficeUsersService {
     }
 
     Object.assign(user, dto);
+
     return await this.userRepository.save(user);
   }
 

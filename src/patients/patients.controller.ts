@@ -1,27 +1,22 @@
 import {
-  Controller,
-  Get,
-  Post,
   Body,
-  Patch,
-  Param,
+  Controller,
   Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
   Query,
 } from '@nestjs/common';
 import {
-  ApiTags,
-  ApiOperation,
-  ApiResponse,
   ApiBearerAuth,
-  ApiSecurity,
+  ApiOperation,
   ApiParam,
+  ApiResponse,
+  ApiSecurity,
+  ApiTags,
 } from '@nestjs/swagger';
 
-import { PatientsService } from './patients.service';
-
-import { CreatePatientDto } from './dto/create-patient.dto';
-import { UpdatePatientDto } from './dto/update-patient.dto';
-import { QueryPatientsDto } from './dto/query-patients.dto';
 import {
   AuthClinic,
   ClinicRoles,
@@ -31,6 +26,10 @@ import {
   GetClinicPermissions,
 } from '../auth/decorators';
 import { ClinicMembershipRole } from '../clinic-memberships/interfaces/clinic-membership-role.enum';
+import { CreatePatientDto } from './dto/create-patient.dto';
+import { QueryPatientsDto } from './dto/query-patients.dto';
+import { UpdatePatientDto } from './dto/update-patient.dto';
+import { PatientsService } from './patients.service';
 import { ClinicAccessContext } from './services/patient-access.service';
 
 @ApiTags('Patients')

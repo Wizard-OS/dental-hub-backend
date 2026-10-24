@@ -1,24 +1,24 @@
-import { apiMessage } from '../../common/i18n/api-message';
+import { IncomingHttpHeaders } from 'http';
+
 import {
   BadRequestException,
   Injectable,
   Logger,
   ServiceUnavailableException,
 } from '@nestjs/common';
-import { IncomingHttpHeaders } from 'http';
 
+import { apiMessage } from '../../common/i18n/api-message';
 import { getEnv, getRequiredEnv } from '../../config/env';
 import { BillingProvider } from '../../membership/interfaces/billing-provider.enum';
 import { MembershipPlanCode } from '../../membership/interfaces/membership-plan-code.enum';
 import { BillingInterval } from '../interfaces/billing-interval.enum';
 import {
   BillingProviderAdapter,
-  CreateProviderSubscriptionInput,
   CreatedProviderSubscription,
+  CreateProviderSubscriptionInput,
   ProviderSubscriptionDetails,
   ProviderWebhookVerification,
 } from '../interfaces/billing-provider-adapter.interface';
-
 import { membershipQuote, offerPlanId } from '../membership-offer';
 
 interface PlanCycle {
@@ -72,10 +72,12 @@ export class PayPalBillingProvider implements BillingProviderAdapter {
     const providerPlanId = input.startTrial
       ? offerPlanId(input.interval, input.promotionCode)
       : this.getPlanId(input.interval);
+
     if (!providerPlanId)
       throw new ServiceUnavailableException(
         apiMessage('api.messages.membership_offer_is_not_configured'),
       );
+
     if (input.startTrial) await this.validateOfferPlan(providerPlanId, input);
 
     const subscription = await this.paypalRequest<PayPalSubscriptionResponse>(
@@ -154,6 +156,7 @@ export class PayPalBillingProvider implements BillingProviderAdapter {
         amount: quote.renewalAmount,
       },
     ];
+
     if (
       plan.status !== 'ACTIVE' ||
       plan.quantity_supported ||
@@ -162,6 +165,7 @@ export class PayPalBillingProvider implements BillingProviderAdapter {
       cycles.length !== expected.length ||
       expected.some((e, i) => {
         const c = cycles[i];
+
         return (
           !c ||
           c.sequence !== i + 1 ||
@@ -268,6 +272,7 @@ export class PayPalBillingProvider implements BillingProviderAdapter {
         apiMessage('api.messages.paypal_credentials_are_not_configured'),
       );
     }
+
     const accessToken = await this.getAccessToken();
     const response = await fetch(`${this.baseUrl}${path}`, {
       method: options.method,
@@ -284,10 +289,12 @@ export class PayPalBillingProvider implements BillingProviderAdapter {
       this.logger.error(
         `PayPal API request failed with status ${response.status}`,
       );
+
       throw new PayPalRequestError(response.status);
     }
 
     if (response.status === 204) return undefined as T;
+
     return (await response.json()) as T;
   }
 
@@ -309,6 +316,7 @@ export class PayPalBillingProvider implements BillingProviderAdapter {
 
     if (!response.ok) {
       this.logger.error(`PayPal OAuth failed with status ${response.status}`);
+
       throw new BadRequestException(
         apiMessage('api.messages.paypal_authentication_failed'),
       );
@@ -349,6 +357,7 @@ export class PayPalBillingProvider implements BillingProviderAdapter {
     if (!value) return null;
 
     const date = new Date(value);
+
     return Number.isNaN(date.getTime()) ? null : date;
   }
 }

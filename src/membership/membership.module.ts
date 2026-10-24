@@ -2,17 +2,17 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { ClinicMembership } from '../clinic-memberships/entities/clinic-membership.entity';
+import { OutboundMessagesModule } from '../outbound-messages/outbound-messages.module';
 import { PatientFile } from '../patient-files/entities/patient-file.entity';
 import { Patient } from '../patients/entities/patient.entity';
-import { ClinicSubscriptionAuditLog } from './entities/clinic-subscription-audit-log.entity';
 import { ClinicSubscription } from './entities/clinic-subscription.entity';
-import { OutboundMessagesModule } from '../outbound-messages/outbound-messages.module';
+import { ClinicSubscriptionAuditLog } from './entities/clinic-subscription-audit-log.entity';
 import { MembershipController } from './membership.controller';
 import { MembershipService } from './membership.service';
-import { MembershipEntitlementsService } from './membership-entitlements.service';
 import { MembershipCheckoutIntentService } from './membership-checkout-intent.service';
-import { MembershipPlanAssignmentService } from './membership-plan-assignment.service';
+import { MembershipEntitlementsService } from './membership-entitlements.service';
 import { MembershipLicenseService } from './membership-license.service';
+import { MembershipPlanAssignmentService } from './membership-plan-assignment.service';
 
 @Module({
   controllers: [MembershipController],

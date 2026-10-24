@@ -1,4 +1,3 @@
-import { apiMessage } from '../common/i18n/api-message';
 import {
   BadRequestException,
   ForbiddenException,
@@ -9,13 +8,14 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { isUUID } from 'class-validator';
 import { Repository } from 'typeorm';
 
-import { Clinic } from './entities/clinic.entity';
-import { UpdateAppointmentSettingsDto } from './dto/update-appointment-settings.dto';
-import { AppointmentSettingsPolicy } from './appointment-settings.policy';
-import { ClinicMembership } from '../clinic-memberships/entities/clinic-membership.entity';
-import { ClinicMembershipRole } from '../clinic-memberships/interfaces/clinic-membership-role.enum';
 import { ClinicPermission } from '../auth/interfaces';
 import { hasClinicPermission } from '../auth/utils/clinic-permissions';
+import { ClinicMembership } from '../clinic-memberships/entities/clinic-membership.entity';
+import { ClinicMembershipRole } from '../clinic-memberships/interfaces/clinic-membership-role.enum';
+import { apiMessage } from '../common/i18n/api-message';
+import { AppointmentSettingsPolicy } from './appointment-settings.policy';
+import { UpdateAppointmentSettingsDto } from './dto/update-appointment-settings.dto';
+import { Clinic } from './entities/clinic.entity';
 
 export type AppointmentSettings = Required<UpdateAppointmentSettingsDto>;
 export type WorkingHoursContainer = Record<string, unknown> & {
@@ -49,6 +49,7 @@ export class AppointmentAvailabilityService {
   async getClinicSettings(scopedClinicId: string, id: string) {
     this.ensureClinicScope(scopedClinicId, id);
     const clinic = await this.findClinic(id);
+
     return this.normalizeAppointmentSettings(clinic.workingHoursJson);
   }
 
@@ -72,6 +73,7 @@ export class AppointmentAvailabilityService {
     };
 
     await this.clinicRepository.save(clinic);
+
     return next;
   }
 
@@ -226,6 +228,7 @@ export class AppointmentAvailabilityService {
     const clinic = await this.clinicRepository.findOne({
       where: { id, isActive: true },
     });
+
     if (!clinic)
       throw new NotFoundException(
         apiMessage('api.messages.clinic_with_id_not_found', { id: id }),

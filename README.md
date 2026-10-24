@@ -24,6 +24,10 @@ pnpm install
 
 3. Levantar base de datos:
 
+La imagen local es PostgreSQL 18.6. Si ya existe un directorio `postgres` de
+PostgreSQL 14, seguir primero la sección de migración de abajo para conservar los
+datos; cambiar la imagen no convierte el directorio anterior.
+
 ```bash
 pnpm db:up
 ```
@@ -32,6 +36,78 @@ pnpm db:up
 
 ```bash
 pnpm start:dev
+```
+
+## PostgreSQL local: actualización de 14 a 18.6
+
+Compose conserva las credenciales, el nombre de base, el puerto y el health check
+existentes. PostgreSQL 18 usa `./postgres-18:/var/lib/postgresql`; sus archivos
+quedan en `postgres-18/18/docker`. El directorio anterior `./postgres` se conserva
+para rollback. Esta configuración solo afecta la base Docker local, no las bases
+externas de producción.
+
+### Backup y restauración
+
+1. Detener la API y los workers para evitar escrituras durante el backup y el
+   cambio de servidor. No ejecutar `start:prod:migrate`, `migrate:sql` ni iniciar
+   la API con `DB_SYNCHRONIZE=true` durante esta operación.
+2. Conservar el archivo Compose de PostgreSQL 14 y una copia en frío de su
+   directorio de datos. Si el servidor estaba detenido, crear el dump desde una
+   copia del directorio para dejar el original intacto.
+3. Desde el servidor 14, exportar la base en formato custom con `pg_dump
+   --format=custom --create` y los roles con `pg_dumpall --globals-only`. Guardar
+   los archivos en un directorio privado (`0700`), con permisos `0600` para dumps
+   y SQL de roles. El SQL de roles puede incluir hashes de contraseñas.
+4. Restaurar primero los roles y después el dump en una instancia desechable de
+   `postgres:18.6`, con `psql -v ON_ERROR_STOP=1` y `pg_restore --exit-on-error
+   --create --dbname=postgres`. El usuario de inicialización ya existe: omitir
+   únicamente su sentencia `CREATE ROLE`, conservando su `ALTER ROLE`, sus grants
+   y las demás sentencias. No usar `--no-owner` ni `--no-acl`.
+5. Comparar conteos y hashes de filas, secuencias, columnas y nulabilidad,
+   extensiones, índices, constraints, triggers, propietarios y permisos.
+   PostgreSQL 18 representa los `NOT NULL` en `pg_constraint`; comparar también
+   la nulabilidad de las columnas para normalizar esa diferencia de catálogo.
+   Un dump creado con el cliente 14 puede dejar los nuevos defaults de `public`:
+   restaurar explícitamente el propietario y los grants originales del schema.
+6. Solo después de validar el restore, iniciar Compose con el nuevo directorio:
+
+   ```bash
+   pnpm db:up
+   ```
+
+   En una instalación nueva, Compose crea automáticamente `POSTGRES_DB`. Antes de
+   restaurar un dump con `--create`, comprobar que esa base está vacía y eliminar
+   únicamente esa base recién inicializada desde una conexión a `postgres`.
+   Nunca ejecutar esa eliminación sobre una base que ya contiene datos.
+7. Repetir la restauración validada en `dental_hub_db`, verificar los datos y
+   recrear el contenedor para comprobar persistencia. Probar la API con
+   `DB_SYNCHRONIZE=false`, `BILLING_WORKER_ENABLED=false` y
+   `GOOGLE_DRIVE_SYNC_WORKER_ENABLED=false`. Las migraciones pendientes de la
+   aplicación se revisan por separado; actualizar PostgreSQL no las aplica.
+
+El backup de esta actualización quedó en `.tmp/postgres-upgrade-20261024/`:
+`database.dump`, `globals.sql`, `schema-compatibility.sql`, inventarios de
+verificación y `docker-compose.pg14.yaml`. Mantener ese directorio y `postgres`
+hasta aceptar la actualización. El reporte de dependencias registra las pruebas
+y las limitaciones del schema anterior.
+
+### Rollback de esta actualización
+
+Con la API y los workers detenidos, antes de aceptar nuevas escrituras en 18:
+
+```bash
+docker compose stop db
+docker compose --project-directory . \
+  -f .tmp/postgres-upgrade-20261024/docker-compose.pg14.yaml up -d db
+```
+
+El archivo guardado monta `./postgres` con la imagen 14.3. No montar
+`postgres-18` en PostgreSQL 14. El rollback vuelve al estado del backup; si ya hubo
+escrituras en 18, respaldarlas y planificar su recuperación antes de volver a 14.
+Para regresar a 18 después de una prueba de rollback:
+
+```bash
+docker compose up -d db
 ```
 
 ## Documentación API (Swagger / OpenAPI)
@@ -93,14 +169,14 @@ Variables clave:
   - `true`: expone Swagger
 - `THROTTLE_TTL_MS` / `THROTTLE_LIMIT`: ventana y límite global de rate limit (defaults `60000` / `120`)
 - `DATABASE_URL`: URL PostgreSQL completa. Si está definida, tiene prioridad sobre `DB_HOST`, `DB_NAME`, `DB_USERNAME` y `DB_PASSWORD`.
-- `DB_HOST`: host PostgreSQL (default `127.0.0.1`)
+- `DB_HOST`: host PostgreSQL (default `127.0.0.1` fuera de producción)
 - `DB_PORT`: puerto PostgreSQL (default `5432`)
 - `DB_NAME`: nombre de base (default `DentalHubDB`)
 - `DB_USERNAME`: usuario DB (default `postgres`)
-- `DB_PASSWORD`: password DB (default `postgres`)
+- `DB_PASSWORD`: password DB (default `postgres` fuera de producción)
 - `DB_SSL`:
   - `false` (o no definido): conexión PostgreSQL sin SSL, útil para Docker local
-  - `true`: habilita SSL con verificación del certificado para Neon, Supabase u otros Postgres administrados. URLs con `sslmode=disable`, `allow`, `no-verify` o `ssl=0` se rechazan; modos `prefer`, `require` y `verify-ca` se normalizan a `verify-full`.
+  - `true`: habilita SSL con verificación del certificado para Neon, Supabase u otros Postgres administrados. En producción se requiere `DB_SSL=true` o una `DATABASE_URL` con TLS verificado (`sslmode=verify-full`). URLs con `sslmode=disable`, `allow`, `no-verify` o `ssl=0` se rechazan; modos `prefer`, `require` y `verify-ca` se normalizan a `verify-full`.
 - `DB_SYNCHRONIZE`:
   - `true`: habilita `synchronize` solo cuando `NODE_ENV !== production`
   - `false` o no definido: deshabilita synchronize
@@ -112,6 +188,13 @@ Variables clave:
 - `REST_COUNTRIES_API_KEY`: API key bearer de Rest Countries. Si no está definida, el backend solo puede servir el fallback local de Uruguay para no romper clínicas existentes.
 
 Nota: en producción se deben aplicar migraciones SQL y mantener `DB_SYNCHRONIZE=false`.
+Si no se define `DATABASE_URL`, producción requiere valores explícitos para
+`DB_HOST`, `DB_NAME`, `DB_USERNAME` y `DB_PASSWORD`; los valores locales por
+defecto solo se usan fuera de producción.
+
+`INTEGRATION_TOKEN_ENCRYPTION_KEY` debe tener al menos 32 bytes. Para generar
+una clave aleatoria compatible, usar `openssl rand -hex 32` y conservarla para
+poder descifrar los tokens de Google Drive ya guardados.
 
 ### País, moneda y prefijo telefónico por clínica
 
@@ -196,7 +279,7 @@ ENABLE_SEED_ENDPOINT=false
 ENABLE_SWAGGER=false
 CORS_ORIGINS=https://<tu-frontend>
 JWT_SECRET=<secreto-largo>
-INTEGRATION_TOKEN_ENCRYPTION_KEY=<secreto-largo-o-64-hex>
+INTEGRATION_TOKEN_ENCRYPTION_KEY=<salida-de-openssl-rand-hex-32>
 REST_COUNTRIES_API_KEY=<api-key-rest-countries>
 HOST_API=https://<tu-servicio>.onrender.com/api
 ```

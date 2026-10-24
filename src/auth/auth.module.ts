@@ -1,26 +1,26 @@
 import { Global, Module } from '@nestjs/common';
-import { JwtModule } from '@nestjs/jwt';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { PassportModule } from '@nestjs/passport';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { JwtModule } from '@nestjs/jwt';
+import { PassportModule } from '@nestjs/passport';
+import { TypeOrmModule } from '@nestjs/typeorm';
 
-import { AuthService } from './auth.service';
-import { AuthController } from './auth.controller';
-import { User } from './entities/user.entity';
-import { JwtStrategy } from './strategies/jwt.strategy';
 import { ClinicMembership } from '../clinic-memberships/entities/clinic-membership.entity';
-import { ClinicScopeGuard } from './guards/clinic-scope.guard';
-import { UserRoleGuard } from './guards/user-role.guard';
-import { ClinicRoleGuard } from './guards/clinic-role.guard';
-import { ClinicPermissionGuard } from './guards/clinic-permission.guard';
 import { getRequiredEnv } from '../config/env';
 import { ProfessionalSpecialty } from '../professional-specialties/entities/professional-specialty.entity';
 import { UserSessionsModule } from '../user-sessions/user-sessions.module';
-import { PasswordHasherService } from './services/password-hasher.service';
-import { PasswordResetOtpService } from './services/password-reset-otp.service';
-import { PasswordResetEmailProvider } from './services/password-reset-email.provider';
 import { AUTH_SECURITY_TRANSACTION } from './application/ports/auth-security-transaction.port';
+import { AuthController } from './auth.controller';
+import { AuthService } from './auth.service';
+import { User } from './entities/user.entity';
+import { ClinicPermissionGuard } from './guards/clinic-permission.guard';
+import { ClinicRoleGuard } from './guards/clinic-role.guard';
+import { ClinicScopeGuard } from './guards/clinic-scope.guard';
+import { UserRoleGuard } from './guards/user-role.guard';
 import { TypeOrmAuthSecurityTransactionAdapter } from './infrastructure/typeorm-auth-security-transaction.adapter';
+import { PasswordHasherService } from './services/password-hasher.service';
+import { PasswordResetEmailProvider } from './services/password-reset-email.provider';
+import { PasswordResetOtpService } from './services/password-reset-otp.service';
+import { JwtStrategy } from './strategies/jwt.strategy';
 
 @Global()
 @Module({

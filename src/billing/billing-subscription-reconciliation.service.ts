@@ -1,8 +1,9 @@
-import { apiMessage } from '../common/i18n/api-message';
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
-import { MembershipService } from '../membership/membership.service';
+
+import { apiMessage } from '../common/i18n/api-message';
 import { BillingProvider } from '../membership/interfaces/billing-provider.enum';
 import { SubscriptionStatus } from '../membership/interfaces/subscription-status.enum';
+import { MembershipService } from '../membership/membership.service';
 import { BillingProviderAdapter } from './interfaces/billing-provider-adapter.interface';
 import { PayPalBillingProvider } from './providers/paypal-billing.provider';
 
@@ -32,6 +33,7 @@ export class BillingSubscriptionReconciliationService {
 
     if (!providerSubscriptionId) {
       this.logger.debug(`Ignoring PayPal event without subscription id`);
+
       return;
     }
 
@@ -50,6 +52,7 @@ export class BillingSubscriptionReconciliationService {
         const local = details.clinicId
           ? await this.membershipService.ensureSubscription(details.clinicId)
           : null;
+
         if (
           !local ||
           local.providerSubscriptionId !== providerSubscriptionId ||
@@ -61,6 +64,7 @@ export class BillingSubscriptionReconciliationService {
             ),
           );
         }
+
         if (local.checkoutQuote && !details.currentPeriodStart) {
           throw new BadRequestException(
             apiMessage(
@@ -68,6 +72,7 @@ export class BillingSubscriptionReconciliationService {
             ),
           );
         }
+
         const trialStartedAt = local.checkoutQuote
           ? (local.trialStartedAt ?? details.currentPeriodStart)
           : null;
@@ -75,6 +80,7 @@ export class BillingSubscriptionReconciliationService {
           ? (local.trialEndsAt ??
             new Date(trialStartedAt.getTime() + 14 * 86400000))
           : null;
+
         await this.membershipService.activateProviderSubscription({
           clinicId: details.clinicId ?? undefined,
           provider: BillingProvider.paypal,
@@ -88,6 +94,7 @@ export class BillingSubscriptionReconciliationService {
           trialStartedAt,
           trialEndsAt,
         });
+
         return;
       }
 
@@ -99,6 +106,7 @@ export class BillingSubscriptionReconciliationService {
         currentPeriodEnd: details.currentPeriodEnd,
         webhookEventId: eventId,
       });
+
       return;
     }
 
@@ -112,6 +120,7 @@ export class BillingSubscriptionReconciliationService {
         providerStatus: 'PAYMENT_FAILED',
         webhookEventId: eventId,
       });
+
       return;
     }
 
@@ -123,6 +132,7 @@ export class BillingSubscriptionReconciliationService {
         providerStatus: 'SUSPENDED',
         webhookEventId: eventId,
       });
+
       return;
     }
 
@@ -135,6 +145,7 @@ export class BillingSubscriptionReconciliationService {
         cancelAtPeriodEnd: true,
         webhookEventId: eventId,
       });
+
       return;
     }
 

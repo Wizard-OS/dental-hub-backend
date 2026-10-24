@@ -86,6 +86,7 @@ export class OdontogramPdfService {
     generatedAt: Date,
   ): string {
     const commands: string[] = [];
+
     this.text(commands, 'DentalHub - Odontograma', MARGIN, 742, 18);
     this.text(
       commands,
@@ -131,6 +132,7 @@ export class OdontogramPdfService {
     for (let i = 0; i < extraEntries.length; i += 30) {
       const pageEntries = extraEntries.slice(i, i + 30);
       const commands: string[] = [];
+
       this.text(commands, 'Odontograma - resumen tabular', 48, 742, 14);
       this.drawTableHeader(commands, 48, 714);
       this.drawRows(commands, pageEntries, 48, 694);
@@ -203,6 +205,7 @@ export class OdontogramPdfService {
           : STATUS_META[ToothStatus.HEALTHY];
         const x = startX + index * 29;
         const y = startY - rowIndex * 58;
+
         this.rect(commands, x, y, 24, 34, meta.color);
         this.strokeRect(commands, x, y, 24, 34);
         this.text(commands, toothCode, x + 5, y + 20, 7);
@@ -222,6 +225,7 @@ export class OdontogramPdfService {
       const row = Math.floor(index / 3);
       const itemX = x + column * 158;
       const itemY = y - row * 18;
+
       this.rect(commands, itemX, itemY, 10, 10, meta.color);
       this.strokeRect(commands, itemX, itemY, 10, 10);
       this.text(
@@ -251,6 +255,7 @@ export class OdontogramPdfService {
   ) {
     entries.forEach((entry, index) => {
       const y = startY - index * 20;
+
       this.text(commands, entry.toothCode, x, y, 7);
       this.text(commands, entry.surface, x + 42, y, 7);
       this.text(commands, STATUS_META[entry.status].label, x + 112, y, 7);
@@ -313,6 +318,7 @@ export class OdontogramPdfService {
     }
 
     const xrefOffset = Buffer.byteLength(chunks.join(''), 'latin1');
+
     chunks.push(`xref\n0 ${objects.length + 1}\n`);
     chunks.push('0000000000 65535 f \n');
 
@@ -384,6 +390,7 @@ export class OdontogramPdfService {
 
   private truncate(value: string, maxLength: number): string {
     if (value.length <= maxLength) return value;
+
     return `${value.slice(0, maxLength - 3)}...`;
   }
 }

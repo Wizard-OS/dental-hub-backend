@@ -1,6 +1,6 @@
-import { i18nValidationMessage } from 'nestjs-i18n';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { IsBooleanString, IsOptional } from 'class-validator';
+import { i18nValidationMessage } from 'nestjs-i18n';
 
 import { PaginationDto } from '../../common/dtos/pagination.dto';
 

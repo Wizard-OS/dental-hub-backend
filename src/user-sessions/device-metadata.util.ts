@@ -40,9 +40,11 @@ export function inferDeviceMetadata(userAgent?: string): SessionMetadata {
 
 function inferDeviceType(lowerUserAgent: string) {
   if (!lowerUserAgent) return 'unknown';
+
   if (lowerUserAgent.includes('ipad') || lowerUserAgent.includes('tablet')) {
     return 'tablet';
   }
+
   if (
     lowerUserAgent.includes('mobile') ||
     lowerUserAgent.includes('iphone') ||
@@ -50,40 +52,55 @@ function inferDeviceType(lowerUserAgent: string) {
   ) {
     return 'mobile';
   }
+
   return 'desktop';
 }
 
 function inferOsName(userAgent: string, lowerUserAgent: string) {
   if (!userAgent) return 'Unknown OS';
+
   if (lowerUserAgent.includes('iphone')) return 'iOS';
+
   if (lowerUserAgent.includes('ipad')) return 'iPadOS';
+
   if (lowerUserAgent.includes('android')) return 'Android';
+
   if (lowerUserAgent.includes('mac os x')) return 'macOS';
+
   if (lowerUserAgent.includes('windows nt')) return 'Windows';
+
   if (lowerUserAgent.includes('linux')) return 'Linux';
+
   return 'Unknown OS';
 }
 
 function inferBrowserName(userAgent: string, lowerUserAgent: string) {
   if (!userAgent) return 'Unknown Browser';
+
   if (lowerUserAgent.includes('edg/')) return 'Edge';
+
   if (lowerUserAgent.includes('opr/') || lowerUserAgent.includes('opera')) {
     return 'Opera';
   }
+
   if (lowerUserAgent.includes('firefox/')) return 'Firefox';
+
   if (lowerUserAgent.includes('crios/')) return 'Chrome';
+
   if (
     lowerUserAgent.includes('chrome/') &&
     !lowerUserAgent.includes('chromium/')
   ) {
     return 'Chrome';
   }
+
   if (
     lowerUserAgent.includes('safari/') &&
     lowerUserAgent.includes('version/')
   ) {
     return 'Safari';
   }
+
   return 'Unknown Browser';
 }
 
@@ -94,14 +111,18 @@ function inferDeviceName(
   deviceType: string,
 ) {
   if (!userAgent) return 'Unknown device';
+
   if (lowerUserAgent.includes('iphone')) return 'iPhone';
+
   if (lowerUserAgent.includes('ipad')) return 'iPad';
 
   const androidModel = userAgent.match(/Android [^;]+;\s?([^;)]+)/i)?.[1];
+
   if (androidModel) return androidModel.replace(/\sBuild\/.*$/i, '').trim();
 
   if (deviceType === 'desktop' && osName !== 'Unknown OS')
     return `${osName} device`;
+
   return `${capitalize(deviceType)} device`;
 }
 
@@ -111,6 +132,7 @@ function getClientIp(request: Request) {
 
 function normalizeHeader(value: string | string[] | undefined) {
   if (Array.isArray(value)) return value[0]?.trim() || undefined;
+
   return value?.trim() || undefined;
 }
 

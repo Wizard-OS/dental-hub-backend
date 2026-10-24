@@ -1,4 +1,3 @@
-import { ApiCreatedResponse, ApiOkResponse } from '@nestjs/swagger';
 import {
   Body,
   Controller,
@@ -9,12 +8,14 @@ import {
   Patch,
   Post,
 } from '@nestjs/common';
+import { ApiCreatedResponse, ApiOkResponse } from '@nestjs/swagger';
 import {
   ApiBearerAuth,
   ApiOperation,
   ApiSecurity,
   ApiTags,
 } from '@nestjs/swagger';
+
 import {
   AuthClinic,
   ClinicPermissions,
@@ -24,20 +25,20 @@ import {
 } from '../auth/decorators';
 import { ClinicPermission } from '../auth/interfaces';
 import { ClinicMembershipRole } from '../clinic-memberships/interfaces/clinic-membership-role.enum';
+import { getEnv } from '../config/env';
 import {
   CreateMembershipPaymentMethodDto,
+  ReconcileMembershipChargeDto,
   SelectMembershipPaymentMethodDto,
   StartMembershipDto,
-  ReconcileMembershipChargeDto,
 } from './dto/membership-payment-method.dto';
-import { MembershipPaymentMethodsService } from './vault/membership-payment-methods.service';
-import { MembershipRenewalsService } from './vault/membership-renewals.service';
 import {
+  MembershipChargeResponseDto,
   MembershipSetupResponseDto,
   SavedMembershipPaymentMethodDto,
-  MembershipChargeResponseDto,
 } from './dto/membership-quote-response.dto';
-import { getEnv } from '../config/env';
+import { MembershipPaymentMethodsService } from './vault/membership-payment-methods.service';
+import { MembershipRenewalsService } from './vault/membership-renewals.service';
 
 @ApiTags('Membership')
 @ApiBearerAuth()
@@ -158,6 +159,7 @@ export class MembershipPaymentsController {
       'RESEND_API_KEY',
       'MEMBERSHIP_EMAIL_FROM',
     ];
+
     return {
       configured: required.every((key) => Boolean(getEnv(key))),
       missing: required.filter((key) => !getEnv(key)),

@@ -1,12 +1,12 @@
+import { AppointmentStatus } from '../../appointments/interfaces/AppointmentStatus.enum';
 import { ValidRoles } from '../../auth/interfaces';
+import { ClinicMembershipRole } from '../../clinic-memberships/interfaces/clinic-membership-role.enum';
 import { Gender } from '../../common/interfaces/gender.enum';
+import { InvoiceItemType } from '../../invoices/interfaces/invoice-item-type.enum';
 import { InvoiceStatus } from '../../invoices/InvoiceStatus/InvoiceStatus.enum';
 import { ToothStatus } from '../../odontogram/interfaces/tooth-status.enum';
-import { InvoiceItemType } from '../../invoices/interfaces/invoice-item-type.enum';
-import { PaymentMethod } from '../../payments/interfaces/payment-method.enum';
 import { PatientFileType } from '../../patient-files/interfaces/patient-file-type.enum';
-import { AppointmentStatus } from '../../appointments/interfaces/AppointmentStatus.enum';
-import { ClinicMembershipRole } from '../../clinic-memberships/interfaces/clinic-membership-role.enum';
+import { PaymentMethod } from '../../payments/interfaces/payment-method.enum';
 
 export interface SeedUser {
   code: string;

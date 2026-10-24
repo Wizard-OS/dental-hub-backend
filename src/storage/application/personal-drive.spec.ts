@@ -11,6 +11,7 @@ describe('PersonalDrive connection identity', () => {
   };
   let port: jest.Mocked<PersonalDrivePort>;
   let drive: PersonalDrive;
+
   beforeEach(() => {
     port = {
       exchangeCode: jest.fn().mockResolvedValue(authorization),

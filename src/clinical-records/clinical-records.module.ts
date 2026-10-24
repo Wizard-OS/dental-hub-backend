@@ -1,11 +1,11 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
-import { ClinicalRecord } from './entities/clinical-record.entity';
 import { Patient } from '../patients/entities/patient.entity';
 import { PatientsModule } from '../patients/patients.module';
-import { ClinicalRecordsService } from './clinical-records.service';
 import { ClinicalRecordsController } from './clinical-records.controller';
+import { ClinicalRecordsService } from './clinical-records.service';
+import { ClinicalRecord } from './entities/clinical-record.entity';
 
 @Module({
   controllers: [ClinicalRecordsController],

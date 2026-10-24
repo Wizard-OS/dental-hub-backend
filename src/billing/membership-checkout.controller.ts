@@ -7,6 +7,7 @@ import {
   ApiSecurity,
   ApiTags,
 } from '@nestjs/swagger';
+
 import {
   AuthClinic,
   ClinicPermissions,
@@ -15,15 +16,15 @@ import {
 } from '../auth/decorators';
 import { ClinicPermission } from '../auth/interfaces';
 import { ClinicMembershipRole } from '../clinic-memberships/interfaces/clinic-membership-role.enum';
-import {
-  MembershipQuotePreviewResponseDto,
-  MembershipPaymentMethodsResponseDto,
-} from './dto/membership-quote-response.dto';
 import { BillingService } from './billing.service';
 import {
   ConfirmMembershipDto,
   MembershipQuoteDto,
 } from './dto/membership-quote.dto';
+import {
+  MembershipPaymentMethodsResponseDto,
+  MembershipQuotePreviewResponseDto,
+} from './dto/membership-quote-response.dto';
 
 @ApiTags('Membership')
 @ApiBearerAuth()

@@ -1,7 +1,18 @@
 export function createDatabaseConnectionConfig(environment = process.env) {
+  const isProduction = environment.NODE_ENV === 'production';
   const verifyTls = ['1', 'true', 'yes'].includes(
     environment.DB_SSL?.toLowerCase() ?? '',
   );
+  if (isProduction && !environment.DATABASE_URL) {
+    for (const name of ['DB_HOST', 'DB_NAME', 'DB_USERNAME', 'DB_PASSWORD']) {
+      if (!environment[name]?.trim()) {
+        throw new Error(
+          `Missing required environment variable ${name}. Set ${name} before starting the application.`,
+        );
+      }
+    }
+  }
+
   if (environment.DATABASE_URL) {
     const url = new URL(environment.DATABASE_URL);
     const sslModes = url.searchParams
@@ -66,18 +77,50 @@ export function createDatabaseConnectionConfig(environment = process.env) {
       throw new Error('DB_SSL=true requires sslmode=verify-full.');
     }
 
+    if (
+      isProduction &&
+      !verifyTls &&
+      url.searchParams.getAll('sslmode').every((mode) => mode !== 'verify-full')
+    ) {
+      throw new Error(
+        'Production database connections require DB_SSL=true or DATABASE_URL with sslmode=verify-full.',
+      );
+    }
+
     return {
       connectionString: url.toString(),
       ...(verifyTls ? { ssl: { rejectUnauthorized: true } } : {}),
     };
   }
 
+  const required = (name) => {
+    const value = environment[name]?.trim();
+    if (!value) {
+      throw new Error(
+        `Missing required environment variable ${name}. Set ${name} before starting the application.`,
+      );
+    }
+    return value;
+  };
+
+  if (isProduction && !verifyTls) {
+    throw new Error(
+      'Production database connections require DB_SSL=true or DATABASE_URL with sslmode=verify-full.',
+    );
+  }
+
   return {
-    host: environment.DB_HOST ?? '127.0.0.1',
+    host: isProduction
+      ? required('DB_HOST')
+      : (environment.DB_HOST ?? '127.0.0.1'),
     port: Number(environment.DB_PORT ?? 5432),
-    user: environment.DB_USERNAME ?? 'postgres',
-    password: environment.DB_PASSWORD,
-    database: environment.DB_NAME ?? 'DentalHubDB',
+    user: isProduction
+      ? required('DB_USERNAME')
+      : (environment.DB_USERNAME ?? 'postgres'),
+    password: isProduction ? required('DB_PASSWORD') : environment.DB_PASSWORD,
+    database: isProduction
+      ? required('DB_NAME')
+      : (environment.DB_NAME ?? 'DentalHubDB'),
     ...(verifyTls ? { ssl: { rejectUnauthorized: true } } : {}),
   };
 }

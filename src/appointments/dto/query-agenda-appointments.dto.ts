@@ -1,6 +1,6 @@
-import { i18nValidationMessage } from 'nestjs-i18n';
 import { ApiProperty } from '@nestjs/swagger';
 import { IsDateString, IsUUID } from 'class-validator';
+import { i18nValidationMessage } from 'nestjs-i18n';
 
 export class QueryAgendaAppointmentsDto {
   @ApiProperty({ example: '2026-09-24T00:00:00.000Z' })

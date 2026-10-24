@@ -1,9 +1,11 @@
-import { apiMessage, type ApiMessage } from '../i18n/api-message';
+import { promises as fs } from 'fs';
+import * as path from 'path';
+
 import { BadRequestException } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
-import { promises as fs } from 'fs';
-import * as path from 'path';
+
+import { type ApiMessage, apiMessage } from '../i18n/api-message';
 
 const DOCUMENT_MIME_TYPES = new Set([
   'application/pdf',
@@ -29,6 +31,7 @@ export function createUploadInterceptor(options: UploadInterceptorOptions) {
           'uploads',
           options.directory,
         );
+
         void fs.mkdir(uploadDir, { recursive: true }).then(
           () => cb(null, uploadDir),
           (error: Error) => cb(error, uploadDir),
@@ -55,7 +58,11 @@ export function createUploadInterceptor(options: UploadInterceptorOptions) {
         false,
       );
     },
-    limits: { fileSize: options.maxSizeMb * 1024 * 1024 },
+    limits: {
+      fileSize: options.maxSizeMb * 1024 * 1024,
+      // Multer 2.4 rejected a field at 1 MiB; 2.5 uses an inclusive limit.
+      fieldSize: 1024 * 1024 - 1,
+    },
   });
 }
 

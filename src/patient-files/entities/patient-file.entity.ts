@@ -9,13 +9,13 @@ import {
   PrimaryGeneratedColumn,
 } from 'typeorm';
 
-import { UserStorageIntegration } from '../../storage/entities/user-storage-integration.entity';
-import { Patient } from '../../patients/entities/patient.entity';
-import { Treatment } from '../../treatments/entities/treatment.entity';
 import { Appointment } from '../../appointments/entities/appointment.entity';
-import { ClinicalNote } from '../../clinical-notes/entities/clinical-note.entity';
 import { ClinicMembership } from '../../clinic-memberships/entities/clinic-membership.entity';
+import { ClinicalNote } from '../../clinical-notes/entities/clinical-note.entity';
+import { Patient } from '../../patients/entities/patient.entity';
+import { UserStorageIntegration } from '../../storage/entities/user-storage-integration.entity';
 import { StorageProviderType } from '../../storage/interfaces/storage-provider-type.enum';
+import { Treatment } from '../../treatments/entities/treatment.entity';
 import { PatientFileStorageStatus } from '../interfaces/patient-file-storage-status.enum';
 import { PatientFileSyncSource } from '../interfaces/patient-file-sync-source.enum';
 import { PatientFileType } from '../interfaces/patient-file-type.enum';

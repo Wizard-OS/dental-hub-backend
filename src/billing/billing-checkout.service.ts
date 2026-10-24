@@ -1,14 +1,16 @@
-import { apiMessage } from '../common/i18n/api-message';
-import { BadRequestException, Injectable } from '@nestjs/common';
 import { createHash } from 'crypto';
+
+import { BadRequestException, Injectable } from '@nestjs/common';
+
+import { apiMessage } from '../common/i18n/api-message';
 import { getEnv } from '../config/env';
-import { MembershipService } from '../membership/membership.service';
-import { SubscriptionStatus } from '../membership/interfaces/subscription-status.enum';
 import { MembershipPlanCode } from '../membership/interfaces/membership-plan-code.enum';
-import { membershipQuote, PROMOTION_CODE } from './membership-offer';
+import { SubscriptionStatus } from '../membership/interfaces/subscription-status.enum';
+import { MembershipService } from '../membership/membership.service';
+import { CreateBillingCheckoutDto } from './dto/create-billing-checkout.dto';
 import { MembershipQuoteDto } from './dto/membership-quote.dto';
 import { BillingInterval } from './interfaces/billing-interval.enum';
-import { CreateBillingCheckoutDto } from './dto/create-billing-checkout.dto';
+import { membershipQuote, PROMOTION_CODE } from './membership-offer';
 import { PayPalBillingProvider } from './providers/paypal-billing.provider';
 import { MembershipPaymentMethodsService } from './vault/membership-payment-methods.service';
 import { MembershipRenewalsService } from './vault/membership-renewals.service';
@@ -63,10 +65,12 @@ export class BillingCheckoutService {
       !subscription.licenseIssuedAt &&
       !subscription.recurringConsentAt &&
       subscription.planCode !== MembershipPlanCode.premium;
+
     if (dto.promotionCode && !trialEligible)
       throw new BadRequestException(
         apiMessage('api.messages.welcome_promotion_is_no_longer_eligible'),
       );
+
     const quote = membershipQuote(
       dto.interval,
       dto.promotionCode,
@@ -75,6 +79,7 @@ export class BillingCheckoutService {
     const available = Boolean(
       getEnv('PAYPAL_CLIENT_ID') && getEnv('PAYPAL_CLIENT_SECRET'),
     );
+
     return {
       ...quote,
       trialEligible,
@@ -91,6 +96,7 @@ export class BillingCheckoutService {
 
   async promotions(clinicId: string, interval: BillingInterval) {
     const quote = await this.quote(clinicId, { interval });
+
     return {
       stackable: false,
       promotions:
@@ -126,10 +132,12 @@ export class BillingCheckoutService {
             'api.messages.request_id_and_recurring_billing_consent_are_required',
           ),
         );
+
       if (dto.planCode !== MembershipPlanCode.premium)
         throw new BadRequestException(
           apiMessage('api.messages.only_premium_subscriptions_are_billable'),
         );
+
       return this.renewals.start(clinicId, actorId, {
         interval: dto.interval,
         promotionCode: dto.promotionCode,
@@ -139,11 +147,13 @@ export class BillingCheckoutService {
         startTrial: dto.startTrial,
       });
     }
+
     if (dto.planCode !== MembershipPlanCode.premium) {
       throw new BadRequestException(
         apiMessage('api.messages.only_premium_subscriptions_are_billable'),
       );
     }
+
     if (dto.promotionCode && !dto.startTrial) {
       throw new BadRequestException(
         apiMessage(
@@ -151,6 +161,7 @@ export class BillingCheckoutService {
         ),
       );
     }
+
     const quote = dto.startTrial
       ? membershipQuote(dto.interval, dto.promotionCode)
       : undefined;
@@ -183,6 +194,7 @@ export class BillingCheckoutService {
       startTrial: dto.startTrial,
       promotionCode: reservation.quote?.promotionCode,
     });
+
     await this.membershipService.beginProviderSubscription({
       clinicId,
       provider: created.provider,
@@ -191,6 +203,7 @@ export class BillingCheckoutService {
       providerStatus: created.providerStatus,
       checkoutQuote: reservation.quote,
     });
+
     return {
       ...created,
       status: 'approval_required',

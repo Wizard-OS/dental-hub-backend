@@ -9,9 +9,9 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 
+import { ClinicMembership } from '../../clinic-memberships/entities/clinic-membership.entity';
 import { Clinic } from '../../clinics/entities/clinic.entity';
 import { Patient } from '../../patients/entities/patient.entity';
-import { ClinicMembership } from '../../clinic-memberships/entities/clinic-membership.entity';
 
 @Entity('patient_professional_assignments')
 @Index(['clinicId', 'patientId'])

@@ -1,6 +1,6 @@
-import { CommonService } from './common.service';
 import { InvoiceStatus } from '../invoices/InvoiceStatus/InvoiceStatus.enum';
 import { ReminderStatus } from '../reminders/interfaces/reminder-status.enum';
+import { CommonService } from './common.service';
 
 type RawOne = Record<string, string | number | null>;
 type RawMany = Record<string, string | number | null>[];
@@ -280,6 +280,7 @@ describe('CommonService', () => {
         appointmentsCount: 7,
         appointmentsCountError: new Error('appointments unavailable'),
       });
+
       silenceDashboardWarnings(service);
 
       const dashboard = await service.getDashboard('clinic-1');
@@ -299,6 +300,7 @@ describe('CommonService', () => {
         expenseSummary: { total: '10.00', count: '1' },
         reminderStatusRowsError: new Error('reminder status unavailable'),
       });
+
       silenceDashboardWarnings(service);
 
       const dashboard = await service.getDashboard('clinic-1');
@@ -316,6 +318,7 @@ describe('CommonService', () => {
         paidSummaryError: new Error('paid summary unavailable'),
         expenseSummaryError: new Error('expense summary unavailable'),
       });
+
       silenceDashboardWarnings(service);
 
       const dashboard = await service.getDashboard('clinic-1');

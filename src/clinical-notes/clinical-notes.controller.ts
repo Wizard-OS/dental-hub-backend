@@ -1,27 +1,23 @@
-import { QueryClinicalNotesDto } from './dto/query-clinical-notes.dto';
 import {
   Body,
-  Query,
-  ParseUUIDPipe,
   Controller,
   Delete,
   Get,
   Param,
+  ParseUUIDPipe,
   Patch,
   Post,
+  Query,
 } from '@nestjs/common';
 import {
-  ApiTags,
-  ApiOperation,
-  ApiResponse,
   ApiBearerAuth,
-  ApiSecurity,
+  ApiOperation,
   ApiParam,
+  ApiResponse,
+  ApiSecurity,
+  ApiTags,
 } from '@nestjs/swagger';
 
-import { ClinicalNotesService } from './clinical-notes.service';
-import { CreateClinicalNoteDto } from './dto/create-clinical-note.dto';
-import { UpdateClinicalNoteDto } from './dto/update-clinical-note.dto';
 import {
   AuthClinic,
   ClinicRoles,
@@ -33,6 +29,10 @@ import {
 } from '../auth/decorators';
 import { ClinicMembershipRole } from '../clinic-memberships/interfaces/clinic-membership-role.enum';
 import { ClinicAccessContext } from '../patients/services/patient-access.service';
+import { ClinicalNotesService } from './clinical-notes.service';
+import { CreateClinicalNoteDto } from './dto/create-clinical-note.dto';
+import { QueryClinicalNotesDto } from './dto/query-clinical-notes.dto';
+import { UpdateClinicalNoteDto } from './dto/update-clinical-note.dto';
 
 @ApiTags('Clinical Notes')
 @ApiBearerAuth()

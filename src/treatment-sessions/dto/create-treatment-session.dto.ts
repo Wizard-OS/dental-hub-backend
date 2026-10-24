@@ -1,6 +1,6 @@
-import { i18nValidationMessage } from 'nestjs-i18n';
-import { IsDateString, IsUUID, Matches } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
+import { IsDateString, IsUUID, Matches } from 'class-validator';
+import { i18nValidationMessage } from 'nestjs-i18n';
 
 export class CreateTreatmentSessionDto {
   @ApiProperty({ description: 'UUID del registro clínico' })

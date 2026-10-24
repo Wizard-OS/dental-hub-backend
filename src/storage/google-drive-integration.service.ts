@@ -1,4 +1,5 @@
-import { apiMessage } from '../common/i18n/api-message';
+import { createHash, randomBytes } from 'crypto';
+
 import {
   BadRequestException,
   Injectable,
@@ -9,10 +10,12 @@ import { drive_v3 } from 'googleapis';
 import { Repository } from 'typeorm';
 
 import { Clinic } from '../clinics/entities/clinic.entity';
-import { Patient } from '../patients/entities/patient.entity';
+import { apiMessage } from '../common/i18n/api-message';
 import { PatientFile } from '../patient-files/entities/patient-file.entity';
 import { PatientFileStorageStatus } from '../patient-files/interfaces/patient-file-storage-status.enum';
 import { PatientFileSyncSource } from '../patient-files/interfaces/patient-file-sync-source.enum';
+import { Patient } from '../patients/entities/patient.entity';
+import { ClinicGoogleDriveOAuthState } from './entities/clinic-google-drive-oauth-state.entity';
 import { ClinicStorageIntegration } from './entities/clinic-storage-integration.entity';
 import { StorageIntegrationStatus } from './interfaces/storage-integration-status.enum';
 import { StorageProviderType } from './interfaces/storage-provider-type.enum';
@@ -21,8 +24,8 @@ import { TokenEncryptionService } from './token-encryption.service';
 import {
   DRIVE_FOLDER_MIME_TYPE,
   isKnownPatientFolderName,
-  patientFileTypeFromDriveFolder,
   PATIENT_DRIVE_FOLDERS,
+  patientFileTypeFromDriveFolder,
   shortId,
 } from './utils/drive-naming.util';
 
@@ -41,6 +44,8 @@ interface DriveFileSnapshot {
 
 @Injectable()
 export class GoogleDriveIntegrationService {
+  private static readonly oauthStateTtlMs = 10 * 60_000;
+
   constructor(
     @InjectRepository(ClinicStorageIntegration)
     private readonly integrationRepository: Repository<ClinicStorageIntegration>,
@@ -50,6 +55,10 @@ export class GoogleDriveIntegrationService {
     private readonly patientRepository: Repository<Patient>,
     @InjectRepository(PatientFile)
     private readonly patientFileRepository: Repository<PatientFile>,
+
+    @InjectRepository(ClinicGoogleDriveOAuthState)
+    private readonly oauthStateRepository: Repository<ClinicGoogleDriveOAuthState>,
+
     private readonly googleDriveStorageProvider: GoogleDriveStorageProvider,
     private readonly tokenEncryption: TokenEncryptionService,
   ) {}
@@ -73,20 +82,50 @@ export class GoogleDriveIntegrationService {
     };
   }
 
-  buildOAuthUrl(clinicId: string, redirectUri?: string) {
+  async buildOAuthUrl(clinicId: string, userId: string, redirectUri?: string) {
     if (!redirectUri) {
       throw new BadRequestException(
         apiMessage('api.messages.redirecturi_query_param_is_required'),
       );
     }
 
+    await this.oauthStateRepository
+      .createQueryBuilder()
+      .delete()
+      .where('"expiresAt" <= :now OR "consumedAt" IS NOT NULL', {
+        now: new Date(),
+      })
+      .execute();
+
+    const state = randomBytes(32).toString('base64url');
+
+    await this.oauthStateRepository.save(
+      this.oauthStateRepository.create({
+        clinicId,
+        userId,
+        redirectUri,
+        stateHash: this.hashOAuthState(state),
+        expiresAt: new Date(
+          Date.now() + GoogleDriveIntegrationService.oauthStateTtlMs,
+        ),
+        consumedAt: null,
+      }),
+    );
+
     return {
-      url: this.googleDriveStorageProvider.buildAuthUrl(redirectUri, clinicId),
+      url: this.googleDriveStorageProvider.buildAuthUrl(redirectUri, state),
       scope: 'https://www.googleapis.com/auth/drive.file',
     };
   }
 
-  async connect(clinicId: string, code: string, redirectUri: string) {
+  async connect(
+    clinicId: string,
+    userId: string,
+    code: string,
+    redirectUri: string,
+    state: string,
+  ) {
+    await this.consumeOAuthState(clinicId, userId, redirectUri, state);
     const clinic = await this.getClinic(clinicId);
     const tokens = await this.googleDriveStorageProvider.exchangeCode(
       code,
@@ -124,6 +163,7 @@ export class GoogleDriveIntegrationService {
       saved,
       clinic.name,
     );
+
     saved.rootFolderId = folders.rootFolderId;
     saved.patientsFolderId = folders.patientsFolderId;
 
@@ -131,6 +171,7 @@ export class GoogleDriveIntegrationService {
     const startToken = await drive.changes.getStartPageToken({
       fields: 'startPageToken',
     });
+
     saved.driveStartPageToken = startToken.data.startPageToken ?? null;
     saved = await this.integrationRepository.save(saved);
 
@@ -186,6 +227,7 @@ export class GoogleDriveIntegrationService {
       integration,
       clinic.name,
     );
+
     integration.rootFolderId = folders.rootFolderId;
     integration.patientsFolderId = folders.patientsFolderId;
 
@@ -197,6 +239,7 @@ export class GoogleDriveIntegrationService {
       const startToken = await drive.changes.getStartPageToken({
         fields: 'startPageToken',
       });
+
       integration.driveStartPageToken = startToken.data.startPageToken ?? null;
     }
 
@@ -249,6 +292,7 @@ export class GoogleDriveIntegrationService {
               syncSource: PatientFileSyncSource.DRIVE_UPDATE,
             },
           );
+
           unavailableCount += update.affected ?? 0;
         }
       }
@@ -256,6 +300,7 @@ export class GoogleDriveIntegrationService {
       if (response.data.newStartPageToken) {
         integration.driveStartPageToken = response.data.newStartPageToken;
       }
+
       pageToken = response.data.nextPageToken ?? undefined;
     }
 
@@ -296,6 +341,7 @@ export class GoogleDriveIntegrationService {
       const patientId = patientShortIds.get(
         patientFolder.name.split('__').at(-1) ?? '',
       );
+
       if (!patientId) continue;
 
       const categoryFolders = await this.listChildren(drive, patientFolder.id, {
@@ -317,6 +363,7 @@ export class GoogleDriveIntegrationService {
         const files = await this.listChildren(drive, categoryFolder.id, {
           filesOnly: true,
         });
+
         for (const file of files) {
           scanned += 1;
           const result = await this.upsertDriveFile(
@@ -325,7 +372,9 @@ export class GoogleDriveIntegrationService {
             categoryFolder.name,
             this.snapshotDriveFile(file),
           );
+
           if (result === 'imported') imported += 1;
+
           if (result === 'updated') updated += 1;
         }
       }
@@ -376,6 +425,7 @@ export class GoogleDriveIntegrationService {
         deletedAt: null,
       });
       await this.patientFileRepository.save(existing);
+
       return 'updated';
     }
 
@@ -399,6 +449,7 @@ export class GoogleDriveIntegrationService {
         syncSource: PatientFileSyncSource.DRIVE_IMPORT,
       }),
     );
+
     return 'imported';
   }
 
@@ -423,6 +474,7 @@ export class GoogleDriveIntegrationService {
         fields:
           'nextPageToken, files(id,name,mimeType,size,md5Checksum,modifiedTime,webViewLink,webContentLink,parents,appProperties)',
       });
+
       files.push(...(response.data.files ?? []));
       pageToken = response.data.nextPageToken ?? undefined;
     } while (pageToken);
@@ -471,7 +523,41 @@ export class GoogleDriveIntegrationService {
       throw new NotFoundException(
         apiMessage('api.messages.clinic_with_id_not_found', { id: clinicId }),
       );
+
     return clinic;
+  }
+
+  private async consumeOAuthState(
+    clinicId: string,
+    userId: string,
+    redirectUri: string,
+    state: string,
+  ) {
+    const result = await this.oauthStateRepository
+      .createQueryBuilder()
+      .update(ClinicGoogleDriveOAuthState)
+      .set({ consumedAt: new Date() })
+      .where('"stateHash" = :stateHash', {
+        stateHash: this.hashOAuthState(state),
+      })
+      .andWhere('"clinicId" = :clinicId', { clinicId })
+      .andWhere('"userId" = :userId', { userId })
+      .andWhere('"redirectUri" = :redirectUri', { redirectUri })
+      .andWhere('"expiresAt" > :now', { now: new Date() })
+      .andWhere('"consumedAt" IS NULL')
+      .execute();
+
+    if (result.affected !== 1) {
+      throw new BadRequestException(
+        apiMessage(
+          'api.messages.google_drive_oauth_state_is_invalid_or_expired',
+        ),
+      );
+    }
+  }
+
+  private hashOAuthState(state: string) {
+    return createHash('sha256').update(state).digest('hex');
   }
 
   private toPublicIntegration(integration: ClinicStorageIntegration) {

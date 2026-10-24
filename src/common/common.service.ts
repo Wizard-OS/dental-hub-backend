@@ -2,16 +2,16 @@ import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
-import { Invoice } from '../invoices/entities/invoice.entity';
-import { Payment } from '../payments/entities/payment.entity';
-import { Expense } from '../expenses/entities/expense.entity';
-import { Reminder } from '../reminders/entities/reminder.entity';
 import { Appointment } from '../appointments/entities/appointment.entity';
-import { Treatment } from '../treatments/entities/treatment.entity';
+import { Expense } from '../expenses/entities/expense.entity';
+import { Invoice } from '../invoices/entities/invoice.entity';
 import { InvoiceStatus } from '../invoices/InvoiceStatus/InvoiceStatus.enum';
+import { Payment } from '../payments/entities/payment.entity';
+import { Reminder } from '../reminders/entities/reminder.entity';
 import { ReminderStatus } from '../reminders/interfaces/reminder-status.enum';
-import { DashboardResponse } from './interfaces/dashboard-response.interface';
+import { Treatment } from '../treatments/entities/treatment.entity';
 import { TreatmentStatus } from '../treatments/interfaces/treatment-status.enum';
+import { DashboardResponse } from './interfaces/dashboard-response.interface';
 
 @Injectable()
 export class CommonService {
@@ -166,6 +166,7 @@ export class CommonService {
 
     const reason: unknown =
       result.reason instanceof Error ? result.reason.stack : result.reason;
+
     this.logger.warn(
       `Dashboard metric "${metricName}" failed for clinic "${clinicId}". Using fallback value.`,
       reason,
@@ -176,6 +177,7 @@ export class CommonService {
 
   private rawNumber(value: string | number | null | undefined): number {
     const parsed = Number(value ?? 0);
+
     return Number.isFinite(parsed) ? parsed : 0;
   }
 
@@ -191,11 +193,15 @@ export class CommonService {
 
     for (const row of rows) {
       const count = this.rawNumber(row.count);
+
       if (row.status === InvoiceStatus.PENDING) summary.pending = count;
+
       if (row.status === InvoiceStatus.PARTIALLY_PAID) {
         summary.partiallyPaid = count;
       }
+
       if (row.status === InvoiceStatus.PAID) summary.paid = count;
+
       if (row.status === InvoiceStatus.OVERDUE) summary.overdue = count;
     }
 
@@ -213,8 +219,11 @@ export class CommonService {
 
     for (const row of rows) {
       const count = this.rawNumber(row.count);
+
       if (row.status === ReminderStatus.SCHEDULED) summary.scheduled = count;
+
       if (row.status === ReminderStatus.SENT) summary.sent = count;
+
       if (row.status === ReminderStatus.FAILED) summary.failed = count;
     }
 
@@ -272,7 +281,9 @@ export class CommonService {
     const byStatus = appointments.reduce<Record<string, number>>(
       (acc, appointment) => {
         const key = String(appointment.status);
+
         acc[key] = (acc[key] ?? 0) + 1;
+
         return acc;
       },
       {},

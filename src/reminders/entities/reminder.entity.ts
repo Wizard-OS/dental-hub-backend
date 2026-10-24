@@ -6,11 +6,11 @@ import {
   PrimaryGeneratedColumn,
 } from 'typeorm';
 
-import { ReminderType } from '../interfaces/reminder-type.enum';
-import { ReminderStatus } from '../interfaces/reminder-status.enum';
 import { Appointment } from '../../appointments/entities/appointment.entity';
 import { NotificationChannel } from '../../common/interfaces/notification-channel.enum';
 import { MessageTemplate } from '../../message-templates/entities/message-template.entity';
+import { ReminderStatus } from '../interfaces/reminder-status.enum';
+import { ReminderType } from '../interfaces/reminder-type.enum';
 
 @Entity('reminders')
 export class Reminder {

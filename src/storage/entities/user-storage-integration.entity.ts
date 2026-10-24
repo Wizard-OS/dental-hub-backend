@@ -9,6 +9,7 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
+
 import { User } from '../../auth/entities/user.entity';
 import { StorageIntegrationStatus } from '../interfaces/storage-integration-status.enum';
 

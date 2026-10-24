@@ -1,4 +1,4 @@
-import { i18nValidationMessage } from 'nestjs-i18n';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsDateString,
   IsEnum,
@@ -8,10 +8,10 @@ import {
   IsUUID,
   Min,
 } from 'class-validator';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { i18nValidationMessage } from 'nestjs-i18n';
 
-import { AppointmentStatus } from '../interfaces/AppointmentStatus.enum';
 import { AppointmentConfirmationStatus } from '../interfaces/appointment-confirmation-status.enum';
+import { AppointmentStatus } from '../interfaces/AppointmentStatus.enum';
 
 export class CreateAppointmentDto {
   @ApiPropertyOptional({

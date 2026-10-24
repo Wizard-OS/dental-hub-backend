@@ -8,7 +8,6 @@ import {
   Post,
   Req,
 } from '@nestjs/common';
-import type { Request } from 'express';
 import {
   ApiBearerAuth,
   ApiOperation,
@@ -17,10 +16,8 @@ import {
   ApiSecurity,
   ApiTags,
 } from '@nestjs/swagger';
+import type { Request } from 'express';
 
-import { OdontogramService } from './odontogram.service';
-import { UpdateOdontogramToothDto } from './dto/update-odontogram-tooth.dto';
-import { GenerateOdontogramPdfDto } from './dto/generate-odontogram-pdf.dto';
 import {
   AuthClinic,
   ClinicRoles,
@@ -31,6 +28,9 @@ import {
 } from '../auth/decorators';
 import { ClinicMembershipRole } from '../clinic-memberships/interfaces/clinic-membership-role.enum';
 import { ClinicAccessContext } from '../patients/services/patient-access.service';
+import { GenerateOdontogramPdfDto } from './dto/generate-odontogram-pdf.dto';
+import { UpdateOdontogramToothDto } from './dto/update-odontogram-tooth.dto';
+import { OdontogramService } from './odontogram.service';
 
 @ApiTags('Odontogram')
 @ApiBearerAuth()
@@ -77,6 +77,7 @@ export class OdontogramController {
     @Req() request: Request,
   ) {
     const baseUrl = `${request.protocol}://${request.get('host')}`;
+
     return this.odontogramService.generatePdf(
       this.context(clinicId, membershipId, role, permissionsJson),
       patientId,

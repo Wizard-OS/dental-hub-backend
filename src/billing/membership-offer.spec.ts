@@ -1,10 +1,11 @@
-import { membershipQuote } from './membership-offer';
-import { BillingInterval } from './interfaces/billing-interval.enum';
 import { validate } from 'class-validator';
+
 import {
-  MembershipQuoteDto,
   ConfirmMembershipDto,
+  MembershipQuoteDto,
 } from './dto/membership-quote.dto';
+import { BillingInterval } from './interfaces/billing-interval.enum';
+import { membershipQuote } from './membership-offer';
 
 describe('Membership offer contracts', () => {
   it('quotes the annual screen without charging today', () => {

@@ -1,15 +1,15 @@
 import { Body, Controller, Get, Patch } from '@nestjs/common';
 import {
-  ApiTags,
+  ApiBearerAuth,
   ApiOperation,
   ApiResponse,
-  ApiBearerAuth,
+  ApiTags,
 } from '@nestjs/swagger';
 
 import { Auth, GetUser } from '../auth/decorators';
 import { User } from '../auth/entities/user.entity';
-import { NotificationPreferencesService } from './notification-preferences.service';
 import { UpdateNotificationPreferencesDto } from './dto/update-notification-preferences.dto';
+import { NotificationPreferencesService } from './notification-preferences.service';
 
 @ApiTags('Notification Preferences')
 @ApiBearerAuth()

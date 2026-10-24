@@ -14,6 +14,7 @@ export function appendPatientFileSyncAudit(
   const existing = Array.isArray(metadata?.syncAudit)
     ? metadata.syncAudit.filter(isAuditEntry)
     : [];
+
   return {
     ...metadata,
     syncAudit: [

@@ -1,19 +1,19 @@
-import { apiMessage } from '../common/i18n/api-message';
 import {
-  Injectable,
   BadRequestException,
+  Injectable,
   InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
 import { isUUID } from 'class-validator';
+import { Repository } from 'typeorm';
 
-import { ClinicMembership } from './entities/clinic-membership.entity';
+import { apiMessage } from '../common/i18n/api-message';
+import { MembershipService } from '../membership/membership.service';
 import { CreateClinicMembershipDto } from './dto/create-clinic-membership.dto';
 import { UpdateClinicMembershipDto } from './dto/update-clinic-membership.dto';
+import { ClinicMembership } from './entities/clinic-membership.entity';
 import { ClinicMembershipRole } from './interfaces/clinic-membership-role.enum';
-import { MembershipService } from '../membership/membership.service';
 
 @Injectable()
 export class ClinicMembershipsService {
@@ -39,6 +39,7 @@ export class ClinicMembershipsService {
       const membership = this.clinicMembershipRepository.create(
         createClinicMembershipDto,
       );
+
       return await this.clinicMembershipRepository.save(membership);
     } catch (error) {
       this.handleDBErrors(error);
@@ -137,6 +138,7 @@ export class ClinicMembershipsService {
     }
 
     membership.isActive = false;
+
     return await this.clinicMembershipRepository.save(membership);
   }
 

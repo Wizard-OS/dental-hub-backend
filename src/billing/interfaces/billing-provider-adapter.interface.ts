@@ -1,7 +1,7 @@
 import { IncomingHttpHeaders } from 'http';
 
-import { MembershipPlanCode } from '../../membership/interfaces/membership-plan-code.enum';
 import { BillingProvider } from '../../membership/interfaces/billing-provider.enum';
+import { MembershipPlanCode } from '../../membership/interfaces/membership-plan-code.enum';
 import { BillingInterval } from './billing-interval.enum';
 
 export interface CreateProviderSubscriptionInput {

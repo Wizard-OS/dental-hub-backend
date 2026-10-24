@@ -1,29 +1,22 @@
-import { QueryAppointmentTypesDto } from './dto/query-appointment-types.dto';
 import {
   Body,
-  Query,
   Controller,
   Delete,
   Get,
   Param,
   Patch,
   Post,
+  Query,
 } from '@nestjs/common';
 import {
-  ApiTags,
-  ApiOperation,
-  ApiResponse,
   ApiBearerAuth,
-  ApiSecurity,
+  ApiOperation,
   ApiParam,
+  ApiResponse,
+  ApiSecurity,
+  ApiTags,
 } from '@nestjs/swagger';
 
-import { AppointmentsService } from './appointments.service';
-import { CreateAppointmentDto } from './dto/create-appointment.dto';
-import { UpdateAppointmentDto } from './dto/update-appointment.dto';
-import { CreateAppointmentTypeDto } from './dto/create-appointment-type.dto';
-import { UpdateAppointmentTypeDto } from './dto/update-appointment-type.dto';
-import { QueryAgendaAppointmentsDto } from './dto/query-agenda-appointments.dto';
 import {
   AuthClinic,
   ClinicRoles,
@@ -34,6 +27,13 @@ import {
 } from '../auth/decorators';
 import { ClinicMembershipRole } from '../clinic-memberships/interfaces/clinic-membership-role.enum';
 import { ClinicAccessContext } from '../patients/services/patient-access.service';
+import { AppointmentsService } from './appointments.service';
+import { CreateAppointmentDto } from './dto/create-appointment.dto';
+import { CreateAppointmentTypeDto } from './dto/create-appointment-type.dto';
+import { QueryAgendaAppointmentsDto } from './dto/query-agenda-appointments.dto';
+import { QueryAppointmentTypesDto } from './dto/query-appointment-types.dto';
+import { UpdateAppointmentDto } from './dto/update-appointment.dto';
+import { UpdateAppointmentTypeDto } from './dto/update-appointment-type.dto';
 
 @ApiTags('Appointments')
 @ApiBearerAuth()

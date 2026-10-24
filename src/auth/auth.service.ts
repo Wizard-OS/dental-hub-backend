@@ -1,6 +1,5 @@
-import { apiMessage, type ApiMessage } from '../common/i18n/api-message';
-import { UserStorageIntegration } from '../storage/entities/user-storage-integration.entity';
-import { StorageIntegrationStatus } from '../storage/interfaces/storage-integration-status.enum';
+import { promises as fs } from 'fs';
+
 import {
   BadRequestException,
   Inject,
@@ -12,34 +11,35 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import type { Request } from 'express';
-
 import { Repository } from 'typeorm';
-import { promises as fs } from 'fs';
 
-import { JwtPayload } from './interfaces';
-import { User } from './entities/user.entity';
 import { ClinicMembership } from '../clinic-memberships/entities/clinic-membership.entity';
+import { validateAndNormalizeUploadedFile } from '../common/files/upload-validation';
+import { type ApiMessage, apiMessage } from '../common/i18n/api-message';
 import { ProfessionalSpecialty } from '../professional-specialties/entities/professional-specialty.entity';
+import { UserStorageIntegration } from '../storage/entities/user-storage-integration.entity';
+import { StorageIntegrationStatus } from '../storage/interfaces/storage-integration-status.enum';
 import { buildSessionMetadata } from '../user-sessions/device-metadata.util';
 import { UserSessionsService } from '../user-sessions/user-sessions.service';
-import {
-  CreateUserDto,
-  LoginUserDto,
-  UpdateProfileDto,
-  ChangePasswordDto,
-  ForgotPasswordDto,
-  VerifyOtpDto,
-  ResetPasswordDto,
-} from './dto';
-import { validateAndNormalizeUploadedFile } from '../common/files/upload-validation';
-import { PasswordHasherService } from './services/password-hasher.service';
-import { PasswordResetOtpService } from './services/password-reset-otp.service';
-import { PasswordResetEmailProvider } from './services/password-reset-email.provider';
-import { AUTH_SECURITY_TRANSACTION } from './application/ports/auth-security-transaction.port';
 import type {
   AuthSecurityAccount,
   AuthSecurityTransactionPort,
 } from './application/ports/auth-security-transaction.port';
+import { AUTH_SECURITY_TRANSACTION } from './application/ports/auth-security-transaction.port';
+import {
+  ChangePasswordDto,
+  CreateUserDto,
+  ForgotPasswordDto,
+  LoginUserDto,
+  ResetPasswordDto,
+  UpdateProfileDto,
+  VerifyOtpDto,
+} from './dto';
+import { User } from './entities/user.entity';
+import { JwtPayload } from './interfaces';
+import { PasswordHasherService } from './services/password-hasher.service';
+import { PasswordResetEmailProvider } from './services/password-reset-email.provider';
+import { PasswordResetOtpService } from './services/password-reset-otp.service';
 
 @Injectable()
 export class AuthService {
@@ -87,7 +87,6 @@ export class AuthService {
       );
 
       return this.buildAuthResponse(userWithoutPassword as User, session.id);
-      // TODO: Retornar el JWT de acceso
     } catch (error) {
       this.handleDBErrors(error);
     }
@@ -154,10 +153,12 @@ export class AuthService {
 
     const otp = this.passwordResetOtp.generate();
     const otpHash = await this.passwordHasher.hash(otp);
+
     await this.securityTransactions.withLockedAccountById(
       user.id,
       async (lockedAccount) => {
         if (!lockedAccount) return;
+
         const { account } = lockedAccount;
         const lockStillActive =
           account.passwordResetOtpLockedUntil &&
@@ -165,6 +166,7 @@ export class AuthService {
         const resetWindowExpired =
           !account.passwordResetOtpExpiresAt ||
           account.passwordResetOtpExpiresAt.getTime() <= Date.now();
+
         await lockedAccount.update({
           passwordResetOtpHash: otpHash,
           passwordResetOtpExpiresAt: this.passwordResetOtp.expirationFrom(),
@@ -200,6 +202,7 @@ export class AuthService {
       verifyOtpDto.email,
       verifyOtpDto.otp,
     );
+
     if (!valid) this.throwInvalidOtp();
 
     return { message: apiMessage('api.messages.otp_verified_successfully') };
@@ -209,10 +212,12 @@ export class AuthService {
     const passwordHash = await this.passwordHasher.hash(
       resetPasswordDto.newPassword,
     );
+
     const reset = await this.securityTransactions.withLockedAccountByEmail(
       resetPasswordDto.email,
       async (lockedAccount) => {
         const account = lockedAccount?.account ?? null;
+
         if (
           !lockedAccount ||
           !(await this.isPasswordResetOtpValid(account, resetPasswordDto.otp))
@@ -227,6 +232,7 @@ export class AuthService {
               ),
             );
           }
+
           return false;
         }
 
@@ -238,10 +244,13 @@ export class AuthService {
           passwordResetOtpAttemptCount: 0,
           passwordResetOtpLockedUntil: null,
         });
+
         await lockedAccount.revokeSessions();
+
         return true;
       },
     );
+
     if (!reset) this.throwInvalidOtp();
 
     return { message: apiMessage('api.messages.password_reset_successfully') };
@@ -262,10 +271,12 @@ export class AuthService {
       await validateAndNormalizeUploadedFile(file, ['image']);
     } catch (error) {
       await fs.unlink(file.path).catch(() => undefined);
+
       throw error;
     }
 
     const profilePhotoUrl = `${baseUrl}/uploads/profile-photos/${file.filename}`;
+
     await this.userRepository.update(user.id, { profilePhotoUrl });
 
     const updatedUser = await this.userRepository.findOne({
@@ -292,6 +303,7 @@ export class AuthService {
       const existing = await this.userRepository.findOne({
         where: { email: email.toLowerCase().trim() },
       });
+
       if (existing && existing.id !== user.id) {
         throw new BadRequestException(
           apiMessage('api.messages.email_already_in_use'),
@@ -303,6 +315,7 @@ export class AuthService {
       const specialty = await this.specialtyRepository.findOne({
         where: { id: professionalSpecialtyId, isActive: true },
       });
+
       if (!specialty) {
         throw new BadRequestException(
           apiMessage('api.messages.professional_specialty_is_not_valid'),
@@ -338,10 +351,12 @@ export class AuthService {
 
     const newPasswordHash = await this.passwordHasher.hash(newPassword);
     const sessionId = this.requireCurrentSessionId(user);
+
     await this.securityTransactions.withLockedAccountById(
       user.id,
       async (lockedAccount) => {
         const account = lockedAccount?.account;
+
         if (
           !lockedAccount ||
           !account?.password ||
@@ -354,9 +369,11 @@ export class AuthService {
             apiMessage('api.messages.current_password_is_incorrect'),
           );
         }
+
         await lockedAccount.update({
           password: newPasswordHash,
         });
+
         await lockedAccount.revokeSessions(sessionId);
       },
     );
@@ -414,10 +431,12 @@ export class AuthService {
       passwordResetOtpAttemptCount: 0,
       passwordResetOtpLockedUntil: null,
     });
+
     await this.userSessionsService.revokeAllOtherSessions(
       user.id,
       currentSessionId,
     );
+
     await this.userSessionsService.revokeCurrentSession(
       user.id,
       currentSessionId,
@@ -435,6 +454,7 @@ export class AuthService {
       email,
       async (lockedAccount) => {
         const account = lockedAccount?.account ?? null;
+
         if (
           !lockedAccount ||
           !(await this.isPasswordResetOtpValid(account, otp))
@@ -449,6 +469,7 @@ export class AuthService {
               ),
             );
           }
+
           return false;
         }
 
@@ -458,6 +479,7 @@ export class AuthService {
             passwordResetOtpLockedUntil: null,
           });
         }
+
         return true;
       },
     );
@@ -505,6 +527,7 @@ export class AuthService {
       userId,
       async (lockedAccount) => {
         const user = lockedAccount?.account;
+
         if (
           !lockedAccount ||
           !user?.password ||
@@ -515,6 +538,7 @@ export class AuthService {
             apiMessage('api.messages.credentials_are_not_valid'),
           );
         }
+
         return { id: await lockedAccount.createSession(metadata) };
       },
     );
@@ -522,9 +546,11 @@ export class AuthService {
 
   private async buildAuthResponse(user: User, sessionId: string) {
     const userWithoutPassword = { ...user } as Partial<User>;
+
     delete userWithoutPassword.password;
     delete userWithoutPassword.googleSubject;
     delete userWithoutPassword.googleEmail;
+
     const credentials = await this.userRepository.findOne({
       where: { id: user.id },
       select: { id: true, password: true },
@@ -581,7 +607,15 @@ export class AuthService {
       );
     }
 
-    console.log(error);
+    const errorCode =
+      typeof error === 'object' &&
+      error !== null &&
+      'code' in error &&
+      typeof error.code === 'string'
+        ? error.code
+        : 'unknown';
+
+    this.logger.error(`Database operation failed (code: ${errorCode})`);
 
     throw new InternalServerErrorException(
       apiMessage('api.messages.please_check_server_logs'),

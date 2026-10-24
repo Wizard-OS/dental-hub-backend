@@ -1,21 +1,21 @@
-import { apiMessage } from '../common/i18n/api-message';
 import {
   BadRequestException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
 import { isUUID } from 'class-validator';
+import { Repository } from 'typeorm';
 
-import { ClinicalRecord } from './entities/clinical-record.entity';
+import { apiMessage } from '../common/i18n/api-message';
 import { Patient } from '../patients/entities/patient.entity';
-import { CreateClinicalRecordDto } from './dto/create-clinical-record.dto';
-import { UpdateClinicalRecordDto } from './dto/update-clinical-record.dto';
 import {
   ClinicAccessContext,
   PatientAccessService,
 } from '../patients/services/patient-access.service';
+import { CreateClinicalRecordDto } from './dto/create-clinical-record.dto';
+import { UpdateClinicalRecordDto } from './dto/update-clinical-record.dto';
+import { ClinicalRecord } from './entities/clinical-record.entity';
 
 @Injectable()
 export class ClinicalRecordsService {
@@ -49,6 +49,7 @@ export class ClinicalRecordsService {
     }
 
     const record = this.clinicalRecordRepository.create(dto);
+
     return await this.clinicalRecordRepository.save(record);
   }
 
@@ -62,6 +63,7 @@ export class ClinicalRecordsService {
       .getMany();
 
     const allowed: ClinicalRecord[] = [];
+
     for (const record of records) {
       try {
         await this.patientAccessService.assertPatientAccessible(
@@ -74,6 +76,7 @@ export class ClinicalRecordsService {
         // Patient access is intentionally filtered out of collection results.
       }
     }
+
     return allowed;
   }
 
@@ -83,11 +86,14 @@ export class ClinicalRecordsService {
       where: { patientId },
       relations: { patient: true },
     });
+
     if (!record)
       throw new NotFoundException(
         apiMessage('api.messages.clinical_record_not_found'),
       );
+
     this.patientAccessService.sanitizePatient(record.patient, context);
+
     return record;
   }
 
@@ -142,13 +148,16 @@ export class ClinicalRecordsService {
     }
 
     Object.assign(record, dto);
+
     return await this.clinicalRecordRepository.save(record);
   }
 
   async remove(context: ClinicAccessContext, id: string) {
     this.patientAccessService.assertCanManageClinical(context);
     const record = await this.findOne(context, id);
+
     await this.clinicalRecordRepository.remove(record);
+
     return {
       message: apiMessage('api.messages.clinical_record_removed', { id: id }),
     };

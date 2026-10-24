@@ -10,6 +10,7 @@ export class GoogleTokenVerifier implements GoogleIdentityVerifier {
 
   async verify(idToken: string) {
     const audience = process.env.GOOGLE_DRIVE_CLIENT_ID;
+
     if (!audience) {
       throw new PersonalDriveError(
         'GOOGLE_NOT_CONFIGURED',
@@ -27,6 +28,7 @@ export class GoogleTokenVerifier implements GoogleIdentityVerifier {
       });
 
     const payload = ticket.getPayload();
+
     if (!payload?.sub || !payload.email || !payload.email_verified) {
       throw new PersonalDriveError(
         'INVALID_GOOGLE_TOKEN',
