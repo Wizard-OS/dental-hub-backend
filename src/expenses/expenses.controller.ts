@@ -19,6 +19,8 @@ import {
 } from '@nestjs/swagger';
 
 import { AuthClinic, GetClinicId } from '../auth/decorators';
+import { ListQueryDto } from '../common/dtos/list-query.dto';
+import { ApiPaginatedResponse } from '../common/presentation/api-paginated-response';
 import { CreateExpenseDto } from './dto/create-expense.dto';
 import { UpdateExpenseDto } from './dto/update-expense.dto';
 import { ExpensesService } from './expenses.service';
@@ -43,9 +45,9 @@ export class ExpensesController {
 
   @Get()
   @ApiOperation({ summary: 'Listar gastos de la clínica' })
-  @ApiResponse({ status: 200, description: 'Lista de gastos' })
-  findAll(@GetClinicId() clinicId: string) {
-    return this.expensesService.findAll(clinicId);
+  @ApiPaginatedResponse()
+  findAll(@GetClinicId() clinicId: string, @Query() pagination: ListQueryDto) {
+    return this.expensesService.findAll(clinicId, pagination);
   }
 
   @Get('totals')

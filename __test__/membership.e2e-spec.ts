@@ -6,6 +6,10 @@ import { DataSource } from 'typeorm';
 
 import { AppModule } from '../src/app.module';
 import { readJsonString, readJsonValue } from './support/json-response';
+import {
+  configureTestApplication,
+  seedTestDatabase,
+} from './support/test-application';
 
 describe('Membership limits (e2e)', () => {
   let app: INestApplication<App>;
@@ -24,11 +28,12 @@ describe('Membership limits (e2e)', () => {
       imports: [AppModule],
     }).compile();
 
-    app = moduleFixture.createNestApplication();
+    app = moduleFixture.createNestApplication({ bodyParser: false });
+    configureTestApplication(app);
     await app.init();
     dataSource = app.get(DataSource);
 
-    await request(app.getHttpServer()).get('/seed').expect(200);
+    await seedTestDatabase(app);
 
     const suffix = Date.now();
 
@@ -36,7 +41,7 @@ describe('Membership limits (e2e)', () => {
       .post('/auth/register')
       .send({
         email: `membership_owner_${suffix}@example.com`,
-        password: 'Abc123',
+        password: 'Long dental passphrase 123',
         firstName: 'Owner',
         lastName: 'Membership',
       })
@@ -48,7 +53,7 @@ describe('Membership limits (e2e)', () => {
       .post('/auth/register')
       .send({
         email: `membership_specialist_${suffix}@example.com`,
-        password: 'Abc123',
+        password: 'Long dental passphrase 123',
         firstName: 'Specialist',
         lastName: 'Dental',
       })
@@ -61,7 +66,7 @@ describe('Membership limits (e2e)', () => {
       .post('/auth/register')
       .send({
         email: `membership_extra_specialist_${suffix}@example.com`,
-        password: 'Abc123',
+        password: 'Long dental passphrase 123',
         firstName: 'Extra',
         lastName: 'Specialist',
       })

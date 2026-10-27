@@ -7,6 +7,7 @@ import {
 } from '@nestjs/swagger';
 
 import { Auth, GetUser } from '../auth/decorators';
+import { Public } from '../auth/decorators/public.decorator';
 import { User } from '../auth/entities/user.entity';
 import { CreateSupportRequestDto } from './dto/create-support-request.dto';
 import { HelpCenterService } from './help-center.service';
@@ -16,6 +17,7 @@ import { HelpCenterService } from './help-center.service';
 export class HelpCenterController {
   constructor(private readonly helpCenterService: HelpCenterService) {}
 
+  @Public()
   @Get('faqs')
   @ApiOperation({ summary: 'Obtener preguntas frecuentes' })
   @ApiResponse({ status: 200, description: 'Lista de FAQs' })
@@ -23,6 +25,7 @@ export class HelpCenterController {
     return this.helpCenterService.getFaqs();
   }
 
+  @Public()
   @Get('contact')
   @ApiOperation({ summary: 'Obtener información de contacto' })
   @ApiResponse({ status: 200, description: 'Información de contacto' })

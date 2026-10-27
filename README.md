@@ -461,3 +461,15 @@ O cambiar `PORT`.
 - Error de i18n por path:
   - verificar que existan assets de `src/i18n` en build
   - revisar `nest-cli.json` y configuración de carga en `AppModule`
+
+## Seguridad y cambios de contratos (2026-10-27)
+
+Consultar [el informe de seguridad](./__docs__/backend-security-review-2026-10-27.md) para evidencia, validación y requisitos de despliegue.
+
+Los listados generales de citas, facturas, pagos, gastos, registros y notas clínicas, tratamientos y sesiones ahora usan `?limit=30&offset=0` y devuelven `{ items, total, limit, offset }` (máximo 100). Agenda especializada y reportes conservan sus contratos. El frontend debe consumir `items` y paginar.
+
+Las nuevas contraseñas requieren 15 caracteres y como máximo 72 bytes UTF-8; se permiten frases sin composición obligatoria. Las credenciales anteriores siguen permitidas al iniciar sesión. `JWT_SECRET` debe ser aleatorio, de al menos 32 bytes y distinto de ejemplos conocidos; generar con `openssl rand -hex 32`. No se incluye un secreto reutilizable en `.env.example`.
+
+La autenticación JWT se aplica por defecto. Las sesiones de tratamiento exigen acceso al paciente para leer y además `canManageClinical` para escribir. Seed y OTP de desarrollo no pueden habilitarse en producción. Para varias instancias, configurar límites compartidos de peticiones antes del despliegue.
+
+Ejecutar todos los E2E con `pnpm test:e2e:isolated`: usa PostgreSQL desechable en Docker y rechaza bases externas al entorno de pruebas. No ejecutar seeds sobre una base con datos reales.

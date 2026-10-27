@@ -31,5 +31,6 @@
   "otp": "OTP must be a 6-digit code",
   "password": "The password must have a Uppercase, lowercase letter and a number",
   "unknownValue": "an unknown value was passed to the validate function",
-  "whitelistValidation": "property {property} should not exist"
+  "whitelistValidation": "property {property} should not exist",
+  "passwordByteLimit": "Password must not exceed 72 UTF-8 bytes"
 }

@@ -130,4 +130,28 @@ describe('upload dependency compatibility', () => {
         .expect(400);
     },
   );
+  it('rejects excessive multipart fields', async () => {
+    let upload = request(app.getHttpServer() as Server).post(
+      '/upload-contract',
+    );
+
+    for (let i = 0; i < 11; i++) upload = upload.field(`field${i}`, 'value');
+    await upload.expect(400);
+  });
+
+  it('rejects additional files and removes already written files', async () => {
+    await request(app.getHttpServer() as Server)
+      .post('/upload-contract')
+      .attach('file', Buffer.alloc(8), {
+        filename: 'first.pdf',
+        contentType: 'application/pdf',
+      })
+      .attach('file', Buffer.alloc(8), {
+        filename: 'second.pdf',
+        contentType: 'application/pdf',
+      })
+      .expect(400);
+    for (const stored of storedPaths)
+      await expect(fs.access(stored)).rejects.toThrow();
+  });
 });

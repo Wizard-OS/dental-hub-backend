@@ -2,6 +2,8 @@ import { promises as fs } from 'fs';
 import * as path from 'path';
 
 import { BadRequestException } from '@nestjs/common';
+import { find, read } from 'cfb';
+import { fileTypeFromBuffer } from 'file-type';
 
 import { apiMessage } from '../i18n/api-message';
 import type { UploadedFile } from './uploaded-file.interface';
@@ -72,20 +74,41 @@ async function detectFileType(
   }
 
   if (content.subarray(0, OLE_HEADER.length).equals(OLE_HEADER)) {
-    return {
-      mimeType: 'application/msword',
-      extension: '.doc',
-      kind: 'word',
-    };
+    try {
+      const container = read(content, { type: 'buffer' });
+      const document = find(container, 'WordDocument');
+      const header = document && Buffer.from(document.content);
+
+      if (
+        header &&
+        header.length >= 32 &&
+        header.readUInt16LE(0) === 0xa5ec &&
+        find(container, header.readUInt16LE(10) & 0x0200 ? '1Table' : '0Table')
+      ) {
+        return {
+          mimeType: 'application/msword',
+          extension: '.doc',
+          kind: 'word',
+        };
+      }
+    } catch {
+      return null;
+    }
+
+    return null;
   }
 
   if (content.subarray(0, 4).equals(Buffer.from([0x50, 0x4b, 0x03, 0x04]))) {
-    return {
-      mimeType:
-        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      extension: '.docx',
-      kind: 'word',
-    };
+    try {
+      const detected = await fileTypeFromBuffer(content);
+
+      if (detected?.ext === 'docx')
+        return { mimeType: detected.mime, extension: '.docx', kind: 'word' };
+    } catch {
+      return null;
+    }
+
+    return null;
   }
 
   if (isPlainText(content)) {

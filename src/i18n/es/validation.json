@@ -31,5 +31,6 @@
   "otp": "El código debe tener 6 dígitos",
   "password": "La contraseña debe incluir una letra mayúscula, una minúscula y un número",
   "unknownValue": "Se recibió un valor no válido para la validación",
-  "whitelistValidation": "La propiedad {property} no está permitida"
+  "whitelistValidation": "La propiedad {property} no está permitida",
+  "passwordByteLimit": "La contraseña no debe superar 72 bytes UTF-8"
 }

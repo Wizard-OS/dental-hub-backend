@@ -1,3 +1,4 @@
+import { Query } from '@nestjs/common';
 import {
   Body,
   Controller,
@@ -25,6 +26,8 @@ import {
   GetClinicPermissions,
 } from '../auth/decorators';
 import { ClinicMembershipRole } from '../clinic-memberships/interfaces/clinic-membership-role.enum';
+import { ListQueryDto } from '../common/dtos/list-query.dto';
+import { ApiPaginatedResponse } from '../common/presentation/api-paginated-response';
 import { ClinicAccessContext } from '../patients/services/patient-access.service';
 import { CreateTreatmentDto } from './dto/create-treatment.dto';
 import { UpdateTreatmentDto } from './dto/update-treatment.dto';
@@ -62,15 +65,17 @@ export class TreatmentsController {
 
   @Get()
   @ApiOperation({ summary: 'Listar tratamientos' })
-  @ApiResponse({ status: 200, description: 'Lista de tratamientos' })
+  @ApiPaginatedResponse()
   findAll(
     @GetClinicId() clinicId: string,
     @GetClinicMembershipId() membershipId: string,
     @GetClinicMembershipRole() role: ClinicMembershipRole,
     @GetClinicPermissions() permissionsJson: Record<string, boolean>,
+    @Query() pagination: ListQueryDto,
   ) {
     return this.treatmentsService.findAll(
       this.context(clinicId, membershipId, role, permissionsJson),
+      pagination,
     );
   }
 

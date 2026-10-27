@@ -4,6 +4,10 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 
 import { AppModule } from '../src/app.module';
+import {
+  configureTestApplication,
+  seedTestDatabase,
+} from './support/test-application';
 
 describe('User sessions by device (e2e)', () => {
   let app: INestApplication<App>;
@@ -13,10 +17,11 @@ describe('User sessions by device (e2e)', () => {
       imports: [AppModule],
     }).compile();
 
-    app = moduleFixture.createNestApplication();
+    app = moduleFixture.createNestApplication({ bodyParser: false });
+    configureTestApplication(app);
     await app.init();
 
-    await request(app.getHttpServer()).get('/seed').expect(200);
+    await seedTestDatabase(app);
   });
 
   afterAll(async () => {

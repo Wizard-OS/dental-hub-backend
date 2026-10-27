@@ -231,18 +231,16 @@ describe('API internationalization over HTTP', () => {
     [
       'en',
       'email must be an email',
-      'password must be longer than or equal to 6 characters',
-      'The password must have a Uppercase, lowercase letter and a number',
+      'password must be longer than or equal to 15 characters',
     ],
     [
       'es',
       'email debe ser un correo electrónico válido',
-      'password debe tener al menos 6 caracteres',
-      'La contraseña debe incluir una letra mayúscula, una minúscula y un número',
+      'password debe tener al menos 15 caracteres',
     ],
   ])(
     'localizes validation in %s while preserving the flat error contract',
-    async (lang, email, password, passwordRule) => {
+    async (lang, email, password) => {
       const response = await httpRequest(app)
         .post(`/i18n-test/validation?lang=${lang}`)
         .send({
@@ -265,9 +263,7 @@ describe('API internationalization over HTTP', () => {
         throw new Error('Expected validation messages to be a flat array');
       }
 
-      expect(messages).toEqual(
-        expect.arrayContaining([email, password, passwordRule]),
-      );
+      expect(messages).toEqual(expect.arrayContaining([email, password]));
       expect(messages.every((message) => typeof message === 'string')).toBe(
         true,
       );
@@ -307,7 +303,7 @@ describe('API internationalization over HTTP', () => {
   it('keeps valid DTO content unchanged', async () => {
     const body = {
       email: 'ana@example.com',
-      password: 'Abc123',
+      password: 'a long dental passphrase',
       firstName: 'Ana',
       lastName: 'García',
     };

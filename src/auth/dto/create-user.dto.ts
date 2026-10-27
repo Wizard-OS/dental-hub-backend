@@ -3,11 +3,13 @@ import {
   IsEmail,
   IsOptional,
   IsString,
-  Matches,
   MaxLength,
   MinLength,
 } from 'class-validator';
 import { i18nValidationMessage } from 'nestjs-i18n';
+
+import { MINIMUM_PASSWORD_LENGTH } from '../domain/password-policy';
+import { PasswordByteLimit } from './password-bytes.validator';
 
 export class CreateUserDto {
   @ApiProperty({
@@ -19,16 +21,18 @@ export class CreateUserDto {
   email: string;
 
   @ApiProperty({
-    example: 'Abc123',
-    description: 'Contraseña (min 6 chars, mayúscula, minúscula y número)',
-    minLength: 6,
-    maxLength: 50,
+    example: 'a long dental passphrase',
+    description: 'Contraseña (mínimo 15 caracteres, máximo 72 bytes UTF-8)',
+    minLength: 15,
+    maxLength: 72,
   })
   @IsString({ message: i18nValidationMessage('validation.isString') })
-  @MinLength(6, { message: i18nValidationMessage('validation.minLength') })
-  @MaxLength(50, { message: i18nValidationMessage('validation.maxLength') })
-  @Matches(/(?:(?=.*\d)|(?=.*\W+))(?![.\n])(?=.*[A-Z])(?=.*[a-z]).*$/, {
-    message: i18nValidationMessage('validation.password'),
+  @MinLength(MINIMUM_PASSWORD_LENGTH, {
+    message: i18nValidationMessage('validation.minLength'),
+  })
+  @MaxLength(72, { message: i18nValidationMessage('validation.maxLength') })
+  @PasswordByteLimit({
+    message: i18nValidationMessage('validation.passwordByteLimit'),
   })
   password: string;
 

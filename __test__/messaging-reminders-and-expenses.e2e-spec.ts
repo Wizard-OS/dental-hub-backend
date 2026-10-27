@@ -5,6 +5,10 @@ import { App } from 'supertest/types';
 
 import { AppModule } from '../src/app.module';
 import { readJsonString, readJsonValue } from './support/json-response';
+import {
+  configureTestApplication,
+  seedTestDatabase,
+} from './support/test-application';
 
 describe('Messaging, reminders, and expenses (e2e)', () => {
   let app: INestApplication<App>;
@@ -22,12 +26,11 @@ describe('Messaging, reminders, and expenses (e2e)', () => {
       imports: [AppModule],
     }).compile();
 
-    app = moduleFixture.createNestApplication();
+    app = moduleFixture.createNestApplication({ bodyParser: false });
+    configureTestApplication(app);
     await app.init();
 
-    const seedResponse = await request(app.getHttpServer())
-      .get('/seed')
-      .expect(200);
+    const seedResponse = await seedTestDatabase(app);
 
     clinicMainId = readJsonString(
       seedResponse.body,
@@ -59,7 +62,7 @@ describe('Messaging, reminders, and expenses (e2e)', () => {
       .set('x-clinic-id', clinicMainId)
       .expect(200);
 
-    appointmentId = readJsonString(appointments.body, 0, 'id');
+    appointmentId = readJsonString(appointments.body, 'items', 0, 'id');
   });
 
   afterAll(async () => {
@@ -126,14 +129,11 @@ describe('Messaging, reminders, and expenses (e2e)', () => {
       .set('x-clinic-id', clinicMainId)
       .send({
         status: 'sent',
-        providerMessageId: 'provider-msg-123',
       })
       .expect(200);
 
     expect(readJsonValue(updated.body, 'status')).toBe('sent');
-    expect(readJsonValue(updated.body, 'providerMessageId')).toBe(
-      'provider-msg-123',
-    );
+    expect(readJsonValue(updated.body, 'providerMessageId')).toBeNull();
   });
 
   it('creates expense and returns totals + dashboard summary', async () => {

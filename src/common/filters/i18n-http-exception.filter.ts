@@ -49,10 +49,33 @@ export class I18nHttpExceptionFilter implements ExceptionFilter {
       return;
     }
 
+    // Express parsers emit http-errors rather than Nest HttpException instances.
+    if (
+      exception instanceof Error &&
+      'type' in exception &&
+      'status' in exception &&
+      [
+        'entity.too.large',
+        'entity.parse.failed',
+        'parameters.too.many',
+        'encoding.unsupported',
+        'charset.unsupported',
+        'request.aborted',
+        'request.size.invalid',
+      ].includes(String(exception.type)) &&
+      typeof exception.status === 'number' &&
+      [400, 413, 415].includes(exception.status)
+    ) {
+      response.status(exception.status).json({
+        statusCode: exception.status,
+        message: this.statusMessage(exception.status, lang),
+      });
+
+      return;
+    }
+
     if (!(exception instanceof HttpException)) {
-      this.logger.error(
-        exception instanceof Error ? exception.stack : 'Unhandled API error',
-      );
+      this.logger.error('Unhandled API error');
       response
         .status(500)
         .json({ statusCode: 500, message: this.statusMessage(500, lang) });

@@ -8,6 +8,9 @@ import {
 } from 'class-validator';
 import { i18nValidationMessage } from 'nestjs-i18n';
 
+import { MINIMUM_PASSWORD_LENGTH } from '../domain/password-policy';
+import { PasswordByteLimit } from './password-bytes.validator';
+
 export class ResetPasswordDto {
   @ApiProperty({
     example: 'user@example.com',
@@ -26,14 +29,17 @@ export class ResetPasswordDto {
   otp: string;
 
   @ApiProperty({
-    example: 'NewPass1',
-    description: 'Nueva contraseña (mayúscula, minúscula y número)',
+    example: 'a new dental passphrase',
+    description:
+      'Nueva contraseña (mínimo 15 caracteres, máximo 72 bytes UTF-8)',
   })
   @IsString({ message: i18nValidationMessage('validation.isString') })
-  @MinLength(6, { message: i18nValidationMessage('validation.minLength') })
-  @MaxLength(50, { message: i18nValidationMessage('validation.maxLength') })
-  @Matches(/(?:(?=.*\d)|(?=.*\W+))(?![.\n])(?=.*[A-Z])(?=.*[a-z]).*$/, {
-    message: i18nValidationMessage('validation.password'),
+  @MinLength(MINIMUM_PASSWORD_LENGTH, {
+    message: i18nValidationMessage('validation.minLength'),
+  })
+  @MaxLength(72, { message: i18nValidationMessage('validation.maxLength') })
+  @PasswordByteLimit({
+    message: i18nValidationMessage('validation.passwordByteLimit'),
   })
   newPassword: string;
 }

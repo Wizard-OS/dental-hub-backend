@@ -7,6 +7,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { isUUID } from 'class-validator';
 import { Repository } from 'typeorm';
 
+import { ListQueryDto } from '../common/dtos/list-query.dto';
 import { apiMessage } from '../common/i18n/api-message';
 import { Invoice } from '../invoices/entities/invoice.entity';
 import { InvoiceStatus } from '../invoices/InvoiceStatus/InvoiceStatus.enum';
@@ -67,13 +68,18 @@ export class PaymentsService {
     return await this.findOne(clinicId, payment.id);
   }
 
-  async findAll(clinicId: string) {
-    return await this.paymentRepository
+  async findAll(clinicId: string, pagination = new ListQueryDto()) {
+    const [items, total] = await this.paymentRepository
       .createQueryBuilder('payment')
       .leftJoinAndSelect('payment.invoice', 'invoice')
       .where('invoice.clinicId = :clinicId', { clinicId })
       .orderBy('payment.paidAt', 'DESC')
-      .getMany();
+      .addOrderBy('payment.id', 'DESC')
+      .skip(pagination.offset)
+      .take(pagination.limit)
+      .getManyAndCount();
+
+    return { items, total, limit: pagination.limit, offset: pagination.offset };
   }
 
   async findOne(clinicId: string, id: string) {

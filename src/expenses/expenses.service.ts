@@ -7,6 +7,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { isUUID } from 'class-validator';
 import { Repository } from 'typeorm';
 
+import { ListQueryDto } from '../common/dtos/list-query.dto';
 import { apiMessage } from '../common/i18n/api-message';
 import { CreateExpenseDto } from './dto/create-expense.dto';
 import { UpdateExpenseDto } from './dto/update-expense.dto';
@@ -37,11 +38,15 @@ export class ExpensesService {
     return await this.expenseRepository.save(expense);
   }
 
-  async findAll(clinicId: string) {
-    return await this.expenseRepository.find({
+  async findAll(clinicId: string, pagination = new ListQueryDto()) {
+    const [items, total] = await this.expenseRepository.findAndCount({
+      skip: pagination.offset,
+      take: pagination.limit,
       where: { clinicId },
-      order: { spentAt: 'DESC' },
+      order: { spentAt: 'DESC', id: 'DESC' },
     });
+
+    return { items, total, limit: pagination.limit, offset: pagination.offset };
   }
 
   async findOne(clinicId: string, id: string) {

@@ -25,11 +25,11 @@
           "  pm.collectionVariables.set('baseUrl', 'http://localhost:3000/api');",
           "}",
           "",
-          "const publicPaths = [\"/seed\",\"/auth/login\",\"/auth/register\",\"/billing/webhooks/paypal\",\"/help-center/faqs\",\"/help-center/contact\"];",
+          "const publicEndpoints = [\"GET /\",\"POST /billing/webhooks/paypal\",\"POST /auth/register\",\"POST /auth/login\",\"POST /auth/forgot-password\",\"POST /auth/verify-otp\",\"POST /auth/reset-password\",\"GET /help-center/faqs\",\"GET /help-center/contact\"];",
           "const requestPath = `/${pm.request.url.path.join('/')}`.replace(/^\\/api(?=\\/|$)/, '');",
-          "const isPublicRequest = publicPaths.includes(requestPath);",
+          "const isPublicRequest = publicEndpoints.includes(`${pm.request.method} ${requestPath}`);",
           "const token = pm.environment.get('token') || pm.collectionVariables.get('token');",
-          "if (token) {",
+          "if (token && !isPublicRequest) {",
           "  pm.request.headers.upsert({ key: 'Authorization', value: `Bearer ${token}` });",
           "} else if (!isPublicRequest) {",
           "  throw new Error('Falta token. Ejecuta primero Auth / Iniciar sesión y verifica que token tenga valor.');",
@@ -293,6 +293,9 @@
           "name": "Set Active Clinic = Main",
           "request": {
             "method": "GET",
+            "auth": {
+              "type": "noauth"
+            },
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/",
@@ -354,6 +357,9 @@
           "name": "Login",
           "request": {
             "method": "POST",
+            "auth": {
+              "type": "noauth"
+            },
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/auth/login",
@@ -363,7 +369,7 @@
             "description": "Iniciar sesión",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"Abc123\"\n}",
+              "raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"a long dental passphrase\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -446,6 +452,9 @@
           "name": "Register User for Membership",
           "request": {
             "method": "POST",
+            "auth": {
+              "type": "noauth"
+            },
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/auth/register",
@@ -455,7 +464,7 @@
             "description": "Registrar nuevo usuario",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"Abc123\",\n  \"firstName\": \"Juan\",\n  \"lastName\": \"Pérez\",\n  \"profilePhotoUrl\": \"https://example.com/photo.jpg\"\n}",
+              "raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"a long dental passphrase\",\n  \"firstName\": \"Juan\",\n  \"lastName\": \"Pérez\",\n  \"profilePhotoUrl\": \"https://example.com/photo.jpg\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -652,9 +661,21 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/appointments",
+              "raw": "{{baseUrl}}/appointments?limit=[object Object]&offset=[object Object]",
               "host": ["{{baseUrl}}"],
-              "path": ["appointments"]
+              "path": ["appointments"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "[object Object]",
+                  "disabled": true
+                },
+                {
+                  "key": "offset",
+                  "value": "[object Object]",
+                  "disabled": true
+                }
+              ]
             },
             "description": "Listar citas de la clínica"
           }
@@ -789,9 +810,21 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/clinical-notes",
+              "raw": "{{baseUrl}}/clinical-notes?limit=[object Object]&offset=[object Object]",
               "host": ["{{baseUrl}}"],
-              "path": ["clinical-notes"]
+              "path": ["clinical-notes"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "[object Object]",
+                  "disabled": true
+                },
+                {
+                  "key": "offset",
+                  "value": "[object Object]",
+                  "disabled": true
+                }
+              ]
             },
             "description": "Listar notas clínicas"
           }
@@ -808,9 +841,21 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/clinical-records",
+              "raw": "{{baseUrl}}/clinical-records?limit=[object Object]&offset=[object Object]",
               "host": ["{{baseUrl}}"],
-              "path": ["clinical-records"]
+              "path": ["clinical-records"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "[object Object]",
+                  "disabled": true
+                },
+                {
+                  "key": "offset",
+                  "value": "[object Object]",
+                  "disabled": true
+                }
+              ]
             },
             "description": "Listar registros clínicos"
           }
@@ -916,9 +961,21 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/treatment-sessions",
+              "raw": "{{baseUrl}}/treatment-sessions?limit=[object Object]&offset=[object Object]",
               "host": ["{{baseUrl}}"],
-              "path": ["treatment-sessions"]
+              "path": ["treatment-sessions"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "[object Object]",
+                  "disabled": true
+                },
+                {
+                  "key": "offset",
+                  "value": "[object Object]",
+                  "disabled": true
+                }
+              ]
             },
             "description": "Listar sesiones de tratamiento"
           }
@@ -935,9 +992,21 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/treatments",
+              "raw": "{{baseUrl}}/treatments?limit=[object Object]&offset=[object Object]",
               "host": ["{{baseUrl}}"],
-              "path": ["treatments"]
+              "path": ["treatments"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "[object Object]",
+                  "disabled": true
+                },
+                {
+                  "key": "offset",
+                  "value": "[object Object]",
+                  "disabled": true
+                }
+              ]
             },
             "description": "Listar tratamientos"
           }
@@ -1041,9 +1110,21 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/invoices",
+              "raw": "{{baseUrl}}/invoices?limit=[object Object]&offset=[object Object]",
               "host": ["{{baseUrl}}"],
-              "path": ["invoices"]
+              "path": ["invoices"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "[object Object]",
+                  "disabled": true
+                },
+                {
+                  "key": "offset",
+                  "value": "[object Object]",
+                  "disabled": true
+                }
+              ]
             },
             "description": "Listar facturas de la clínica"
           }
@@ -1060,9 +1141,21 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/payments",
+              "raw": "{{baseUrl}}/payments?limit=[object Object]&offset=[object Object]",
               "host": ["{{baseUrl}}"],
-              "path": ["payments"]
+              "path": ["payments"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "[object Object]",
+                  "disabled": true
+                },
+                {
+                  "key": "offset",
+                  "value": "[object Object]",
+                  "disabled": true
+                }
+              ]
             },
             "description": "Listar pagos de la clínica"
           }
@@ -1466,6 +1559,9 @@
           "name": "Contact Info",
           "request": {
             "method": "GET",
+            "auth": {
+              "type": "noauth"
+            },
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/help-center/contact",
@@ -1479,6 +1575,9 @@
           "name": "FAQs",
           "request": {
             "method": "GET",
+            "auth": {
+              "type": "noauth"
+            },
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/help-center/faqs",
@@ -1781,7 +1880,7 @@
             "description": "Cambiar contraseña",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"currentPassword\": \"OldPass1\",\n  \"newPassword\": \"NewPass1\"\n}",
+              "raw": "{\n  \"currentPassword\": \"OldPass1\",\n  \"newPassword\": \"a new dental passphrase\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1794,6 +1893,9 @@
           "name": "Solicitar código OTP para recuperar contraseña",
           "request": {
             "method": "POST",
+            "auth": {
+              "type": "noauth"
+            },
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/auth/forgot-password",
@@ -1852,6 +1954,9 @@
           "name": "Restablecer contraseña usando OTP",
           "request": {
             "method": "POST",
+            "auth": {
+              "type": "noauth"
+            },
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/auth/reset-password",
@@ -1861,7 +1966,7 @@
             "description": "Restablecer contraseña usando OTP",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email\": \"user@example.com\",\n  \"otp\": \"123456\",\n  \"newPassword\": \"NewPass1\"\n}",
+              "raw": "{\n  \"email\": \"user@example.com\",\n  \"otp\": \"123456\",\n  \"newPassword\": \"a new dental passphrase\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1874,6 +1979,9 @@
           "name": "Validar código OTP de recuperación",
           "request": {
             "method": "POST",
+            "auth": {
+              "type": "noauth"
+            },
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/auth/verify-otp",
@@ -2233,6 +2341,9 @@
           "name": "PayPal Webhook",
           "request": {
             "method": "POST",
+            "auth": {
+              "type": "noauth"
+            },
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/billing/webhooks/paypal",
@@ -2896,9 +3007,21 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/expenses",
+              "raw": "{{baseUrl}}/expenses?limit=[object Object]&offset=[object Object]",
               "host": ["{{baseUrl}}"],
-              "path": ["expenses"]
+              "path": ["expenses"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "[object Object]",
+                  "disabled": true
+                },
+                {
+                  "key": "offset",
+                  "value": "[object Object]",
+                  "disabled": true
+                }
+              ]
             },
             "description": "Listar gastos de la clínica"
           }
@@ -5005,6 +5128,24 @@
                 }
               }
             }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Seed",
+      "item": [
+        {
+          "name": "Ejecutar seed de datos de prueba",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/seed",
+              "host": ["{{baseUrl}}"],
+              "path": ["seed"]
+            },
+            "description": "Ejecutar seed de datos de prueba"
           }
         }
       ]

@@ -1,3 +1,4 @@
+import { Query } from '@nestjs/common';
 import {
   Body,
   Controller,
@@ -24,6 +25,8 @@ import {
 } from '../auth/decorators';
 import { ClinicPermission } from '../auth/interfaces';
 import { ClinicMembershipRole } from '../clinic-memberships/interfaces/clinic-membership-role.enum';
+import { ListQueryDto } from '../common/dtos/list-query.dto';
+import { ApiPaginatedResponse } from '../common/presentation/api-paginated-response';
 import { CreateInvoiceDto } from './dto/create-invoice.dto';
 import { CreateInvoiceItemDto } from './dto/create-invoice-item.dto';
 import { UpdateInvoiceDto } from './dto/update-invoice.dto';
@@ -55,9 +58,9 @@ export class InvoicesController {
 
   @Get()
   @ApiOperation({ summary: 'Listar facturas de la clínica' })
-  @ApiResponse({ status: 200, description: 'Lista de facturas' })
-  findAll(@GetClinicId() clinicId: string) {
-    return this.invoiceService.findAll(clinicId);
+  @ApiPaginatedResponse()
+  findAll(@GetClinicId() clinicId: string, @Query() pagination: ListQueryDto) {
+    return this.invoiceService.findAll(clinicId, pagination);
   }
 
   @Get(':id')

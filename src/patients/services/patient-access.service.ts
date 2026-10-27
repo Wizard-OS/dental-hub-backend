@@ -4,7 +4,12 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Brackets, Repository, SelectQueryBuilder } from 'typeorm';
+import {
+  Brackets,
+  type ObjectLiteral,
+  Repository,
+  SelectQueryBuilder,
+} from 'typeorm';
 
 import { Appointment } from '../../appointments/entities/appointment.entity';
 import { AppointmentStatus } from '../../appointments/interfaces/AppointmentStatus.enum';
@@ -172,16 +177,18 @@ export class PatientAccessService {
     return permanent != null || temporary != null;
   }
 
-  applyPatientAccessFilter(
-    query: SelectQueryBuilder<Patient>,
+  applyPatientAccessFilter<T extends ObjectLiteral>(
+    query: SelectQueryBuilder<T>,
     alias: string,
     context: ClinicAccessContext,
-  ): SelectQueryBuilder<Patient> {
-    query.where(`${alias}.clinicId = :clinicId`, {
+  ): SelectQueryBuilder<T> {
+    query.andWhere(`${alias}.clinicId = :clinicId`, {
       clinicId: context.clinicId,
     });
 
     if (this.canViewAllPatients(context)) return query;
+
+    if (!isSecondaryClinicRole(context.role)) return query.andWhere('1 = 0');
 
     const permanentAccessSubQuery = query
       .subQuery()

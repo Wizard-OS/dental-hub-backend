@@ -26,6 +26,8 @@ import {
   GetClinicPermissions,
 } from '../auth/decorators';
 import { ClinicMembershipRole } from '../clinic-memberships/interfaces/clinic-membership-role.enum';
+import { ListQueryDto } from '../common/dtos/list-query.dto';
+import { ApiPaginatedResponse } from '../common/presentation/api-paginated-response';
 import { ClinicAccessContext } from '../patients/services/patient-access.service';
 import { AppointmentsService } from './appointments.service';
 import { CreateAppointmentDto } from './dto/create-appointment.dto';
@@ -138,15 +140,17 @@ export class AppointmentsController {
 
   @Get()
   @ApiOperation({ summary: 'Listar citas de la clínica' })
-  @ApiResponse({ status: 200, description: 'Lista de citas' })
+  @ApiPaginatedResponse()
   findAll(
     @GetClinicId() clinicId: string,
     @GetClinicMembershipId() membershipId: string,
     @GetClinicMembershipRole() role: ClinicMembershipRole,
     @GetClinicPermissions() permissionsJson: Record<string, boolean>,
+    @Query() pagination: ListQueryDto,
   ) {
     return this.appointmentService.findAll(
       this.context(clinicId, membershipId, role, permissionsJson),
+      pagination,
     );
   }
 

@@ -1,3 +1,4 @@
+import { Query } from '@nestjs/common';
 import {
   Body,
   Controller,
@@ -24,6 +25,8 @@ import {
 } from '../auth/decorators';
 import { ClinicPermission } from '../auth/interfaces';
 import { ClinicMembershipRole } from '../clinic-memberships/interfaces/clinic-membership-role.enum';
+import { ListQueryDto } from '../common/dtos/list-query.dto';
+import { ApiPaginatedResponse } from '../common/presentation/api-paginated-response';
 import { CreatePaymentDto } from './dto/create-payment.dto';
 import { UpdatePaymentDto } from './dto/update-payment.dto';
 import { VoidPaymentDto } from './dto/void-payment.dto';
@@ -55,9 +58,9 @@ export class PaymentsController {
 
   @Get()
   @ApiOperation({ summary: 'Listar pagos de la clínica' })
-  @ApiResponse({ status: 200, description: 'Lista de pagos' })
-  findAll(@GetClinicId() clinicId: string) {
-    return this.paymentsService.findAll(clinicId);
+  @ApiPaginatedResponse()
+  findAll(@GetClinicId() clinicId: string, @Query() pagination: ListQueryDto) {
+    return this.paymentsService.findAll(clinicId, pagination);
   }
 
   @Get(':id')

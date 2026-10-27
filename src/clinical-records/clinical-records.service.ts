@@ -7,6 +7,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { isUUID } from 'class-validator';
 import { Repository } from 'typeorm';
 
+import { ListQueryDto } from '../common/dtos/list-query.dto';
 import { apiMessage } from '../common/i18n/api-message';
 import { Patient } from '../patients/entities/patient.entity';
 import {
@@ -53,31 +54,29 @@ export class ClinicalRecordsService {
     return await this.clinicalRecordRepository.save(record);
   }
 
-  async findAll(context: ClinicAccessContext) {
-    const records = await this.clinicalRecordRepository
+  async findAll(context: ClinicAccessContext, pagination = new ListQueryDto()) {
+    const query = this.clinicalRecordRepository
       .createQueryBuilder('record')
       .innerJoinAndSelect('record.patient', 'patient')
       .leftJoinAndSelect('record.notes', 'notes')
       .where('patient.clinicId = :clinicId', { clinicId: context.clinicId })
-      .orderBy('record.createdAt', 'DESC')
-      .getMany();
+      .orderBy('record.createdAt', 'DESC');
 
-    const allowed: ClinicalRecord[] = [];
+    this.patientAccessService.applyPatientAccessFilter(
+      query,
+      'patient',
+      context,
+    );
+    const [items, total] = await query
+      .addOrderBy('record.id', 'DESC')
+      .skip(pagination.offset)
+      .take(pagination.limit)
+      .getManyAndCount();
 
-    for (const record of records) {
-      try {
-        await this.patientAccessService.assertPatientAccessible(
-          context,
-          record.patientId,
-        );
-        this.patientAccessService.sanitizePatient(record.patient, context);
-        allowed.push(record);
-      } catch {
-        // Patient access is intentionally filtered out of collection results.
-      }
-    }
+    for (const item of items)
+      this.patientAccessService.sanitizePatient(item.patient, context);
 
-    return allowed;
+    return { items, total, limit: pagination.limit, offset: pagination.offset };
   }
 
   async findByPatient(context: ClinicAccessContext, patientId: string) {

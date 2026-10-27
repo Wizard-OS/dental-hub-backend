@@ -8,6 +8,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { isUUID } from 'class-validator';
 import { Repository } from 'typeorm';
 
+import { ListQueryDto } from '../common/dtos/list-query.dto';
 import { apiMessage } from '../common/i18n/api-message';
 import { Patient } from '../patients/entities/patient.entity';
 import { Treatment } from '../treatments/entities/treatment.entity';
@@ -78,18 +79,25 @@ export class InvoicesService {
     }
   }
 
-  async findAll(clinicId: string) {
-    const invoices = await this.invoiceRepository.find({
+  async findAll(clinicId: string, pagination = new ListQueryDto()) {
+    const [invoices, total] = await this.invoiceRepository.findAndCount({
+      skip: pagination.offset,
+      take: pagination.limit,
       where: { clinicId },
       relations: {
         payments: true,
         items: true,
         patient: true,
       },
-      order: { issuedAt: 'DESC' },
+      order: { issuedAt: 'DESC', id: 'DESC' },
     });
 
-    return invoices.map((invoice) => this.resolveInvoiceStatus(invoice));
+    return {
+      items: invoices.map((invoice) => this.resolveInvoiceStatus(invoice)),
+      total,
+      limit: pagination.limit,
+      offset: pagination.offset,
+    };
   }
 
   async findOne(clinicId: string, id: string) {

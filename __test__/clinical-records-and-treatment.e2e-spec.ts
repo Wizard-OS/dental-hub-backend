@@ -1,10 +1,21 @@
 import { INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
+import { getRepositoryToken } from '@nestjs/typeorm';
 import request from 'supertest';
 import { App } from 'supertest/types';
+import { Repository } from 'typeorm';
 
 import { AppModule } from '../src/app.module';
+import { ClinicPermission } from '../src/auth/interfaces';
+import { ClinicMembership } from '../src/clinic-memberships/entities/clinic-membership.entity';
+import { ClinicMembershipRole } from '../src/clinic-memberships/interfaces/clinic-membership-role.enum';
+import { PatientProfessionalAssignment } from '../src/patient-assignments/entities/patient-professional-assignment.entity';
+import { readJsonArray, readJsonValue } from './support/json-response';
 import { readJsonString } from './support/json-response';
+import {
+  configureTestApplication,
+  seedTestDatabase,
+} from './support/test-application';
 
 describe('Clinical records and treatment (e2e)', () => {
   let app: INestApplication<App>;
@@ -19,18 +30,18 @@ describe('Clinical records and treatment (e2e)', () => {
   let clinicalRecordAnaId: string;
   let clinicalRecordLuisId: string;
   let treatmentAnaId: string;
+  let sessionAnaId: string;
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
     }).compile();
 
-    app = moduleFixture.createNestApplication();
+    app = moduleFixture.createNestApplication({ bodyParser: false });
+    configureTestApplication(app);
     await app.init();
 
-    const seedResponse = await request(app.getHttpServer())
-      .get('/seed')
-      .expect(200);
+    const seedResponse = await seedTestDatabase(app);
 
     clinicMainId = readJsonString(
       seedResponse.body,
@@ -140,7 +151,7 @@ describe('Clinical records and treatment (e2e)', () => {
 
     treatmentAnaId = readJsonString(treatment.body, 'id');
 
-    await request(app.getHttpServer())
+    const session = await request(app.getHttpServer())
       .post('/treatment-sessions')
       .set('Authorization', `Bearer ${adminToken}`)
       .set('x-clinic-id', clinicMainId)
@@ -151,6 +162,8 @@ describe('Clinical records and treatment (e2e)', () => {
         performedAt: new Date().toISOString(),
       })
       .expect(201);
+
+    sessionAnaId = readJsonString(session.body, 'id');
   });
 
   it('rejects treatment session when record and treatment belong to different patients', async () => {
@@ -165,5 +178,173 @@ describe('Clinical records and treatment (e2e)', () => {
         performedAt: new Date().toISOString(),
       })
       .expect(400);
+  });
+  it('paginates all general collections and rejects invalid limits', async () => {
+    for (const path of [
+      'appointments',
+      'invoices',
+      'payments',
+      'expenses',
+      'clinical-records',
+      'clinical-notes',
+      'treatments',
+      'treatment-sessions',
+    ]) {
+      const response = await request(app.getHttpServer())
+        .get(`/${path}`)
+        .query({ limit: 1, offset: 0 })
+        .auth(adminToken, { type: 'bearer' })
+        .set('x-clinic-id', clinicMainId)
+        .expect(200);
+
+      expect(readJsonArray(response.body, 'items').length).toBeLessThanOrEqual(
+        1,
+      );
+      expect(response.body).toMatchObject({
+        limit: 1,
+        offset: 0,
+        total: expect.any(Number) as unknown,
+      });
+      await request(app.getHttpServer())
+        .get(`/${path}`)
+        .query({ limit: 101 })
+        .auth(adminToken, { type: 'bearer' })
+        .set('x-clinic-id', clinicMainId)
+        .expect(400);
+    }
+    const records = await request(app.getHttpServer())
+      .get('/clinical-records')
+      .query({ limit: 1, offset: 1 })
+      .auth(adminToken, { type: 'bearer' })
+      .set('x-clinic-id', clinicMainId)
+      .expect(200);
+
+    expect(readJsonValue(records.body, 'total')).toBe(2);
+    expect(readJsonArray(records.body, 'items')).toHaveLength(1);
+  });
+
+  it('enforces patient assignments, clinical permissions and authorized totals for treatment sessions', async () => {
+    const registered = await request(app.getHttpServer())
+      .post('/auth/register')
+      .send({
+        email: 'assigned@example.test',
+        password: 'a long dental passphrase',
+        firstName: 'Assigned',
+        lastName: 'Specialist',
+      })
+      .expect(201);
+    const token = readJsonString(registered.body, 'token');
+    const memberships = app.get<Repository<ClinicMembership>>(
+      getRepositoryToken(ClinicMembership),
+    );
+    const member = await memberships.save(
+      memberships.create({
+        clinicId: clinicMainId,
+        userId: readJsonString(registered.body, 'id'),
+        role: ClinicMembershipRole.specialist,
+      }),
+    );
+    const list = () =>
+      request(app.getHttpServer())
+        .get('/treatment-sessions')
+        .auth(token, { type: 'bearer' })
+        .set('x-clinic-id', clinicMainId);
+    const inaccessible = await list().expect(200);
+
+    expect(inaccessible.body).toMatchObject({ items: [], total: 0 });
+    await request(app.getHttpServer())
+      .get(`/treatment-sessions/${sessionAnaId}`)
+      .auth(token, { type: 'bearer' })
+      .set('x-clinic-id', clinicMainId)
+      .expect(403);
+    const payload = {
+      treatmentId: treatmentAnaId,
+      clinicalRecordId: clinicalRecordAnaId,
+      price: '12.00',
+      performedAt: new Date().toISOString(),
+    };
+
+    await request(app.getHttpServer())
+      .post('/treatment-sessions')
+      .auth(token, { type: 'bearer' })
+      .set('x-clinic-id', clinicMainId)
+      .send(payload)
+      .expect(403);
+    const owner = await memberships.findOneByOrFail({
+      clinicId: clinicMainId,
+      userId: adminUserId,
+    });
+    const assignments = app.get<Repository<PatientProfessionalAssignment>>(
+      getRepositoryToken(PatientProfessionalAssignment),
+    );
+
+    await assignments.save(
+      assignments.create({
+        clinicId: clinicMainId,
+        patientId: patientAnaId,
+        professionalMembershipId: member.id,
+        assignedByMembershipId: owner.id,
+      }),
+    );
+    const accessible = await list().expect(200);
+
+    expect(accessible.body).toMatchObject({ total: 1 });
+    for (const path of ['clinical-records', 'treatments']) {
+      const response = await request(app.getHttpServer())
+        .get(`/${path}`)
+        .auth(token, { type: 'bearer' })
+        .set('x-clinic-id', clinicMainId)
+        .expect(200);
+
+      expect(response.body).toMatchObject({ total: 1 });
+    }
+    const secondTreatment = await request(app.getHttpServer())
+      .post('/treatments')
+      .auth(adminToken, { type: 'bearer' })
+      .set('x-clinic-id', clinicMainId)
+      .send({
+        name: 'Other patient treatment',
+        patientId: patientLuisId,
+        doctorId: adminUserId,
+        basePrice: '10.00',
+      })
+      .expect(201);
+
+    await request(app.getHttpServer())
+      .patch(`/treatment-sessions/${sessionAnaId}`)
+      .auth(token, { type: 'bearer' })
+      .set('x-clinic-id', clinicMainId)
+      .send({
+        treatmentId: readJsonString(secondTreatment.body, 'id'),
+        clinicalRecordId: clinicalRecordLuisId,
+      })
+      .expect(403);
+    await memberships.update(member.id, {
+      permissionsJson: { [ClinicPermission.manageClinical]: false },
+    });
+    await request(app.getHttpServer())
+      .get(`/treatment-sessions/${sessionAnaId}`)
+      .auth(token, { type: 'bearer' })
+      .set('x-clinic-id', clinicMainId)
+      .expect(200);
+    await request(app.getHttpServer())
+      .post('/treatment-sessions')
+      .auth(token, { type: 'bearer' })
+      .set('x-clinic-id', clinicMainId)
+      .send(payload)
+      .expect(403);
+    await request(app.getHttpServer())
+      .patch(`/treatment-sessions/${sessionAnaId}`)
+      .auth(token, { type: 'bearer' })
+      .set('x-clinic-id', clinicMainId)
+      .send({ price: '1.00' })
+      .expect(403);
+    await request(app.getHttpServer())
+      .delete(`/treatment-sessions/${sessionAnaId}`)
+      .auth(token, { type: 'bearer' })
+      .set('x-clinic-id', clinicMainId)
+      .expect(403);
+    await memberships.update(member.id, { isActive: false });
+    await list().expect(401);
   });
 });

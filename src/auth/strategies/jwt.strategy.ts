@@ -2,11 +2,12 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
 import { InjectRepository } from '@nestjs/typeorm';
+import { isUUID } from 'class-validator';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { Repository } from 'typeorm';
 
 import { apiMessage } from '../../common/i18n/api-message';
-import { getRequiredEnv } from '../../config/env';
+import { getJwtSecret } from '../../config/security';
 import { UserSessionsService } from '../../user-sessions/user-sessions.service';
 import { User } from '../entities/user.entity';
 import { JwtPayload } from '../interfaces';
@@ -21,18 +22,30 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 
     private readonly userSessionsService: UserSessionsService,
   ) {
-    const jwtSecret = getRequiredEnv(
-      'JWT_SECRET',
+    const jwtSecret = getJwtSecret(
       configService.get<string>('JWT_SECRET') ?? process.env.JWT_SECRET,
     );
 
     super({
       secretOrKey: jwtSecret,
+      algorithms: ['HS256'],
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
     });
   }
 
   async validate(payload: JwtPayload): Promise<User> {
+    if (
+      !payload ||
+      typeof payload !== 'object' ||
+      typeof payload.id !== 'string' ||
+      typeof payload.sessionId !== 'string' ||
+      !isUUID(payload.id) ||
+      !isUUID(payload.sessionId)
+    )
+      throw new UnauthorizedException(
+        apiMessage('api.messages.token_not_valid'),
+      );
+
     const { id, sessionId } = payload;
 
     if (!sessionId) {

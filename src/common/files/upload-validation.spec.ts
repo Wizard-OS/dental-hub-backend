@@ -3,6 +3,7 @@ import * as os from 'os';
 import * as path from 'path';
 
 import { BadRequestException } from '@nestjs/common';
+import { utils, write } from 'cfb';
 
 import { validateAndNormalizeUploadedFile } from './upload-validation';
 import type { UploadedFile } from './uploaded-file.interface';
@@ -56,6 +57,80 @@ describe('validateAndNormalizeUploadedFile', () => {
 
     expect(file.filename).toBe('avatar.jpg');
     expect(file.mimetype).toBe('image/jpeg');
+  });
+
+  function compound(
+    entries: Record<string, Buffer>,
+    fileType: 'cfb' | 'zip',
+  ): Buffer {
+    const container = utils.cfb_new();
+
+    for (const [name, bytes] of Object.entries(entries))
+      utils.cfb_add(container, name, bytes);
+    const output: unknown = write(container, { type: 'buffer', fileType });
+
+    if (!Buffer.isBuffer(output)) throw new Error('Expected buffer');
+
+    return output;
+  }
+
+  it('rejects generic ZIP and OLE containers disguised as Word', async () => {
+    for (const fileType of ['zip', 'cfb'] as const) {
+      const file = await writeUpload(
+        'disguised.doc',
+        compound({ Workbook: Buffer.alloc(64) }, fileType),
+      );
+
+      await expect(
+        validateAndNormalizeUploadedFile(file, ['word']),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    }
+  });
+
+  it('accepts a Word binary stream with the DOC identifier', async () => {
+    const header = Buffer.alloc(64);
+
+    header.writeUInt16LE(0xa5ec);
+    const file = await writeUpload(
+      'document.bin',
+      compound({ WordDocument: header, '0Table': Buffer.alloc(32) }, 'cfb'),
+    );
+
+    await expect(
+      validateAndNormalizeUploadedFile(file, ['word']),
+    ).resolves.toMatchObject({ extension: '.doc' });
+  });
+
+  it('identifies DOCX instead of accepting any ZIP', async () => {
+    const file = await writeUpload(
+      'document.bin',
+      compound(
+        {
+          '[Content_Types].xml': Buffer.from(
+            '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>',
+          ),
+          'word/document.xml': Buffer.from(
+            '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"/>',
+          ),
+        },
+        'zip',
+      ),
+    );
+
+    await expect(
+      validateAndNormalizeUploadedFile(file, ['word']),
+    ).resolves.toMatchObject({ extension: '.docx' });
+  });
+
+  it('rejects a truncated archive', async () => {
+    const file = await writeUpload(
+      'broken.docx',
+      Buffer.from([0x50, 0x4b, 0x03, 0x04]),
+    );
+
+    await expect(
+      validateAndNormalizeUploadedFile(file, ['word']),
+    ).rejects.toBeInstanceOf(BadRequestException);
   });
 
   async function writeUpload(

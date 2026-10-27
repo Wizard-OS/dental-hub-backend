@@ -25,6 +25,7 @@ import {
   readJsonString,
   readJsonValue,
 } from './support/json-response';
+import { configureTestApplication } from './support/test-application';
 
 class FakeVault {
   configured = true;
@@ -195,6 +196,7 @@ describe('Membership screens: saved methods, reminders and recurring billing (is
         forbidNonWhitelisted: true,
       }),
     );
+    configureTestApplication(app);
     await app.init();
     await app.listen(0);
     db = app.get(DataSource);
@@ -204,7 +206,7 @@ describe('Membership screens: saved methods, reminders and recurring billing (is
       .post('/auth/register')
       .send({
         email: `billing-${randomUUID()}@example.com`,
-        password: 'Abc123',
+        password: 'Long dental passphrase 123',
         firstName: 'Billing',
         lastName: 'Owner',
       })

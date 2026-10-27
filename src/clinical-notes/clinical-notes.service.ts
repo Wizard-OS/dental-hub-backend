@@ -8,6 +8,7 @@ import { isUUID } from 'class-validator';
 import { Repository } from 'typeorm';
 
 import { ClinicalRecord } from '../clinical-records/entities/clinical-record.entity';
+import { ListQueryDto } from '../common/dtos/list-query.dto';
 import { apiMessage } from '../common/i18n/api-message';
 import { PatientFileStorageStatus } from '../patient-files/interfaces/patient-file-storage-status.enum';
 import {
@@ -57,35 +58,33 @@ export class ClinicalNotesService {
     return await this.clinicalNoteRepository.save(note);
   }
 
-  async findAll(context: ClinicAccessContext) {
-    const notes = await this.clinicalNoteRepository
+  async findAll(context: ClinicAccessContext, pagination = new ListQueryDto()) {
+    const query = this.clinicalNoteRepository
       .createQueryBuilder('note')
       .innerJoinAndSelect('note.clinicalRecord', 'record')
       .innerJoinAndSelect('record.patient', 'patient')
       .leftJoinAndSelect('note.author', 'author')
       .where('patient.clinicId = :clinicId', { clinicId: context.clinicId })
-      .orderBy('note.createdAt', 'DESC')
-      .getMany();
+      .orderBy('note.createdAt', 'DESC');
 
-    const allowed: ClinicalNote[] = [];
+    this.patientAccessService.applyPatientAccessFilter(
+      query,
+      'patient',
+      context,
+    );
+    const [items, total] = await query
+      .addOrderBy('note.id', 'DESC')
+      .skip(pagination.offset)
+      .take(pagination.limit)
+      .getManyAndCount();
 
-    for (const note of notes) {
-      try {
-        await this.patientAccessService.assertPatientAccessible(
-          context,
-          note.clinicalRecord.patientId,
-        );
-        this.patientAccessService.sanitizePatient(
-          note.clinicalRecord.patient,
-          context,
-        );
-        allowed.push(note);
-      } catch {
-        // Filter inaccessible patients out of collection results.
-      }
-    }
+    for (const item of items)
+      this.patientAccessService.sanitizePatient(
+        item.clinicalRecord.patient,
+        context,
+      );
 
-    return allowed;
+    return { items, total, limit: pagination.limit, offset: pagination.offset };
   }
 
   async findByPatient(

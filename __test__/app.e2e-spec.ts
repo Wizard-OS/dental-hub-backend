@@ -4,6 +4,7 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 
 import { AppModule } from '../src/app.module';
+import { configureTestApplication } from './support/test-application';
 
 describe('AppController (e2e)', () => {
   let app: INestApplication<App>;
@@ -13,7 +14,8 @@ describe('AppController (e2e)', () => {
       imports: [AppModule],
     }).compile();
 
-    app = moduleFixture.createNestApplication();
+    app = moduleFixture.createNestApplication({ bodyParser: false });
+    configureTestApplication(app);
     await app.init();
   });
 
@@ -28,5 +30,9 @@ describe('AppController (e2e)', () => {
       .get('/')
       .expect(200)
       .expect('Hello World!');
+  });
+  it('preserves public informational help endpoints', async () => {
+    await request(app.getHttpServer()).get('/help-center/faqs').expect(200);
+    await request(app.getHttpServer()).get('/help-center/contact').expect(200);
   });
 });

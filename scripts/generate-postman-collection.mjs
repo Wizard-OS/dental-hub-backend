@@ -66,15 +66,6 @@ const REQUIRED_VARIABLES = [
   ['paypalAuthAlgo', ''],
 ];
 
-const PUBLIC_PATHS = new Set([
-  '/seed',
-  '/auth/login',
-  '/auth/register',
-  '/billing/webhooks/paypal',
-  '/help-center/faqs',
-  '/help-center/contact',
-]);
-
 function parseArgs(argv) {
   const args = {
     source: DEFAULT_SOURCE,
@@ -257,7 +248,19 @@ function defaultVariableValue(key) {
   return '';
 }
 
-function collectionPrerequestEvent() {
+function collectionPrerequestEvent(openapi) {
+  const publicEndpoints = [];
+  for (const [path, item] of Object.entries(openapi.paths ?? {})) {
+    for (const [method, operation] of Object.entries(item)) {
+      if (
+        HTTP_METHODS.has(method) &&
+        operationSecurity(operation, openapi).length === 0
+      )
+        publicEndpoints.push(
+          `${method.toUpperCase()} ${normalizeOpenApiPath(path)}`,
+        );
+    }
+  }
   return {
     listen: 'prerequest',
     script: {
@@ -267,11 +270,11 @@ function collectionPrerequestEvent() {
         "  pm.collectionVariables.set('baseUrl', 'http://localhost:3000/api');",
         '}',
         '',
-        `const publicPaths = ${JSON.stringify([...PUBLIC_PATHS])};`,
+        `const publicEndpoints = ${JSON.stringify(publicEndpoints)};`,
         "const requestPath = `/${pm.request.url.path.join('/')}`.replace(/^\\/api(?=\\/|$)/, '');",
-        'const isPublicRequest = publicPaths.includes(requestPath);',
+        'const isPublicRequest = publicEndpoints.includes(`${pm.request.method} ${requestPath}`);',
         "const token = pm.environment.get('token') || pm.collectionVariables.get('token');",
-        'if (token) {',
+        'if (token && !isPublicRequest) {',
         "  pm.request.headers.upsert({ key: 'Authorization', value: `Bearer ${token}` });",
         '} else if (!isPublicRequest) {',
         "  throw new Error('Falta token. Ejecuta primero Auth / Iniciar sesión y verifica que token tenga valor.');",
@@ -428,7 +431,7 @@ function variableForProperty(propertyName) {
 function exampleString(propertyName) {
   const lower = propertyName.toLowerCase();
   if (lower.includes('email')) return `postman_{{$timestamp}}@example.com`;
-  if (lower.includes('password')) return 'Abc123';
+  if (lower.includes('password')) return 'a long dental passphrase';
   if (lower.includes('phone')) return '+59890000000';
   if (lower.includes('currency')) return 'USD';
   if (lower.includes('timezone')) return 'America/Montevideo';
@@ -628,6 +631,9 @@ function buildItem(
     name: requestName(method, pathName, operation, existing?.item),
     request: {
       method: methodUpper,
+      ...(operationSecurity(operation, openapi).length === 0
+        ? { auth: { type: 'noauth' } }
+        : {}),
       header: headers,
       url: {
         raw: rawPath,
@@ -709,7 +715,7 @@ function buildCollection(openapi, existingCollection) {
       schema: POSTMAN_SCHEMA,
     },
     auth: existingCollection?.auth ?? bearerAuth(),
-    event: [collectionPrerequestEvent()],
+    event: [collectionPrerequestEvent(openapi)],
     variable: upsertVariables(
       existingCollection?.variable ?? [],
       extraVariables,

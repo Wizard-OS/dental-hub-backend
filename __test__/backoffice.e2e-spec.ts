@@ -10,6 +10,10 @@ import {
   readJsonString,
   readJsonValue,
 } from './support/json-response';
+import {
+  configureTestApplication,
+  seedTestDatabase,
+} from './support/test-application';
 
 jest.setTimeout(30000);
 
@@ -27,11 +31,12 @@ describe('Backoffice SaaS (e2e)', () => {
       imports: [AppModule],
     }).compile();
 
-    app = moduleFixture.createNestApplication();
+    app = moduleFixture.createNestApplication({ bodyParser: false });
+    configureTestApplication(app);
     await app.init();
     dataSource = app.get(DataSource);
 
-    await request(app.getHttpServer()).get('/seed').expect(200);
+    await seedTestDatabase(app);
 
     const adminLogin = await request(app.getHttpServer())
       .post('/auth/login')

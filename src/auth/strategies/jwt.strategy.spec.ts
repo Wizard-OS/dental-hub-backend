@@ -6,8 +6,8 @@ import { ValidRoles } from '../interfaces';
 import { JwtStrategy } from './jwt.strategy';
 
 describe('JwtStrategy', () => {
-  const userId = 'user-1';
-  const sessionId = 'session-1';
+  const userId = 'a2b58f10-3456-4789-8123-012345678901';
+  const sessionId = 'b2b58f10-3456-4789-8123-012345678901';
   let user: User;
   let lastActiveAt: Date;
   let userRepository: { findOneBy: jest.Mock };
@@ -49,7 +49,9 @@ describe('JwtStrategy', () => {
 
     strategy = new JwtStrategy(
       userRepository as never,
-      { get: jest.fn(() => 'test-secret') } as unknown as ConfigService,
+      {
+        get: jest.fn(() => 'test-jwt-secret-32-bytes-long-secure'),
+      } as unknown as ConfigService,
       userSessionsService as never,
     );
   });
@@ -84,5 +86,28 @@ describe('JwtStrategy', () => {
     await expect(
       strategy.validate({ id: userId, sessionId }),
     ).rejects.toBeInstanceOf(UnauthorizedException);
+  });
+  it.each([
+    null,
+    {},
+    { id: userId },
+    { id: {}, sessionId },
+    { id: userId, sessionId: 'invalid' },
+  ])(
+    'rejects malformed claims before querying persistence',
+    async (payload) => {
+      await expect(strategy.validate(payload as never)).rejects.toBeInstanceOf(
+        UnauthorizedException,
+      );
+      expect(userRepository.findOneBy).not.toHaveBeenCalled();
+    },
+  );
+
+  it('rejects inactive users before looking up sessions', async () => {
+    user.isActive = false;
+    await expect(
+      strategy.validate({ id: userId, sessionId }),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
+    expect(userSessionsService.assertActiveSession).not.toHaveBeenCalled();
   });
 });

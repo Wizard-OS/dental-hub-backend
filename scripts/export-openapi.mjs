@@ -29,6 +29,7 @@ try {
     .setTitle('Dental Hub API')
     .setVersion('1.0')
     .addBearerAuth()
+    .addSecurityRequirements('bearer')
     .addApiKey(
       { type: 'apiKey', name: 'x-clinic-id', in: 'header' },
       'x-clinic-id',

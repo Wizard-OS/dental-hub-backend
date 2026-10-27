@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+
 import {
   Body,
   Controller,
@@ -26,6 +28,7 @@ import { buildRequestBaseUrl } from '../common/http/request-url';
 import { apiMessage } from '../common/i18n/api-message';
 import { AuthService } from './auth.service';
 import { Auth, GetUser } from './decorators';
+import { Public } from './decorators/public.decorator';
 import {
   ChangePasswordDto,
   CreateUserDto,
@@ -42,6 +45,7 @@ import { User } from './entities/user.entity';
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
+  @Public()
   @Post('register')
   @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @ApiOperation({ summary: 'Registrar nuevo usuario' })
@@ -51,6 +55,7 @@ export class AuthController {
     return this.authService.create(createUserDto, request);
   }
 
+  @Public()
   @Post('login')
   @Throttle({ default: { limit: 8, ttl: 60_000 } })
   @ApiOperation({ summary: 'Iniciar sesión' })
@@ -63,6 +68,7 @@ export class AuthController {
     return this.authService.login(loginUserDto, request);
   }
 
+  @Public()
   @Post('forgot-password')
   @Throttle({ default: { limit: 3, ttl: 60_000 } })
   @ApiOperation({ summary: 'Solicitar código OTP para recuperar contraseña' })
@@ -74,6 +80,7 @@ export class AuthController {
     return this.authService.forgotPassword(forgotPasswordDto);
   }
 
+  @Public()
   @Post('verify-otp')
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @ApiOperation({ summary: 'Validar código OTP de recuperación' })
@@ -83,6 +90,7 @@ export class AuthController {
     return this.authService.verifyOtp(verifyOtpDto);
   }
 
+  @Public()
   @Post('reset-password')
   @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @ApiOperation({ summary: 'Restablecer contraseña usando OTP' })
@@ -137,7 +145,7 @@ export class AuthController {
         const userId =
           (request as Request & { user?: User }).user?.id ?? 'user';
 
-        return `${userId}-${Date.now()}`;
+        return `${userId}-${randomUUID()}`;
       },
     }),
   )

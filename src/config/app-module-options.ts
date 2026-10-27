@@ -15,16 +15,23 @@ import {
   getRequiredEnv,
   normalizeDatabaseUrl,
 } from './env';
+import { positiveIntegerEnv } from './security';
 
 export function isSeedEndpointEnabled(): boolean {
+  if (
+    getEnv('NODE_ENV') === 'production' &&
+    getBooleanEnv('ENABLE_SEED_ENDPOINT')
+  )
+    throw new Error('Seed endpoints are forbidden in production.');
+
   return getBooleanEnv('ENABLE_SEED_ENDPOINT');
 }
 
 export function createThrottlerOptions() {
   return [
     {
-      ttl: numberEnv('THROTTLE_TTL_MS', 60_000),
-      limit: numberEnv('THROTTLE_LIMIT', 120),
+      ttl: positiveIntegerEnv('THROTTLE_TTL_MS', 60_000),
+      limit: positiveIntegerEnv('THROTTLE_LIMIT', 120),
     },
   ];
 }
@@ -89,7 +96,7 @@ export function createTypeOrmOptions(): TypeOrmModuleOptions {
           host: isProduction
             ? getRequiredEnv('DB_HOST')
             : getEnv('DB_HOST') || '127.0.0.1',
-          port: +(getEnv('DB_PORT') || 5432),
+          port: positiveIntegerEnv('DB_PORT', 5432, 65535),
           database: isProduction
             ? getRequiredEnv('DB_NAME')
             : getEnv('DB_NAME') || 'DentalHubDB',
@@ -116,10 +123,4 @@ export function getTrustedProxyHops(): number {
   }
 
   return value;
-}
-
-function numberEnv(name: string, fallback: number): number {
-  const value = Number(getEnv(name));
-
-  return Number.isFinite(value) && value > 0 ? value : fallback;
 }

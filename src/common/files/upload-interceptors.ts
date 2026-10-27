@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { promises as fs } from 'fs';
 import * as path from 'path';
 
@@ -59,6 +60,10 @@ export function createUploadInterceptor(options: UploadInterceptorOptions) {
       );
     },
     limits: {
+      files: 1,
+      fields: 10,
+      parts: 11,
+      fieldNameSize: 100,
       fileSize: options.maxSizeMb * 1024 * 1024,
       // Multer 2.4 rejected a field at 1 MiB; 2.5 uses an inclusive limit.
       fieldSize: 1024 * 1024 - 1,
@@ -67,5 +72,5 @@ export function createUploadInterceptor(options: UploadInterceptorOptions) {
 }
 
 export function timestampedUploadName(): string {
-  return `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
+  return randomUUID();
 }

@@ -8,6 +8,10 @@ import { AppModule } from '../src/app.module';
 import { I18nHttpExceptionFilter } from '../src/common/filters/i18n-http-exception.filter';
 import { I18nResponseInterceptor } from '../src/common/interceptors/i18n-response.interceptor';
 import { readJsonString, readJsonValue } from './support/json-response';
+import {
+  configureTestApplication,
+  seedTestDatabase,
+} from './support/test-application';
 
 describe('i18n responses (e2e)', () => {
   let app: INestApplication<App>;
@@ -19,17 +23,16 @@ describe('i18n responses (e2e)', () => {
       imports: [AppModule],
     }).compile();
 
-    app = moduleFixture.createNestApplication();
+    app = moduleFixture.createNestApplication({ bodyParser: false });
     app.useGlobalPipes(
       new I18nValidationPipe({ whitelist: true, forbidNonWhitelisted: true }),
     );
     app.useGlobalFilters(app.get(I18nHttpExceptionFilter));
     app.useGlobalInterceptors(app.get(I18nResponseInterceptor));
+    configureTestApplication(app);
     await app.init();
 
-    const seedResponse = await request(app.getHttpServer())
-      .get('/seed')
-      .expect(200);
+    const seedResponse = await seedTestDatabase(app);
 
     clinicMainId = readJsonString(
       seedResponse.body,

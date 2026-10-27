@@ -8,6 +8,7 @@ import { isUUID } from 'class-validator';
 import { Repository } from 'typeorm';
 
 import { ClinicMembership } from '../clinic-memberships/entities/clinic-membership.entity';
+import { ListQueryDto } from '../common/dtos/list-query.dto';
 import { apiMessage } from '../common/i18n/api-message';
 import { Invoice } from '../invoices/entities/invoice.entity';
 import { Patient } from '../patients/entities/patient.entity';
@@ -68,30 +69,26 @@ export class TreatmentsService {
     return await this.treatmentRepository.save(treatment);
   }
 
-  async findAll(context: ClinicAccessContext) {
-    const treatments = await this.treatmentRepository
+  async findAll(context: ClinicAccessContext, pagination = new ListQueryDto()) {
+    const query = this.treatmentRepository
       .createQueryBuilder('treatment')
-      .innerJoinAndSelect('treatment.sessions', 'sessions')
+      .leftJoinAndSelect('treatment.sessions', 'sessions')
       .innerJoin('patients', 'patient', 'patient.id = treatment.patientId')
       .where('patient.clinicId = :clinicId', { clinicId: context.clinicId })
-      .orderBy('treatment.id', 'DESC')
-      .getMany();
+      .orderBy('treatment.id', 'DESC');
 
-    const allowed: Treatment[] = [];
+    this.patientAccessService.applyPatientAccessFilter(
+      query,
+      'patient',
+      context,
+    );
+    const [items, total] = await query
+      .addOrderBy('treatment.id', 'DESC')
+      .skip(pagination.offset)
+      .take(pagination.limit)
+      .getManyAndCount();
 
-    for (const treatment of treatments) {
-      try {
-        await this.patientAccessService.assertPatientAccessible(
-          context,
-          treatment.patientId,
-        );
-        allowed.push(treatment);
-      } catch {
-        // Filter inaccessible patients out of collection results.
-      }
-    }
-
-    return allowed;
+    return { items, total, limit: pagination.limit, offset: pagination.offset };
   }
 
   async findOne(context: ClinicAccessContext, id: string) {

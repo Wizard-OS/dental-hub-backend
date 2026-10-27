@@ -1,11 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import {
-  IsEmail,
-  IsString,
-  Matches,
-  MaxLength,
-  MinLength,
-} from 'class-validator';
+import { IsEmail, IsString, MaxLength, MinLength } from 'class-validator';
 import { i18nValidationMessage } from 'nestjs-i18n';
 
 export class LoginUserDto {
@@ -18,16 +12,13 @@ export class LoginUserDto {
   email: string;
 
   @ApiProperty({
-    example: 'Abc123',
+    example: 'a long dental passphrase',
     description: 'Contraseña',
-    minLength: 6,
-    maxLength: 50,
+    minLength: 1,
+    maxLength: 72,
   })
   @IsString({ message: i18nValidationMessage('validation.isString') })
-  @MinLength(6, { message: i18nValidationMessage('validation.minLength') })
-  @MaxLength(50, { message: i18nValidationMessage('validation.maxLength') })
-  @Matches(/(?:(?=.*\d)|(?=.*\W+))(?![.\n])(?=.*[A-Z])(?=.*[a-z]).*$/, {
-    message: i18nValidationMessage('validation.password'),
-  })
+  @MinLength(1, { message: i18nValidationMessage('validation.minLength') })
+  @MaxLength(72, { message: i18nValidationMessage('validation.maxLength') })
   password: string;
 }

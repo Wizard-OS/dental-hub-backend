@@ -5,6 +5,10 @@ import { App } from 'supertest/types';
 
 import { AppModule } from '../src/app.module';
 import { readJsonString, readJsonValue } from './support/json-response';
+import {
+  configureTestApplication,
+  seedTestDatabase,
+} from './support/test-application';
 
 describe('Multi-tenant clinic scope (e2e)', () => {
   let app: INestApplication<App>;
@@ -24,12 +28,11 @@ describe('Multi-tenant clinic scope (e2e)', () => {
       imports: [AppModule],
     }).compile();
 
-    app = moduleFixture.createNestApplication();
+    app = moduleFixture.createNestApplication({ bodyParser: false });
+    configureTestApplication(app);
     await app.init();
 
-    const seedResponse = await request(app.getHttpServer())
-      .get('/seed')
-      .expect(200);
+    const seedResponse = await seedTestDatabase(app);
 
     clinicMainId = readJsonString(
       seedResponse.body,
@@ -76,7 +79,7 @@ describe('Multi-tenant clinic scope (e2e)', () => {
       .post('/auth/register')
       .send({
         email: `receptionist_${Date.now()}@example.com`,
-        password: 'Abc123',
+        password: 'Long dental passphrase 123',
         firstName: 'Recepcion',
         lastName: 'Dental',
       })

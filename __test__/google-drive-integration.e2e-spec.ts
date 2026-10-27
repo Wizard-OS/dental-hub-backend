@@ -6,6 +6,10 @@ import { App } from 'supertest/types';
 import { AppModule } from '../src/app.module';
 import { GoogleDriveStorageProvider } from '../src/storage/providers/google-drive-storage.provider';
 import { readJsonString } from './support/json-response';
+import {
+  configureTestApplication,
+  seedTestDatabase,
+} from './support/test-application';
 
 describe('Google Drive Integration (e2e)', () => {
   let app: INestApplication<App>;
@@ -31,9 +35,10 @@ describe('Google Drive Integration (e2e)', () => {
   };
 
   const driveProviderMock = {
-    buildAuthUrl: jest
-      .fn()
-      .mockReturnValue('https://accounts.google.test/oauth'),
+    buildAuthUrl: jest.fn(
+      (_redirectUri: string, state: string) =>
+        `https://accounts.google.test/oauth?state=${state}`,
+    ),
     exchangeCode: jest.fn().mockResolvedValue({
       access_token: 'access-token',
       refresh_token: 'refresh-token',
@@ -49,7 +54,8 @@ describe('Google Drive Integration (e2e)', () => {
   };
 
   beforeAll(async () => {
-    process.env.INTEGRATION_TOKEN_ENCRYPTION_KEY = 'test-secret';
+    process.env.INTEGRATION_TOKEN_ENCRYPTION_KEY =
+      'test-encryption-secret-of-at-least-32-bytes';
 
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
@@ -58,10 +64,11 @@ describe('Google Drive Integration (e2e)', () => {
       .useValue(driveProviderMock)
       .compile();
 
-    app = moduleFixture.createNestApplication();
+    app = moduleFixture.createNestApplication({ bodyParser: false });
+    configureTestApplication(app);
     await app.init();
 
-    await request(app.getHttpServer()).get('/seed').expect(200);
+    await seedTestDatabase(app);
 
     const loginResponse = await request(app.getHttpServer())
       .post('/auth/login')
@@ -116,9 +123,11 @@ describe('Google Drive Integration (e2e)', () => {
       .set('x-clinic-id', clinicId)
       .expect(200);
 
-    expect(readJsonString(oauthUrlResponse.body, 'url')).toBe(
-      'https://accounts.google.test/oauth',
-    );
+    const state = new URL(
+      readJsonString(oauthUrlResponse.body, 'url'),
+    ).searchParams.get('state');
+
+    expect(state).toBeTruthy();
 
     const connectResponse = await request(app.getHttpServer())
       .post('/integrations/google-drive/oauth-callback')
@@ -126,6 +135,7 @@ describe('Google Drive Integration (e2e)', () => {
       .set('x-clinic-id', clinicId)
       .send({
         code: 'oauth-code',
+        state,
         redirectUri: 'http://localhost/google-drive/callback',
       })
       .expect(201);

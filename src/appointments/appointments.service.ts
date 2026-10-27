@@ -11,6 +11,7 @@ import { ILike, Repository } from 'typeorm';
 
 import { ClinicMembership } from '../clinic-memberships/entities/clinic-membership.entity';
 import { AppointmentAvailabilityService } from '../clinics/appointment-availability.service';
+import { ListQueryDto } from '../common/dtos/list-query.dto';
 import { apiMessage } from '../common/i18n/api-message';
 import { Patient } from '../patients/entities/patient.entity';
 import {
@@ -112,7 +113,7 @@ export class AppointmentsService {
     }
   }
 
-  async findAll(context: ClinicAccessContext) {
+  async findAll(context: ClinicAccessContext, pagination = new ListQueryDto()) {
     const query = this.appointmentRepository
       .createQueryBuilder('appointment')
       .leftJoinAndSelect('appointment.patient', 'patient')
@@ -132,9 +133,12 @@ export class AppointmentsService {
       );
     }
 
-    const appointments = await query
+    const [appointments, total] = await query
       .orderBy('appointment.startTime', 'ASC')
-      .getMany();
+      .addOrderBy('appointment.id', 'ASC')
+      .skip(pagination.offset)
+      .take(pagination.limit)
+      .getManyAndCount();
 
     for (const appointment of appointments) {
       if (appointment.patient) {
@@ -142,7 +146,12 @@ export class AppointmentsService {
       }
     }
 
-    return appointments;
+    return {
+      items: appointments,
+      total,
+      limit: pagination.limit,
+      offset: pagination.offset,
+    };
   }
 
   async findAgenda(
@@ -192,6 +201,7 @@ export class AppointmentsService {
       .andWhere('appointment.startTime < :to', { to })
       .andWhere('appointment.endTime > :from', { from })
       .orderBy('appointment.startTime', 'ASC')
+      .addOrderBy('appointment.id', 'ASC')
       .getMany();
 
     for (const appointment of appointments) {

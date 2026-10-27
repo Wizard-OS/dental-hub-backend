@@ -37,7 +37,15 @@ export function getRequiredEnv(
 }
 
 export function getBooleanEnv(name: string): boolean {
-  return ['1', 'true', 'yes'].includes(getEnv(name)?.toLowerCase() ?? '');
+  const value = getEnv(name)?.toLowerCase();
+
+  if (value === undefined) return false;
+
+  if (['1', 'true', 'yes'].includes(value)) return true;
+
+  if (['0', 'false', 'no'].includes(value)) return false;
+
+  throw new Error(`${name} must be a boolean.`);
 }
 
 export function normalizeDatabaseUrl(

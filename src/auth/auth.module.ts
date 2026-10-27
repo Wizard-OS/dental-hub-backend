@@ -1,11 +1,12 @@
 import { Global, Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { APP_GUARD } from '@nestjs/core';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { ClinicMembership } from '../clinic-memberships/entities/clinic-membership.entity';
-import { getRequiredEnv } from '../config/env';
+import { getJwtSecret } from '../config/security';
 import { ProfessionalSpecialty } from '../professional-specialties/entities/professional-specialty.entity';
 import { UserSessionsModule } from '../user-sessions/user-sessions.module';
 import { AUTH_SECURITY_TRANSACTION } from './application/ports/auth-security-transaction.port';
@@ -15,6 +16,7 @@ import { User } from './entities/user.entity';
 import { ClinicPermissionGuard } from './guards/clinic-permission.guard';
 import { ClinicRoleGuard } from './guards/clinic-role.guard';
 import { ClinicScopeGuard } from './guards/clinic-scope.guard';
+import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { UserRoleGuard } from './guards/user-role.guard';
 import { TypeOrmAuthSecurityTransactionAdapter } from './infrastructure/typeorm-auth-security-transaction.adapter';
 import { PasswordHasherService } from './services/password-hasher.service';
@@ -27,6 +29,7 @@ import { JwtStrategy } from './strategies/jwt.strategy';
   controllers: [AuthController],
   providers: [
     AuthService,
+    { provide: APP_GUARD, useClass: JwtAuthGuard },
     JwtStrategy,
     ClinicScopeGuard,
     UserRoleGuard,
@@ -54,12 +57,12 @@ import { JwtStrategy } from './strategies/jwt.strategy';
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => {
         return {
-          secret: getRequiredEnv(
-            'JWT_SECRET',
+          secret: getJwtSecret(
             configService.get<string>('JWT_SECRET') ?? process.env.JWT_SECRET,
           ),
           signOptions: {
             expiresIn: '2h',
+            algorithm: 'HS256',
           },
         };
       },

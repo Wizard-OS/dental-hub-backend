@@ -17,6 +17,7 @@ import {
   GetClinicId,
   GetClinicMembershipId,
 } from '../auth/decorators';
+import { Public } from '../auth/decorators/public.decorator';
 import { ClinicPermission } from '../auth/interfaces';
 import { ClinicMembershipRole } from '../clinic-memberships/interfaces/clinic-membership-role.enum';
 import { BillingService } from './billing.service';
@@ -43,6 +44,7 @@ export class BillingController {
     return this.billingService.createCheckout(clinicId, dto, actorId);
   }
 
+  @Public()
   @Post('webhooks/paypal')
   @Throttle({ default: { limit: 60, ttl: 60_000 } })
   @ApiOperation({ summary: 'Recibir webhooks de PayPal Billing' })

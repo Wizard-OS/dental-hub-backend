@@ -6,11 +6,18 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 
 import { AppModule } from '../src/app.module';
+import { PersonalDriveStorage } from '../src/storage/infrastructure/personal-drive-storage';
+import type { StorageUploadInput } from '../src/storage/interfaces/storage-provider.interface';
+import { LocalStorageProvider } from '../src/storage/providers/local-storage.provider';
 import {
   readJsonArray,
   readJsonString,
   readJsonValue,
 } from './support/json-response';
+import {
+  configureTestApplication,
+  seedTestDatabase,
+} from './support/test-application';
 
 describe('Clinic care and billing (e2e)', () => {
   let app: INestApplication<App>;
@@ -40,12 +47,19 @@ describe('Clinic care and billing (e2e)', () => {
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
-    }).compile();
+    })
+      .overrideProvider(PersonalDriveStorage)
+      .useValue({
+        upload: (input: StorageUploadInput) =>
+          new LocalStorageProvider().upload(input),
+      })
+      .compile();
 
-    app = moduleFixture.createNestApplication();
+    app = moduleFixture.createNestApplication({ bodyParser: false });
+    configureTestApplication(app);
     await app.init();
 
-    await request(app.getHttpServer()).get('/seed').expect(200);
+    await seedTestDatabase(app);
 
     const loginResponse = await request(app.getHttpServer())
       .post('/auth/login')
@@ -73,7 +87,7 @@ describe('Clinic care and billing (e2e)', () => {
       .post('/auth/register')
       .send({
         email: `assistant_${Date.now()}@example.com`,
-        password: 'Abc123',
+        password: 'Long dental passphrase 123',
         firstName: 'Asistente',
         lastName: 'Dental',
       })
@@ -903,7 +917,7 @@ describe('Clinic care and billing (e2e)', () => {
     patientFilePath = readJsonString(uploadResponse.body, 'path');
     expect(readJsonValue(uploadResponse.body, 'patientId')).toBe(patientId);
     expect(readJsonString(uploadResponse.body, 'url')).toContain(
-      '/uploads/patient-files/',
+      '/api/patient-files/',
     );
     expect(fs.existsSync(patientFilePath)).toBe(true);
 
@@ -942,7 +956,7 @@ describe('Clinic care and billing (e2e)', () => {
       .post(`/patients/${patientId}/profile-photo`)
       .set('Authorization', `Bearer ${adminToken}`)
       .set('x-clinic-id', clinicId)
-      .attach('file', Buffer.from('profile image'), {
+      .attach('file', Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10]), {
         filename: 'profile.jpg',
         contentType: 'image/jpeg',
       })
@@ -956,7 +970,7 @@ describe('Clinic care and billing (e2e)', () => {
       }),
     );
     expect(readJsonString(profilePhotoResponse.body, 'url')).toContain(
-      '/uploads/patient-files/',
+      '/api/patient-files/',
     );
     expect(
       fs.existsSync(readJsonString(profilePhotoResponse.body, 'path')),
