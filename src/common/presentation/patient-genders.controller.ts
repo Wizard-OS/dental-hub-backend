@@ -1,4 +1,4 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get, HttpStatus } from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiOperation,
@@ -23,7 +23,7 @@ export class PatientGendersController {
   @Get('patient-genders')
   @ApiOperation({ summary: 'Listar géneros disponibles para pacientes' })
   @ApiResponse({
-    status: 200,
+    status: HttpStatus.OK,
     description: 'Opciones de género en el idioma solicitado',
     type: [PatientGenderOptionResponseDto],
   })

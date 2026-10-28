@@ -5,6 +5,7 @@ import {
   Controller,
   Delete,
   Get,
+  HttpStatus,
   Patch,
   Post,
   Req,
@@ -49,8 +50,14 @@ export class AuthController {
   @Post('register')
   @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @ApiOperation({ summary: 'Registrar nuevo usuario' })
-  @ApiResponse({ status: 201, description: 'Usuario creado exitosamente' })
-  @ApiResponse({ status: 400, description: 'Datos inválidos' })
+  @ApiResponse({
+    status: HttpStatus.CREATED,
+    description: 'Usuario creado exitosamente',
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'Datos inválidos',
+  })
   createUser(@Body() createUserDto: CreateUserDto, @Req() request: Request) {
     return this.authService.create(createUserDto, request);
   }
@@ -60,10 +67,13 @@ export class AuthController {
   @Throttle({ default: { limit: 8, ttl: 60_000 } })
   @ApiOperation({ summary: 'Iniciar sesión' })
   @ApiResponse({
-    status: 201,
+    status: HttpStatus.CREATED,
     description: 'Login exitoso — retorna token JWT',
   })
-  @ApiResponse({ status: 401, description: 'Credenciales inválidas' })
+  @ApiResponse({
+    status: HttpStatus.UNAUTHORIZED,
+    description: 'Credenciales inválidas',
+  })
   loginUser(@Body() loginUserDto: LoginUserDto, @Req() request: Request) {
     return this.authService.login(loginUserDto, request);
   }
@@ -73,7 +83,7 @@ export class AuthController {
   @Throttle({ default: { limit: 3, ttl: 60_000 } })
   @ApiOperation({ summary: 'Solicitar código OTP para recuperar contraseña' })
   @ApiResponse({
-    status: 201,
+    status: HttpStatus.CREATED,
     description: 'Si el email existe, se genera un código de recuperación',
   })
   forgotPassword(@Body() forgotPasswordDto: ForgotPasswordDto) {
@@ -84,8 +94,11 @@ export class AuthController {
   @Post('verify-otp')
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @ApiOperation({ summary: 'Validar código OTP de recuperación' })
-  @ApiResponse({ status: 201, description: 'OTP válido' })
-  @ApiResponse({ status: 400, description: 'OTP inválido o expirado' })
+  @ApiResponse({ status: HttpStatus.CREATED, description: 'OTP válido' })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'OTP inválido o expirado',
+  })
   verifyOtp(@Body() verifyOtpDto: VerifyOtpDto) {
     return this.authService.verifyOtp(verifyOtpDto);
   }
@@ -94,8 +107,14 @@ export class AuthController {
   @Post('reset-password')
   @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @ApiOperation({ summary: 'Restablecer contraseña usando OTP' })
-  @ApiResponse({ status: 201, description: 'Contraseña restablecida' })
-  @ApiResponse({ status: 400, description: 'OTP inválido o expirado' })
+  @ApiResponse({
+    status: HttpStatus.CREATED,
+    description: 'Contraseña restablecida',
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'OTP inválido o expirado',
+  })
   resetPassword(@Body() resetPasswordDto: ResetPasswordDto) {
     return this.authService.resetPassword(resetPasswordDto);
   }
@@ -105,10 +124,13 @@ export class AuthController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Verificar estado de autenticación' })
   @ApiResponse({
-    status: 200,
+    status: HttpStatus.OK,
     description: 'Token válido — retorna usuario y nuevo token',
   })
-  @ApiResponse({ status: 401, description: 'No autorizado' })
+  @ApiResponse({
+    status: HttpStatus.UNAUTHORIZED,
+    description: 'No autorizado',
+  })
   checkAuthStatus(@GetUser() user: User) {
     return this.authService.checkAuthStatus(user);
   }
@@ -131,9 +153,12 @@ export class AuthController {
       },
     },
   })
-  @ApiResponse({ status: 201, description: 'Foto subida exitosamente' })
   @ApiResponse({
-    status: 400,
+    status: HttpStatus.CREATED,
+    description: 'Foto subida exitosamente',
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
     description: 'Solo se permiten archivos de imagen',
   })
   @UseInterceptors(
@@ -163,7 +188,7 @@ export class AuthController {
   @Auth()
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Obtener perfil del usuario autenticado' })
-  @ApiResponse({ status: 200, description: 'Perfil del usuario' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Perfil del usuario' })
   getProfile(@GetUser() user: User) {
     return this.authService.getProfile(user);
   }
@@ -172,7 +197,7 @@ export class AuthController {
   @Auth()
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Actualizar perfil del usuario autenticado' })
-  @ApiResponse({ status: 200, description: 'Perfil actualizado' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Perfil actualizado' })
   updateProfile(
     @GetUser() user: User,
     @Body() updateProfileDto: UpdateProfileDto,
@@ -184,8 +209,14 @@ export class AuthController {
   @Auth()
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Cambiar contraseña' })
-  @ApiResponse({ status: 201, description: 'Contraseña cambiada' })
-  @ApiResponse({ status: 400, description: 'Contraseña actual incorrecta' })
+  @ApiResponse({
+    status: HttpStatus.CREATED,
+    description: 'Contraseña cambiada',
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'Contraseña actual incorrecta',
+  })
   changePassword(
     @GetUser() user: User,
     @Body() changePasswordDto: ChangePasswordDto,
@@ -197,7 +228,7 @@ export class AuthController {
   @Auth()
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Cerrar sesión' })
-  @ApiResponse({ status: 201, description: 'Sesión cerrada' })
+  @ApiResponse({ status: HttpStatus.CREATED, description: 'Sesión cerrada' })
   logout(@GetUser() user: User) {
     return this.authService.logout(user);
   }
@@ -206,7 +237,7 @@ export class AuthController {
   @Auth()
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Eliminar cuenta del usuario autenticado' })
-  @ApiResponse({ status: 200, description: 'Cuenta eliminada' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Cuenta eliminada' })
   deleteAccount(@GetUser() user: User) {
     return this.authService.deleteAccount(user);
   }

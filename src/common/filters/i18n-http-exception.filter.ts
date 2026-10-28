@@ -64,7 +64,11 @@ export class I18nHttpExceptionFilter implements ExceptionFilter {
         'request.size.invalid',
       ].includes(String(exception.type)) &&
       typeof exception.status === 'number' &&
-      [400, 413, 415].includes(exception.status)
+      [
+        HttpStatus.BAD_REQUEST,
+        HttpStatus.PAYLOAD_TOO_LARGE,
+        HttpStatus.UNSUPPORTED_MEDIA_TYPE,
+      ].includes(exception.status)
     ) {
       response.status(exception.status).json({
         statusCode: exception.status,
@@ -76,9 +80,10 @@ export class I18nHttpExceptionFilter implements ExceptionFilter {
 
     if (!(exception instanceof HttpException)) {
       this.logger.error('Unhandled API error');
-      response
-        .status(500)
-        .json({ statusCode: 500, message: this.statusMessage(500, lang) });
+      response.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
+        statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+        message: this.statusMessage(HttpStatus.INTERNAL_SERVER_ERROR, lang),
+      });
 
       return;
     }
@@ -175,13 +180,26 @@ export class I18nHttpExceptionFilter implements ExceptionFilter {
 
   private statusMessage(status: number, lang: string): string {
     const supported = [
-      400, 401, 403, 404, 405, 409, 413, 415, 422, 429, 500, 502, 503, 504,
+      HttpStatus.BAD_REQUEST,
+      HttpStatus.UNAUTHORIZED,
+      HttpStatus.FORBIDDEN,
+      HttpStatus.NOT_FOUND,
+      HttpStatus.METHOD_NOT_ALLOWED,
+      HttpStatus.CONFLICT,
+      HttpStatus.PAYLOAD_TOO_LARGE,
+      HttpStatus.UNSUPPORTED_MEDIA_TYPE,
+      HttpStatus.UNPROCESSABLE_ENTITY,
+      HttpStatus.TOO_MANY_REQUESTS,
+      HttpStatus.INTERNAL_SERVER_ERROR,
+      HttpStatus.BAD_GATEWAY,
+      HttpStatus.SERVICE_UNAVAILABLE,
+      HttpStatus.GATEWAY_TIMEOUT,
     ];
     const code = supported.includes(status)
       ? status
-      : status >= 500
-        ? 500
-        : 400;
+      : status >= Number(HttpStatus.INTERNAL_SERVER_ERROR)
+        ? HttpStatus.INTERNAL_SERVER_ERROR
+        : HttpStatus.BAD_REQUEST;
 
     return this.translator.translate(
       apiMessage(`api.http.${code}` as ApiMessageKey),

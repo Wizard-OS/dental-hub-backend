@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  HttpStatus,
   Param,
   Post,
   Query,
@@ -40,7 +41,7 @@ export class PatientAssignmentsController {
   @Get()
   @ApiOperation({ summary: 'Listar asignaciones activas de pacientes' })
   @ApiQuery({ name: 'patientId', required: false })
-  @ApiResponse({ status: 200, description: 'Lista de asignaciones' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Lista de asignaciones' })
   findAll(
     @GetClinicId() clinicId: string,
     @Query('patientId') patientId?: string,
@@ -50,7 +51,7 @@ export class PatientAssignmentsController {
 
   @Post()
   @ApiOperation({ summary: 'Asignar paciente a profesional secundario' })
-  @ApiResponse({ status: 201, description: 'Asignación creada' })
+  @ApiResponse({ status: HttpStatus.CREATED, description: 'Asignación creada' })
   create(
     @GetClinicId() clinicId: string,
     @GetClinicMembershipId() membershipId: string,
@@ -61,7 +62,7 @@ export class PatientAssignmentsController {
 
   @Delete(':id')
   @ApiOperation({ summary: 'Revocar asignación de paciente' })
-  @ApiResponse({ status: 200, description: 'Asignación revocada' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Asignación revocada' })
   revoke(
     @GetClinicId() clinicId: string,
     @GetClinicMembershipId() membershipId: string,

@@ -1,4 +1,4 @@
-import { INestApplication } from '@nestjs/common';
+import { HttpStatus, INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import request from 'supertest';
@@ -60,7 +60,7 @@ describe('Clinical records and treatment (e2e)', () => {
         email: 'test1@google.com',
         password: 'Abc123',
       })
-      .expect(201);
+      .expect(HttpStatus.CREATED);
 
     adminToken = readJsonString(loginResponse.body, 'token');
     adminUserId = readJsonString(loginResponse.body, 'id');
@@ -69,13 +69,13 @@ describe('Clinical records and treatment (e2e)', () => {
       .get('/patients/ana.perez@example.com')
       .set('Authorization', `Bearer ${adminToken}`)
       .set('x-clinic-id', clinicMainId)
-      .expect(200);
+      .expect(HttpStatus.OK);
 
     const patientLuis = await request(app.getHttpServer())
       .get('/patients/luis.mendez@example.com')
       .set('Authorization', `Bearer ${adminToken}`)
       .set('x-clinic-id', clinicMainId)
-      .expect(200);
+      .expect(HttpStatus.OK);
 
     patientAnaId = readJsonString(patientAna.body, 'id');
     patientLuisId = readJsonString(patientLuis.body, 'id');
@@ -97,7 +97,7 @@ describe('Clinical records and treatment (e2e)', () => {
         allergies: 'Penicillin',
         chronicDiseases: 'Hypertension',
       })
-      .expect(201);
+      .expect(HttpStatus.CREATED);
 
     clinicalRecordAnaId = readJsonString(recordAna.body, 'id');
 
@@ -109,7 +109,7 @@ describe('Clinical records and treatment (e2e)', () => {
         patientId: patientLuisId,
         allergies: 'None',
       })
-      .expect(201);
+      .expect(HttpStatus.CREATED);
 
     clinicalRecordLuisId = readJsonString(recordLuis.body, 'id');
 
@@ -120,7 +120,7 @@ describe('Clinical records and treatment (e2e)', () => {
       .send({
         patientId: patientAnaId,
       })
-      .expect(400);
+      .expect(HttpStatus.BAD_REQUEST);
   });
 
   it('blocks clinical notes on records outside clinic scope', async () => {
@@ -132,7 +132,7 @@ describe('Clinical records and treatment (e2e)', () => {
         clinicalRecordId: clinicalRecordAnaId,
         content: 'Nota fuera de alcance de clinica',
       })
-      .expect(401);
+      .expect(HttpStatus.UNAUTHORIZED);
   });
 
   it('creates treatment and valid treatment session for same patient', async () => {
@@ -147,7 +147,7 @@ describe('Clinical records and treatment (e2e)', () => {
         description: 'Plan de tratamiento fase inicial',
         basePrice: '450.00',
       })
-      .expect(201);
+      .expect(HttpStatus.CREATED);
 
     treatmentAnaId = readJsonString(treatment.body, 'id');
 
@@ -161,7 +161,7 @@ describe('Clinical records and treatment (e2e)', () => {
         price: '150.00',
         performedAt: new Date().toISOString(),
       })
-      .expect(201);
+      .expect(HttpStatus.CREATED);
 
     sessionAnaId = readJsonString(session.body, 'id');
   });
@@ -177,7 +177,7 @@ describe('Clinical records and treatment (e2e)', () => {
         price: '120.00',
         performedAt: new Date().toISOString(),
       })
-      .expect(400);
+      .expect(HttpStatus.BAD_REQUEST);
   });
   it('paginates all general collections and rejects invalid limits', async () => {
     for (const path of [
@@ -195,7 +195,7 @@ describe('Clinical records and treatment (e2e)', () => {
         .query({ limit: 1, offset: 0 })
         .auth(adminToken, { type: 'bearer' })
         .set('x-clinic-id', clinicMainId)
-        .expect(200);
+        .expect(HttpStatus.OK);
 
       expect(readJsonArray(response.body, 'items').length).toBeLessThanOrEqual(
         1,
@@ -210,14 +210,14 @@ describe('Clinical records and treatment (e2e)', () => {
         .query({ limit: 101 })
         .auth(adminToken, { type: 'bearer' })
         .set('x-clinic-id', clinicMainId)
-        .expect(400);
+        .expect(HttpStatus.BAD_REQUEST);
     }
     const records = await request(app.getHttpServer())
       .get('/clinical-records')
       .query({ limit: 1, offset: 1 })
       .auth(adminToken, { type: 'bearer' })
       .set('x-clinic-id', clinicMainId)
-      .expect(200);
+      .expect(HttpStatus.OK);
 
     expect(readJsonValue(records.body, 'total')).toBe(2);
     expect(readJsonArray(records.body, 'items')).toHaveLength(1);
@@ -232,7 +232,7 @@ describe('Clinical records and treatment (e2e)', () => {
         firstName: 'Assigned',
         lastName: 'Specialist',
       })
-      .expect(201);
+      .expect(HttpStatus.CREATED);
     const token = readJsonString(registered.body, 'token');
     const memberships = app.get<Repository<ClinicMembership>>(
       getRepositoryToken(ClinicMembership),
@@ -249,14 +249,14 @@ describe('Clinical records and treatment (e2e)', () => {
         .get('/treatment-sessions')
         .auth(token, { type: 'bearer' })
         .set('x-clinic-id', clinicMainId);
-    const inaccessible = await list().expect(200);
+    const inaccessible = await list().expect(HttpStatus.OK);
 
     expect(inaccessible.body).toMatchObject({ items: [], total: 0 });
     await request(app.getHttpServer())
       .get(`/treatment-sessions/${sessionAnaId}`)
       .auth(token, { type: 'bearer' })
       .set('x-clinic-id', clinicMainId)
-      .expect(403);
+      .expect(HttpStatus.FORBIDDEN);
     const payload = {
       treatmentId: treatmentAnaId,
       clinicalRecordId: clinicalRecordAnaId,
@@ -269,7 +269,7 @@ describe('Clinical records and treatment (e2e)', () => {
       .auth(token, { type: 'bearer' })
       .set('x-clinic-id', clinicMainId)
       .send(payload)
-      .expect(403);
+      .expect(HttpStatus.FORBIDDEN);
     const owner = await memberships.findOneByOrFail({
       clinicId: clinicMainId,
       userId: adminUserId,
@@ -286,7 +286,7 @@ describe('Clinical records and treatment (e2e)', () => {
         assignedByMembershipId: owner.id,
       }),
     );
-    const accessible = await list().expect(200);
+    const accessible = await list().expect(HttpStatus.OK);
 
     expect(accessible.body).toMatchObject({ total: 1 });
     for (const path of ['clinical-records', 'treatments']) {
@@ -294,7 +294,7 @@ describe('Clinical records and treatment (e2e)', () => {
         .get(`/${path}`)
         .auth(token, { type: 'bearer' })
         .set('x-clinic-id', clinicMainId)
-        .expect(200);
+        .expect(HttpStatus.OK);
 
       expect(response.body).toMatchObject({ total: 1 });
     }
@@ -308,7 +308,7 @@ describe('Clinical records and treatment (e2e)', () => {
         doctorId: adminUserId,
         basePrice: '10.00',
       })
-      .expect(201);
+      .expect(HttpStatus.CREATED);
 
     await request(app.getHttpServer())
       .patch(`/treatment-sessions/${sessionAnaId}`)
@@ -318,7 +318,7 @@ describe('Clinical records and treatment (e2e)', () => {
         treatmentId: readJsonString(secondTreatment.body, 'id'),
         clinicalRecordId: clinicalRecordLuisId,
       })
-      .expect(403);
+      .expect(HttpStatus.FORBIDDEN);
     await memberships.update(member.id, {
       permissionsJson: { [ClinicPermission.manageClinical]: false },
     });
@@ -326,25 +326,25 @@ describe('Clinical records and treatment (e2e)', () => {
       .get(`/treatment-sessions/${sessionAnaId}`)
       .auth(token, { type: 'bearer' })
       .set('x-clinic-id', clinicMainId)
-      .expect(200);
+      .expect(HttpStatus.OK);
     await request(app.getHttpServer())
       .post('/treatment-sessions')
       .auth(token, { type: 'bearer' })
       .set('x-clinic-id', clinicMainId)
       .send(payload)
-      .expect(403);
+      .expect(HttpStatus.FORBIDDEN);
     await request(app.getHttpServer())
       .patch(`/treatment-sessions/${sessionAnaId}`)
       .auth(token, { type: 'bearer' })
       .set('x-clinic-id', clinicMainId)
       .send({ price: '1.00' })
-      .expect(403);
+      .expect(HttpStatus.FORBIDDEN);
     await request(app.getHttpServer())
       .delete(`/treatment-sessions/${sessionAnaId}`)
       .auth(token, { type: 'bearer' })
       .set('x-clinic-id', clinicMainId)
-      .expect(403);
+      .expect(HttpStatus.FORBIDDEN);
     await memberships.update(member.id, { isActive: false });
-    await list().expect(401);
+    await list().expect(HttpStatus.UNAUTHORIZED);
   });
 });

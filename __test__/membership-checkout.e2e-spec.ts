@@ -1,6 +1,6 @@
 import { randomUUID } from 'crypto';
 
-import { INestApplication } from '@nestjs/common';
+import { HttpStatus, INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { I18nValidationPipe } from 'nestjs-i18n';
 import request from 'supertest';
@@ -210,21 +210,21 @@ describe('Membership screens: saved methods, reminders and recurring billing (is
         firstName: 'Billing',
         lastName: 'Owner',
       })
-      .expect(201);
+      .expect(HttpStatus.CREATED);
 
     token = readJsonString(owner.body, 'token');
     const clinic = await request(app.getHttpServer())
       .post('/clinics')
       .set('Authorization', `Bearer ${token}`)
       .send({ name: 'Membership E2E', email: 'billing@example.com' })
-      .expect(201);
+      .expect(HttpStatus.CREATED);
 
     clinicId = readJsonString(clinic.body, 'id');
     const other = await request(app.getHttpServer())
       .post('/clinics')
       .set('Authorization', `Bearer ${token}`)
       .send({ name: 'Other clinic' })
-      .expect(201);
+      .expect(HttpStatus.CREATED);
 
     otherClinicId = readJsonString(other.body, 'id');
   });
@@ -235,36 +235,36 @@ describe('Membership screens: saved methods, reminders and recurring billing (is
   it('requires authentication and rejects card numbers at the API boundary', async () => {
     await request(app.getHttpServer())
       .get('/membership/payment-methods')
-      .expect(401);
+      .expect(HttpStatus.UNAUTHORIZED);
     await auth('post', '/membership/payment-methods/setup')
       .send({
         type: 'card',
         requestId: randomUUID(),
         number: '4242424242424242',
       })
-      .expect(400);
+      .expect(HttpStatus.BAD_REQUEST);
   });
   it('requires verified setup approval and isolates it by clinic', async () => {
     const created = await auth('post', '/membership/payment-methods/setup')
       .send({ type: 'card', requestId: randomUUID() })
-      .expect(201);
+      .expect(HttpStatus.CREATED);
 
     setupId = readJsonString(created.body, 'setupSessionId');
     await auth(
       'post',
       `/membership/payment-methods/setup/${setupId}/confirm`,
-    ).expect(400);
+    ).expect(HttpStatus.BAD_REQUEST);
     await auth(
       'post',
       `/membership/payment-methods/setup/${setupId}/confirm`,
       otherClinicId,
-    ).expect(404);
+    ).expect(HttpStatus.NOT_FOUND);
     vault.setups.get(readJsonString(created.body, 'setupTokenId'))!.status =
       'APPROVED';
     const completed = await auth(
       'post',
       `/membership/payment-methods/setup/${setupId}/confirm`,
-    ).expect(201);
+    ).expect(HttpStatus.CREATED);
 
     cardId = readJsonString(completed.body, 'id');
     expect(completed.body).toMatchObject({
@@ -276,7 +276,7 @@ describe('Membership screens: saved methods, reminders and recurring billing (is
     const replay = await auth(
       'post',
       `/membership/payment-methods/setup/${setupId}/confirm`,
-    ).expect(201);
+    ).expect(HttpStatus.CREATED);
 
     expect(readJsonString(replay.body, 'id')).toBe(cardId);
     expect(vault.exchangeSetup).toHaveBeenCalledTimes(1);
@@ -284,14 +284,14 @@ describe('Membership screens: saved methods, reminders and recurring billing (is
   it('adds PayPal, masks the email and selects exactly one default under concurrent requests', async () => {
     const created = await auth('post', '/membership/payment-methods/setup')
       .send({ type: 'paypal', requestId: randomUUID() })
-      .expect(201);
+      .expect(HttpStatus.CREATED);
 
     vault.setups.get(readJsonString(created.body, 'setupTokenId'))!.status =
       'APPROVED';
     const completed = await auth(
       'post',
       `/membership/payment-methods/setup/${readJsonString(created.body, 'setupSessionId')}/confirm`,
-    ).expect(201);
+    ).expect(HttpStatus.CREATED);
 
     paypalId = readJsonString(completed.body, 'id');
     expect(readJsonValue(completed.body, 'maskedEmail')).toBe(
@@ -301,10 +301,12 @@ describe('Membership screens: saved methods, reminders and recurring billing (is
       [cardId, paypalId].map((paymentMethodId) =>
         auth('patch', '/membership/payment-methods/default')
           .send({ paymentMethodId })
-          .expect(200),
+          .expect(HttpStatus.OK),
       ),
     );
-    const list = await auth('get', '/membership/payment-methods').expect(200);
+    const list = await auth('get', '/membership/payment-methods').expect(
+      HttpStatus.OK,
+    );
     const paymentMethods = readJsonArray(list.body, 'methods').map(
       (method) => ({
         isDefault: readJsonBoolean(method, 'isDefault'),
@@ -316,7 +318,7 @@ describe('Membership screens: saved methods, reminders and recurring billing (is
     expect(JSON.stringify(list.body)).not.toContain('TOKEN');
     await auth('patch', '/membership/payment-methods/default', otherClinicId)
       .send({ paymentMethodId: cardId })
-      .expect(404);
+      .expect(HttpStatus.NOT_FOUND);
   });
   it('starts once under concurrency, requires consent and snapshots the discounted offer', async () => {
     payload = {
@@ -328,10 +330,14 @@ describe('Membership screens: saved methods, reminders and recurring billing (is
     };
     await auth('post', '/membership/start')
       .send({ ...payload, acceptRecurringBilling: false })
-      .expect(400);
+      .expect(HttpStatus.BAD_REQUEST);
     const [first, repeated] = await Promise.all([
-      auth('post', '/membership/start').send(payload).expect(201),
-      auth('post', '/membership/start').send(payload).expect(201),
+      auth('post', '/membership/start')
+        .send(payload)
+        .expect(HttpStatus.CREATED),
+      auth('post', '/membership/start')
+        .send(payload)
+        .expect(HttpStatus.CREATED),
     ]);
 
     expect(
@@ -356,7 +362,7 @@ describe('Membership screens: saved methods, reminders and recurring billing (is
     });
     const checkoutAlias = await auth('post', '/billing/checkout')
       .send({ ...payload, planCode: 'premium' })
-      .expect(201);
+      .expect(HttpStatus.CREATED);
 
     expect(
       readJsonString(
@@ -374,7 +380,7 @@ describe('Membership screens: saved methods, reminders and recurring billing (is
       ),
     );
     const methods = await auth('get', '/membership/payment-methods').expect(
-      200,
+      HttpStatus.OK,
     );
     const savedMethods = readJsonArray(methods.body, 'methods').map(
       (method) => ({
@@ -389,8 +395,10 @@ describe('Membership screens: saved methods, reminders and recurring billing (is
     expect(vault.createOrder).not.toHaveBeenCalled();
     await auth('post', '/membership/start')
       .send({ ...payload, requestId: randomUUID() })
-      .expect(409);
-    await auth('delete', `/membership/payment-methods/${cardId}`).expect(409);
+      .expect(HttpStatus.CONFLICT);
+    await auth('delete', `/membership/payment-methods/${cardId}`).expect(
+      HttpStatus.CONFLICT,
+    );
   });
   it('sends the day-12 reminder once, with durable state', async () => {
     const repo = db.getRepository(ClinicSubscription);
@@ -462,7 +470,9 @@ describe('Membership screens: saved methods, reminders and recurring billing (is
 
     expect(sub.status).toBe('active');
     expect(sub.paidCycles).toBe(1);
-    const restored = await auth('post', '/membership/restore').expect(201);
+    const restored = await auth('post', '/membership/restore').expect(
+      HttpStatus.CREATED,
+    );
 
     expect(readJsonValue(restored.body, 'status')).toBe('active');
     expect(vault.captureCalls).toBe(1);
@@ -470,7 +480,7 @@ describe('Membership screens: saved methods, reminders and recurring billing (is
   it('renews at full price and lets the clinic change its saved method', async () => {
     await auth('patch', '/membership/payment-methods/default')
       .send({ paymentMethodId: paypalId })
-      .expect(200);
+      .expect(HttpStatus.OK);
     await db
       .getRepository(ClinicSubscription)
       .update({ clinicId }, { nextChargeAt: new Date(Date.now() - 1000) });
@@ -481,7 +491,7 @@ describe('Membership screens: saved methods, reminders and recurring billing (is
 
     expect(charges.map((c) => c.amount)).toEqual([9000, 10000]);
     expect(charges[1].status).toBe('paid');
-    const list = await auth('get', '/membership/charges').expect(200);
+    const list = await auth('get', '/membership/charges').expect(HttpStatus.OK);
 
     expect(list.body).toHaveLength(2);
     await auth(
@@ -490,7 +500,7 @@ describe('Membership screens: saved methods, reminders and recurring billing (is
       otherClinicId,
     )
       .send({ providerOrderId: charges[1].providerOrderId })
-      .expect(404);
+      .expect(HttpStatus.NOT_FOUND);
   });
   it('rejects an unrelated provider order during reconciliation', async () => {
     const charge = await db
@@ -510,20 +520,24 @@ describe('Membership screens: saved methods, reminders and recurring billing (is
     });
     await auth('post', `/membership/charges/${charge.id}/reconcile`)
       .send({ providerOrderId: 'UNRELATED' })
-      .expect(400);
+      .expect(HttpStatus.BAD_REQUEST);
   });
   it('cancels, suppresses renewals, removes the token and refuses a second trial', async () => {
-    await auth('post', '/membership/cancel').expect(201);
+    await auth('post', '/membership/cancel').expect(HttpStatus.CREATED);
     const calls = vault.captureCalls;
 
     await renewals.processClinic(clinicId);
     expect(vault.captureCalls).toBe(calls);
-    await auth('delete', `/membership/payment-methods/${paypalId}`).expect(200);
-    await auth('delete', `/membership/payment-methods/${paypalId}`).expect(200);
+    await auth('delete', `/membership/payment-methods/${paypalId}`).expect(
+      HttpStatus.OK,
+    );
+    await auth('delete', `/membership/payment-methods/${paypalId}`).expect(
+      HttpStatus.OK,
+    );
     expect(vault.deleteToken).toHaveBeenCalledTimes(1);
     await auth('post', '/membership/start')
       .send({ ...payload, requestId: randomUUID(), startTrial: true })
-      .expect(409);
+      .expect(HttpStatus.CONFLICT);
     const record = await db
       .getRepository(MembershipPaymentMethod)
       .findOneByOrFail({ id: paypalId });

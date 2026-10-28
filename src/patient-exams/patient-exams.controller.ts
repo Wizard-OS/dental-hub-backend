@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  HttpStatus,
   Param,
   ParseUUIDPipe,
   Patch,
@@ -49,7 +50,10 @@ export class PatientExamsController {
 
   @Post()
   @ApiOperation({ summary: 'Crear examen complementario' })
-  @ApiResponse({ status: 201, description: 'Examen complementario creado' })
+  @ApiResponse({
+    status: HttpStatus.CREATED,
+    description: 'Examen complementario creado',
+  })
   create(
     @Param('patientId', ParseUUIDPipe) patientId: string,
     @GetClinicId() clinicId: string,
@@ -68,7 +72,7 @@ export class PatientExamsController {
   @Get()
   @ApiOperation({ summary: 'Listar exámenes complementarios' })
   @ApiResponse({
-    status: 200,
+    status: HttpStatus.OK,
     description: 'Lista de exámenes complementarios',
   })
   findAll(
@@ -89,7 +93,10 @@ export class PatientExamsController {
   @Get(':id')
   @ApiOperation({ summary: 'Obtener examen complementario por ID' })
   @ApiParam({ name: 'id', description: 'UUID del examen complementario' })
-  @ApiResponse({ status: 200, description: 'Examen complementario encontrado' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Examen complementario encontrado',
+  })
   findOne(
     @Param('patientId', ParseUUIDPipe) patientId: string,
     @GetClinicId() clinicId: string,
@@ -109,7 +116,7 @@ export class PatientExamsController {
   @ApiOperation({ summary: 'Actualizar examen complementario' })
   @ApiParam({ name: 'id', description: 'UUID del examen complementario' })
   @ApiResponse({
-    status: 200,
+    status: HttpStatus.OK,
     description: 'Examen complementario actualizado',
   })
   update(
@@ -132,7 +139,10 @@ export class PatientExamsController {
   @Delete(':id')
   @ApiOperation({ summary: 'Eliminar examen complementario' })
   @ApiParam({ name: 'id', description: 'UUID del examen complementario' })
-  @ApiResponse({ status: 200, description: 'Examen complementario eliminado' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Examen complementario eliminado',
+  })
   remove(
     @Param('patientId', ParseUUIDPipe) patientId: string,
     @GetClinicId() clinicId: string,

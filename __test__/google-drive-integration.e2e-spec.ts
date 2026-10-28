@@ -1,4 +1,4 @@
-import { INestApplication } from '@nestjs/common';
+import { HttpStatus, INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
 import { App } from 'supertest/types';
@@ -76,7 +76,7 @@ describe('Google Drive Integration (e2e)', () => {
         email: 'test1@google.com',
         password: 'Abc123',
       })
-      .expect(201);
+      .expect(HttpStatus.CREATED);
 
     ownerToken = readJsonString(loginResponse.body, 'token');
 
@@ -88,7 +88,7 @@ describe('Google Drive Integration (e2e)', () => {
         timezone: 'America/Montevideo',
         currency: 'USD',
       })
-      .expect(201);
+      .expect(HttpStatus.CREATED);
 
     clinicId = readJsonString(clinicResponse.body, 'id');
   });
@@ -106,7 +106,7 @@ describe('Google Drive Integration (e2e)', () => {
       .get('/integrations/google-drive/status')
       .set('Authorization', `Bearer ${ownerToken}`)
       .set('x-clinic-id', clinicId)
-      .expect(200);
+      .expect(HttpStatus.OK);
 
     expect(response.body).toMatchObject({
       provider: 'google_drive',
@@ -121,7 +121,7 @@ describe('Google Drive Integration (e2e)', () => {
       .query({ redirectUri: 'http://localhost/google-drive/callback' })
       .set('Authorization', `Bearer ${ownerToken}`)
       .set('x-clinic-id', clinicId)
-      .expect(200);
+      .expect(HttpStatus.OK);
 
     const state = new URL(
       readJsonString(oauthUrlResponse.body, 'url'),
@@ -138,7 +138,7 @@ describe('Google Drive Integration (e2e)', () => {
         state,
         redirectUri: 'http://localhost/google-drive/callback',
       })
-      .expect(201);
+      .expect(HttpStatus.CREATED);
 
     expect(connectResponse.body).toMatchObject({
       provider: 'google_drive',
@@ -152,7 +152,7 @@ describe('Google Drive Integration (e2e)', () => {
       .post('/integrations/google-drive/sync')
       .set('Authorization', `Bearer ${ownerToken}`)
       .set('x-clinic-id', clinicId)
-      .expect(201);
+      .expect(HttpStatus.CREATED);
 
     expect(syncResponse.body).toMatchObject({
       provider: 'google_drive',

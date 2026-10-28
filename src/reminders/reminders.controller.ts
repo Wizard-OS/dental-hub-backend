@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  HttpStatus,
   Param,
   Patch,
   Post,
@@ -31,7 +32,10 @@ export class RemindersController {
 
   @Post()
   @ApiOperation({ summary: 'Crear recordatorio' })
-  @ApiResponse({ status: 201, description: 'Recordatorio creado' })
+  @ApiResponse({
+    status: HttpStatus.CREATED,
+    description: 'Recordatorio creado',
+  })
   create(
     @GetClinicId() clinicId: string,
     @Body() createReminderDto: CreateReminderDto,
@@ -41,7 +45,7 @@ export class RemindersController {
 
   @Get()
   @ApiOperation({ summary: 'Listar recordatorios' })
-  @ApiResponse({ status: 200, description: 'Lista de recordatorios' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Lista de recordatorios' })
   findAll(@GetClinicId() clinicId: string) {
     return this.remindersService.findAll(clinicId);
   }
@@ -49,7 +53,10 @@ export class RemindersController {
   @Get(':id')
   @ApiOperation({ summary: 'Obtener recordatorio por ID' })
   @ApiParam({ name: 'id', description: 'UUID del recordatorio' })
-  @ApiResponse({ status: 200, description: 'Recordatorio encontrado' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Recordatorio encontrado',
+  })
   findOne(@GetClinicId() clinicId: string, @Param('id') id: string) {
     return this.remindersService.findOne(clinicId, id);
   }
@@ -57,7 +64,10 @@ export class RemindersController {
   @Patch(':id')
   @ApiOperation({ summary: 'Actualizar recordatorio' })
   @ApiParam({ name: 'id', description: 'UUID del recordatorio' })
-  @ApiResponse({ status: 200, description: 'Recordatorio actualizado' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Recordatorio actualizado',
+  })
   update(
     @GetClinicId() clinicId: string,
     @Param('id') id: string,
@@ -69,7 +79,7 @@ export class RemindersController {
   @Delete(':id')
   @ApiOperation({ summary: 'Eliminar recordatorio' })
   @ApiParam({ name: 'id', description: 'UUID del recordatorio' })
-  @ApiResponse({ status: 200, description: 'Recordatorio eliminado' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Recordatorio eliminado' })
   remove(@GetClinicId() clinicId: string, @Param('id') id: string) {
     return this.remindersService.remove(clinicId, id);
   }

@@ -5,6 +5,7 @@ import {
   Controller,
   Delete,
   Get,
+  HttpStatus,
   Param,
   Patch,
   Post,
@@ -97,7 +98,7 @@ export class PatientFilesController {
       },
     },
   })
-  @ApiResponse({ status: 201, description: 'Archivo adjuntado' })
+  @ApiResponse({ status: HttpStatus.CREATED, description: 'Archivo adjuntado' })
   @UseInterceptors(
     createUploadInterceptor({
       directory: 'patient-files',
@@ -131,7 +132,10 @@ export class PatientFilesController {
   @Post('patients/:patientId/files/import-from-drive')
   @ApiOperation({ summary: 'Importar archivo seleccionado de Google Drive' })
   @ApiParam({ name: 'patientId', description: 'UUID del paciente' })
-  @ApiResponse({ status: 201, description: 'Archivo importado al paciente' })
+  @ApiResponse({
+    status: HttpStatus.CREATED,
+    description: 'Archivo importado al paciente',
+  })
   importFromDrive(
     @GetUser() user: User,
     @GetClinicId() clinicId: string,
@@ -163,7 +167,10 @@ export class PatientFilesController {
       },
     },
   })
-  @ApiResponse({ status: 201, description: 'Foto de perfil actualizada' })
+  @ApiResponse({
+    status: HttpStatus.CREATED,
+    description: 'Foto de perfil actualizada',
+  })
   @UseInterceptors(
     createUploadInterceptor({
       directory: 'patient-files',
@@ -197,7 +204,7 @@ export class PatientFilesController {
   @Get('patients/:patientId/files')
   @ApiOperation({ summary: 'Listar archivos del paciente' })
   @ApiParam({ name: 'patientId', description: 'UUID del paciente' })
-  @ApiResponse({ status: 200, description: 'Archivos del paciente' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Archivos del paciente' })
   findAllByPatient(
     @GetClinicId() clinicId: string,
     @GetClinicMembershipId() membershipId: string,
@@ -214,7 +221,7 @@ export class PatientFilesController {
   @Get('patient-files/:id')
   @ApiOperation({ summary: 'Obtener archivo de paciente por ID' })
   @ApiParam({ name: 'id', description: 'UUID del archivo' })
-  @ApiResponse({ status: 200, description: 'Archivo encontrado' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Archivo encontrado' })
   findOne(
     @GetClinicId() clinicId: string,
     @GetClinicMembershipId() membershipId: string,
@@ -231,7 +238,7 @@ export class PatientFilesController {
   @Patch('patient-files/:id')
   @ApiOperation({ summary: 'Actualizar metadatos del archivo de paciente' })
   @ApiParam({ name: 'id', description: 'UUID del archivo' })
-  @ApiResponse({ status: 200, description: 'Metadatos actualizados' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Metadatos actualizados' })
   updateMetadata(
     @GetClinicId() clinicId: string,
     @GetClinicMembershipId() membershipId: string,
@@ -250,7 +257,7 @@ export class PatientFilesController {
   @Post('patient-files/:id/restore-from-drive')
   @ApiOperation({ summary: 'Restaurar archivo en revisión desde Google Drive' })
   @ApiParam({ name: 'id', description: 'UUID del archivo' })
-  @ApiResponse({ status: 200, description: 'Archivo restaurado' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Archivo restaurado' })
   restoreFromDrive(
     @GetClinicId() clinicId: string,
     @GetClinicMembershipId() membershipId: string,
@@ -312,7 +319,7 @@ export class PatientFilesController {
   @Get('patient-files/:id/download')
   @ApiOperation({ summary: 'Descargar archivo de paciente' })
   @ApiParam({ name: 'id', description: 'UUID del archivo' })
-  @ApiResponse({ status: 200, description: 'Archivo descargado' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Archivo descargado' })
   async download(
     @GetClinicId() clinicId: string,
     @GetClinicMembershipId() membershipId: string,
@@ -342,7 +349,7 @@ export class PatientFilesController {
   @ApiOperation({ summary: 'Eliminar archivo de paciente' })
   @ApiBody({ type: DeletePatientFileDto, required: false })
   @ApiParam({ name: 'id', description: 'UUID del archivo' })
-  @ApiResponse({ status: 200, description: 'Archivo eliminado' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Archivo eliminado' })
   remove(
     @GetClinicId() clinicId: string,
     @GetClinicMembershipId() membershipId: string,

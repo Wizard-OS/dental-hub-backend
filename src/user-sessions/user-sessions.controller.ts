@@ -1,4 +1,4 @@
-import { Controller, Delete, Get, Param } from '@nestjs/common';
+import { Controller, Delete, Get, HttpStatus, Param } from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiOperation,
@@ -20,7 +20,10 @@ export class UserSessionsController {
 
   @Get()
   @ApiOperation({ summary: 'Obtener sesiones activas del usuario' })
-  @ApiResponse({ status: 200, description: 'Lista de sesiones activas' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Lista de sesiones activas',
+  })
   getActiveSessions(@GetUser() user: User) {
     return this.userSessionsService.getActiveSessions(
       user.id,
@@ -31,14 +34,14 @@ export class UserSessionsController {
   @Delete(':id')
   @ApiOperation({ summary: 'Revocar una sesión específica' })
   @ApiParam({ name: 'id', description: 'UUID de la sesión' })
-  @ApiResponse({ status: 200, description: 'Sesión revocada' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Sesión revocada' })
   revokeSession(@GetUser() user: User, @Param('id') sessionId: string) {
     return this.userSessionsService.revokeSession(user.id, sessionId);
   }
 
   @Delete()
   @ApiOperation({ summary: 'Revocar todas las demás sesiones' })
-  @ApiResponse({ status: 200, description: 'Sesiones revocadas' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Sesiones revocadas' })
   revokeAllOtherSessions(@GetUser() user: User) {
     return this.userSessionsService.revokeAllOtherSessions(
       user.id,

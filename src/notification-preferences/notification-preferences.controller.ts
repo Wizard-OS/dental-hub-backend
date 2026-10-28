@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Patch } from '@nestjs/common';
+import { Body, Controller, Get, HttpStatus, Patch } from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiOperation,
@@ -22,14 +22,20 @@ export class NotificationPreferencesController {
 
   @Get()
   @ApiOperation({ summary: 'Obtener preferencias de notificación' })
-  @ApiResponse({ status: 200, description: 'Preferencias del usuario' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Preferencias del usuario',
+  })
   getPreferences(@GetUser() user: User) {
     return this.notificationPreferencesService.getByUser(user.id);
   }
 
   @Patch()
   @ApiOperation({ summary: 'Actualizar preferencias de notificación' })
-  @ApiResponse({ status: 200, description: 'Preferencias actualizadas' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Preferencias actualizadas',
+  })
   updatePreferences(
     @GetUser() user: User,
     @Body() dto: UpdateNotificationPreferencesDto,

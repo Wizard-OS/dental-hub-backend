@@ -1,4 +1,4 @@
-import { Query } from '@nestjs/common';
+import { HttpStatus, Query } from '@nestjs/common';
 import {
   Body,
   Controller,
@@ -52,7 +52,10 @@ export class ClinicalRecordsController {
 
   @Post()
   @ApiOperation({ summary: 'Crear registro clínico' })
-  @ApiResponse({ status: 201, description: 'Registro clínico creado' })
+  @ApiResponse({
+    status: HttpStatus.CREATED,
+    description: 'Registro clínico creado',
+  })
   create(
     @GetClinicId() clinicId: string,
     @GetClinicMembershipId() membershipId: string,
@@ -85,7 +88,10 @@ export class ClinicalRecordsController {
   @Get('patient/:patientId')
   @ApiOperation({ summary: 'Obtener registro clínico por ID' })
   @ApiParam({ name: 'patientId', description: 'UUID del registro clínico' })
-  @ApiResponse({ status: 200, description: 'Registro clínico encontrado' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Registro clínico encontrado',
+  })
   findByPatient(
     @GetClinicId() clinicId: string,
     @GetClinicMembershipId() membershipId: string,
@@ -102,7 +108,10 @@ export class ClinicalRecordsController {
   @Get(':id')
   @ApiOperation({ summary: 'Obtener registro clínico por ID' })
   @ApiParam({ name: 'id', description: 'UUID del registro clínico' })
-  @ApiResponse({ status: 200, description: 'Registro clínico encontrado' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Registro clínico encontrado',
+  })
   findOne(
     @GetClinicId() clinicId: string,
     @GetClinicMembershipId() membershipId: string,
@@ -119,7 +128,10 @@ export class ClinicalRecordsController {
   @Patch(':id')
   @ApiOperation({ summary: 'Actualizar registro clínico' })
   @ApiParam({ name: 'id', description: 'UUID del registro clínico' })
-  @ApiResponse({ status: 200, description: 'Registro clínico actualizado' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Registro clínico actualizado',
+  })
   update(
     @GetClinicId() clinicId: string,
     @GetClinicMembershipId() membershipId: string,
@@ -138,7 +150,10 @@ export class ClinicalRecordsController {
   @Delete(':id')
   @ApiOperation({ summary: 'Eliminar registro clínico' })
   @ApiParam({ name: 'id', description: 'UUID del registro clínico' })
-  @ApiResponse({ status: 200, description: 'Registro clínico eliminado' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Registro clínico eliminado',
+  })
   remove(
     @GetClinicId() clinicId: string,
     @GetClinicMembershipId() membershipId: string,

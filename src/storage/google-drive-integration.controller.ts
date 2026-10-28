@@ -1,4 +1,12 @@
-import { Body, Controller, Delete, Get, Post, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpStatus,
+  Post,
+  Query,
+} from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiOperation,
@@ -32,7 +40,7 @@ export class GoogleDriveIntegrationController {
 
   @Get('status')
   @ApiOperation({ summary: 'Obtener estado de integración Google Drive' })
-  @ApiResponse({ status: 200, description: 'Estado de Google Drive' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Estado de Google Drive' })
   getStatus(@GetClinicId() clinicId: string) {
     return this.googleDriveIntegrationService.getStatus(clinicId);
   }
@@ -40,7 +48,7 @@ export class GoogleDriveIntegrationController {
   @Get('oauth-url')
   @ApiOperation({ summary: 'Generar URL OAuth de Google Drive' })
   @ApiQuery({ name: 'redirectUri', required: true })
-  @ApiResponse({ status: 200, description: 'URL OAuth generada' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'URL OAuth generada' })
   getOAuthUrl(
     @GetUser() user: User,
     @GetClinicId() clinicId: string,
@@ -55,7 +63,10 @@ export class GoogleDriveIntegrationController {
 
   @Post('oauth-callback')
   @ApiOperation({ summary: 'Conectar Google Drive con código OAuth' })
-  @ApiResponse({ status: 201, description: 'Google Drive conectado' })
+  @ApiResponse({
+    status: HttpStatus.CREATED,
+    description: 'Google Drive conectado',
+  })
   connect(
     @GetUser() user: User,
     @GetClinicId() clinicId: string,
@@ -72,14 +83,20 @@ export class GoogleDriveIntegrationController {
 
   @Delete('disconnect')
   @ApiOperation({ summary: 'Desconectar Google Drive' })
-  @ApiResponse({ status: 200, description: 'Google Drive desconectado' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Google Drive desconectado',
+  })
   disconnect(@GetClinicId() clinicId: string) {
     return this.googleDriveIntegrationService.disconnect(clinicId);
   }
 
   @Post('sync')
   @ApiOperation({ summary: 'Sincronizar archivos desde Google Drive' })
-  @ApiResponse({ status: 201, description: 'Sincronización ejecutada' })
+  @ApiResponse({
+    status: HttpStatus.CREATED,
+    description: 'Sincronización ejecutada',
+  })
   sync(@GetClinicId() clinicId: string) {
     return this.googleDriveIntegrationService.sync(clinicId);
   }

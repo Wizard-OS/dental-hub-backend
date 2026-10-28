@@ -1,3 +1,5 @@
+import { HttpStatus } from '@nestjs/common';
+
 import { MembershipEmailProvider } from './membership-email.provider';
 
 describe('Membership email delivery adapter', () => {
@@ -20,7 +22,9 @@ describe('Membership email delivery adapter', () => {
   });
   it('uses a stable idempotency key and reports acceptance only with a provider id', async () => {
     fetchMock.mockResolvedValue(
-      new Response(JSON.stringify({ id: 'email-id' }), { status: 200 }),
+      new Response(JSON.stringify({ id: 'email-id' }), {
+        status: HttpStatus.OK,
+      }),
     );
     await expect(
       provider.send('reminder-1', {
@@ -37,7 +41,9 @@ describe('Membership email delivery adapter', () => {
     );
   });
   it('fails for provider errors without claiming the message was sent', async () => {
-    fetchMock.mockResolvedValue(new Response('{}', { status: 503 }));
+    fetchMock.mockResolvedValue(
+      new Response('{}', { status: HttpStatus.SERVICE_UNAVAILABLE }),
+    );
     await expect(
       provider.send('reminder', {
         to: 'owner@example.com',

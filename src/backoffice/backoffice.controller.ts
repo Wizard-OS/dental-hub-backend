@@ -1,4 +1,12 @@
-import { Body, Controller, Get, Param, Patch, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpStatus,
+  Param,
+  Patch,
+  Query,
+} from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiOperation,
@@ -27,14 +35,20 @@ export class BackofficeController {
 
   @Get('overview')
   @ApiOperation({ summary: 'Obtener métricas globales del SaaS' })
-  @ApiResponse({ status: 200, description: 'Resumen global de backoffice' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Resumen global de backoffice',
+  })
   getOverview() {
     return this.backofficeService.getOverview();
   }
 
   @Get('clinics')
   @ApiOperation({ summary: 'Listar clínicas para backoffice' })
-  @ApiResponse({ status: 200, description: 'Lista paginada de clínicas' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Lista paginada de clínicas',
+  })
   findClinics(@Query() queryDto: QueryBackofficeClinicsDto) {
     return this.backofficeService.findClinics(queryDto);
   }
@@ -42,7 +56,7 @@ export class BackofficeController {
   @Get('clinics/:id')
   @ApiOperation({ summary: 'Obtener detalle global de una clínica' })
   @ApiParam({ name: 'id', description: 'UUID de la clínica' })
-  @ApiResponse({ status: 200, description: 'Detalle de clínica' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Detalle de clínica' })
   findClinic(@Param('id') id: string): Promise<unknown> {
     return this.backofficeService.findClinic(id);
   }
@@ -50,7 +64,7 @@ export class BackofficeController {
   @Patch('clinics/:id')
   @ApiOperation({ summary: 'Actualizar clínica desde backoffice' })
   @ApiParam({ name: 'id', description: 'UUID de la clínica' })
-  @ApiResponse({ status: 200, description: 'Clínica actualizada' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Clínica actualizada' })
   updateClinic(
     @Param('id') id: string,
     @Body() dto: UpdateBackofficeClinicDto,
@@ -61,7 +75,10 @@ export class BackofficeController {
   @Patch('clinics/:id/subscription')
   @ApiOperation({ summary: 'Asignar plan comercial desde backoffice' })
   @ApiParam({ name: 'id', description: 'UUID de la clínica' })
-  @ApiResponse({ status: 200, description: 'Suscripción actualizada' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Suscripción actualizada',
+  })
   updateClinicSubscription(
     @Param('id') id: string,
     @Body() dto: UpdateBackofficeSubscriptionDto,
@@ -71,7 +88,10 @@ export class BackofficeController {
 
   @Get('users')
   @ApiOperation({ summary: 'Listar usuarios para backoffice' })
-  @ApiResponse({ status: 200, description: 'Lista paginada de usuarios' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Lista paginada de usuarios',
+  })
   findUsers(@Query() queryDto: QueryBackofficeUsersDto) {
     return this.backofficeService.findUsers(queryDto);
   }
@@ -79,7 +99,7 @@ export class BackofficeController {
   @Get('users/:id')
   @ApiOperation({ summary: 'Obtener detalle global de un usuario' })
   @ApiParam({ name: 'id', description: 'UUID del usuario' })
-  @ApiResponse({ status: 200, description: 'Detalle de usuario' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Detalle de usuario' })
   findUser(@Param('id') id: string) {
     return this.backofficeService.findUser(id);
   }
@@ -87,7 +107,7 @@ export class BackofficeController {
   @Patch('users/:id')
   @ApiOperation({ summary: 'Actualizar usuario desde backoffice' })
   @ApiParam({ name: 'id', description: 'UUID del usuario' })
-  @ApiResponse({ status: 200, description: 'Usuario actualizado' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Usuario actualizado' })
   updateUser(@Param('id') id: string, @Body() dto: UpdateBackofficeUserDto) {
     return this.backofficeService.updateUser(id, dto);
   }
@@ -95,7 +115,7 @@ export class BackofficeController {
   @Get('support-requests')
   @ApiOperation({ summary: 'Listar solicitudes de soporte para backoffice' })
   @ApiResponse({
-    status: 200,
+    status: HttpStatus.OK,
     description: 'Lista paginada de solicitudes de soporte',
   })
   findSupportRequests(@Query() queryDto: QueryBackofficeSupportRequestsDto) {
@@ -105,7 +125,7 @@ export class BackofficeController {
   @Patch('support-requests/:id')
   @ApiOperation({ summary: 'Actualizar estado de solicitud de soporte' })
   @ApiParam({ name: 'id', description: 'UUID de la solicitud' })
-  @ApiResponse({ status: 200, description: 'Solicitud actualizada' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Solicitud actualizada' })
   updateSupportRequest(
     @Param('id') id: string,
     @Body() dto: UpdateBackofficeSupportRequestDto,

@@ -1,6 +1,7 @@
 // Run after building: node --test __test__/personal-google-drive.test.cjs
 const { test, mock } = require('node:test');
 const assert = require('node:assert/strict');
+const { HttpStatus } = require('@nestjs/common');
 const { Readable } = require('node:stream');
 const { createHash } = require('node:crypto');
 const fs = require('node:fs/promises');
@@ -742,10 +743,10 @@ test('Drive revocation becomes a reconnect error rather than an app-session 401'
   const { service, credentials, integrations } = personal();
   await assert.rejects(
     service.withDrive(credentials, async () => {
-      throw { response: { status: 401 } };
+      throw { response: { status: HttpStatus.UNAUTHORIZED } };
     }),
     (error) =>
-      error.getStatus() === 409 &&
+      error.getStatus() === HttpStatus.CONFLICT &&
       error.getResponse().code === 'DRIVE_RECONNECT_REQUIRED',
   );
   assert.equal(integrations.update.mock.calls[0].arguments[1].status, 'error');
@@ -755,7 +756,7 @@ test('Drive quota/access failures are actionable without a storage fallback', as
   const { service, credentials } = personal();
   await assert.rejects(
     service.withDrive(credentials, async () => {
-      throw { response: { status: 403 } };
+      throw { response: { status: HttpStatus.FORBIDDEN } };
     }),
     (error) => error.getResponse().code === 'DRIVE_ACCESS_DENIED',
   );

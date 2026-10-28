@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  HttpStatus,
   Param,
   Patch,
   Post,
@@ -43,7 +44,7 @@ export class ClinicsController {
 
   @Post()
   @ApiOperation({ summary: 'Crear clínica' })
-  @ApiResponse({ status: 201, description: 'Clínica creada' })
+  @ApiResponse({ status: HttpStatus.CREATED, description: 'Clínica creada' })
   create(
     @GetUser('id') userId: string,
     @Body() createClinicDto: CreateClinicDto,
@@ -53,7 +54,7 @@ export class ClinicsController {
 
   @Get()
   @ApiOperation({ summary: 'Listar clínicas del usuario autenticado' })
-  @ApiResponse({ status: 200, description: 'Lista de clínicas' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Lista de clínicas' })
   findAll(@GetUser('id') userId: string) {
     return this.clinicsService.findAllForUser(userId);
   }
@@ -61,8 +62,11 @@ export class ClinicsController {
   @Get(':id')
   @ApiOperation({ summary: 'Obtener clínica por ID' })
   @ApiParam({ name: 'id', description: 'UUID de la clínica' })
-  @ApiResponse({ status: 200, description: 'Clínica encontrada' })
-  @ApiResponse({ status: 404, description: 'Clínica no encontrada' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Clínica encontrada' })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: 'Clínica no encontrada',
+  })
   findOne(@GetUser('id') userId: string, @Param('id') id: string) {
     return this.clinicsService.findOneForUser(userId, id);
   }
@@ -72,7 +76,10 @@ export class ClinicsController {
   @ApiSecurity('x-clinic-id')
   @ApiOperation({ summary: 'Obtener configuración de agenda de la clínica' })
   @ApiParam({ name: 'id', description: 'UUID de la clínica' })
-  @ApiResponse({ status: 200, description: 'Configuración de agenda' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Configuración de agenda',
+  })
   getAppointmentSettings(
     @GetClinicId() clinicId: string,
     @Param('id') id: string,
@@ -86,7 +93,10 @@ export class ClinicsController {
   @ApiSecurity('x-clinic-id')
   @ApiOperation({ summary: 'Actualizar configuración de agenda de la clínica' })
   @ApiParam({ name: 'id', description: 'UUID de la clínica' })
-  @ApiResponse({ status: 200, description: 'Configuración de agenda guardada' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Configuración de agenda guardada',
+  })
   updateAppointmentSettings(
     @GetClinicId() clinicId: string,
     @Param('id') id: string,
@@ -107,7 +117,7 @@ export class ClinicsController {
     description: 'UUID de la membresía del profesional',
   })
   @ApiResponse({
-    status: 200,
+    status: HttpStatus.OK,
     description: 'Configuración de agenda combinada con herencia de clínica',
   })
   getProfessionalAppointmentSettings(
@@ -137,7 +147,7 @@ export class ClinicsController {
     description: 'UUID de la membresía del profesional',
   })
   @ApiResponse({
-    status: 200,
+    status: HttpStatus.OK,
     description: 'Configuración de agenda del profesional guardada',
   })
   updateProfessionalAppointmentSettings(
@@ -163,7 +173,7 @@ export class ClinicsController {
   @ApiSecurity('x-clinic-id')
   @ApiOperation({ summary: 'Actualizar clínica' })
   @ApiParam({ name: 'id', description: 'UUID de la clínica' })
-  @ApiResponse({ status: 200, description: 'Clínica actualizada' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Clínica actualizada' })
   update(
     @GetClinicId() clinicId: string,
     @Param('id') id: string,
@@ -178,7 +188,7 @@ export class ClinicsController {
   @ApiSecurity('x-clinic-id')
   @ApiOperation({ summary: 'Eliminar clínica' })
   @ApiParam({ name: 'id', description: 'UUID de la clínica' })
-  @ApiResponse({ status: 200, description: 'Clínica eliminada' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Clínica eliminada' })
   remove(@GetClinicId() clinicId: string, @Param('id') id: string) {
     return this.clinicsService.remove(clinicId, id);
   }

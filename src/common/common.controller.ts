@@ -1,4 +1,4 @@
-import { Controller, Get, Query } from '@nestjs/common';
+import { Controller, Get, HttpStatus, Query } from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiOperation,
@@ -35,14 +35,14 @@ export class CommonController {
   @ApiOperation({
     summary: 'Obtener dashboard operativo/financiero de la clínica',
   })
-  @ApiResponse({ status: 200, description: 'Datos del dashboard' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Datos del dashboard' })
   getDashboard(@GetClinicId() clinicId: string) {
     return this.commonService.getDashboard(clinicId);
   }
 
   @Get('reports/appointments')
   @ApiOperation({ summary: 'Reporte de citas por rango y estado' })
-  @ApiResponse({ status: 200, description: 'Reporte de citas' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Reporte de citas' })
   getAppointmentsReport(
     @GetClinicId() clinicId: string,
     @Query('from') from?: string,
@@ -60,7 +60,7 @@ export class CommonController {
 
   @Get('reports/income')
   @ApiOperation({ summary: 'Reporte de ingresos por periodo' })
-  @ApiResponse({ status: 200, description: 'Reporte de ingresos' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Reporte de ingresos' })
   getIncomeReport(
     @GetClinicId() clinicId: string,
     @Query('from') from?: string,
@@ -71,14 +71,17 @@ export class CommonController {
 
   @Get('reports/pending-payments')
   @ApiOperation({ summary: 'Reporte de pagos pendientes' })
-  @ApiResponse({ status: 200, description: 'Reporte de deuda' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Reporte de deuda' })
   getPendingPaymentsReport(@GetClinicId() clinicId: string) {
     return this.commonService.getPendingPaymentsReport(clinicId);
   }
 
   @Get('reports/active-treatments')
   @ApiOperation({ summary: 'Reporte de tratamientos activos' })
-  @ApiResponse({ status: 200, description: 'Reporte de tratamientos activos' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Reporte de tratamientos activos',
+  })
   getActiveTreatmentsReport(@GetClinicId() clinicId: string) {
     return this.commonService.getActiveTreatmentsReport(clinicId);
   }

@@ -1,6 +1,6 @@
 import type { IncomingHttpHeaders } from 'http';
 
-import { Body, Controller, Headers, Post } from '@nestjs/common';
+import { Body, Controller, Headers, HttpStatus, Post } from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiOperation,
@@ -35,7 +35,10 @@ export class BillingController {
   @ApiBearerAuth()
   @ApiSecurity('x-clinic-id')
   @ApiOperation({ summary: 'Crear checkout de suscripción Premium con PayPal' })
-  @ApiResponse({ status: 201, description: 'URL de aprobación PayPal' })
+  @ApiResponse({
+    status: HttpStatus.CREATED,
+    description: 'URL de aprobación PayPal',
+  })
   createCheckout(
     @GetClinicId() clinicId: string,
     @Body() dto: CreateBillingCheckoutDto,
@@ -48,7 +51,7 @@ export class BillingController {
   @Post('webhooks/paypal')
   @Throttle({ default: { limit: 60, ttl: 60_000 } })
   @ApiOperation({ summary: 'Recibir webhooks de PayPal Billing' })
-  @ApiResponse({ status: 201, description: 'Webhook recibido' })
+  @ApiResponse({ status: HttpStatus.CREATED, description: 'Webhook recibido' })
   handlePayPalWebhook(
     @Headers() headers: IncomingHttpHeaders,
     @Body() payload: unknown,

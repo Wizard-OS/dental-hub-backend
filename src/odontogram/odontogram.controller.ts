@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  HttpStatus,
   Param,
   Patch,
   Post,
@@ -49,7 +50,10 @@ export class OdontogramController {
   @Get()
   @ApiOperation({ summary: 'Obtener odontograma actual del paciente' })
   @ApiParam({ name: 'patientId', description: 'UUID del paciente' })
-  @ApiResponse({ status: 200, description: 'Odontograma del paciente' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Odontograma del paciente',
+  })
   findByPatient(
     @GetClinicId() clinicId: string,
     @GetClinicMembershipId() membershipId: string,
@@ -66,7 +70,10 @@ export class OdontogramController {
   @Post('pdf')
   @ApiOperation({ summary: 'Generar y guardar PDF del odontograma' })
   @ApiParam({ name: 'patientId', description: 'UUID del paciente' })
-  @ApiResponse({ status: 201, description: 'PDF generado como archivo' })
+  @ApiResponse({
+    status: HttpStatus.CREATED,
+    description: 'PDF generado como archivo',
+  })
   generatePdf(
     @GetClinicId() clinicId: string,
     @GetClinicMembershipId() membershipId: string,
@@ -91,7 +98,7 @@ export class OdontogramController {
   @ApiOperation({ summary: 'Actualizar estado de una pieza dental' })
   @ApiParam({ name: 'patientId', description: 'UUID del paciente' })
   @ApiParam({ name: 'toothCode', description: 'Código FDI de pieza dental' })
-  @ApiResponse({ status: 200, description: 'Pieza actualizada' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Pieza actualizada' })
   updateTooth(
     @GetClinicId() clinicId: string,
     @GetClinicMembershipId() membershipId: string,
@@ -114,7 +121,7 @@ export class OdontogramController {
   @ApiOperation({ summary: 'Eliminar registro del odontograma' })
   @ApiParam({ name: 'patientId', description: 'UUID del paciente' })
   @ApiParam({ name: 'entryId', description: 'UUID del registro' })
-  @ApiResponse({ status: 200, description: 'Registro eliminado' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Registro eliminado' })
   removeEntry(
     @GetClinicId() clinicId: string,
     @GetClinicMembershipId() membershipId: string,

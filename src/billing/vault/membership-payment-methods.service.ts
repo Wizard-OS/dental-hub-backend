@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  HttpStatus,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -340,7 +341,8 @@ export class MembershipPaymentMethodsService {
         await this.provider.deleteToken(method.providerTokenId);
       } catch (error) {
         if (!(
-          error instanceof PayPalRequestError && error.providerStatus === 404
+          error instanceof PayPalRequestError &&
+          error.providerStatus === Number(HttpStatus.NOT_FOUND)
         ))
           throw error;
       }

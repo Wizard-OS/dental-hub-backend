@@ -7,6 +7,7 @@ import {
   Controller,
   Get,
   HttpException,
+  HttpStatus,
   INestApplication,
   Logger,
   NotFoundException,
@@ -62,7 +63,7 @@ class I18nTestController {
           'api.messages.the_uploader_membership_is_unavailable',
         ),
       },
-      409,
+      HttpStatus.CONFLICT,
     );
   }
 
@@ -179,7 +180,7 @@ describe('API internationalization over HTTP', () => {
     const response = await httpRequest(app)
       .get(`/i18n-test/success${query}`)
       .set(headers)
-      .expect(200);
+      .expect(HttpStatus.OK);
 
     expect(responseBody(response)).toEqual({
       message: expected,
@@ -190,7 +191,7 @@ describe('API internationalization over HTTP', () => {
   it('localizes a plain string response', async () => {
     const response = await httpRequest(app)
       .get('/i18n-test/plain-success?lang=es')
-      .expect(200);
+      .expect(HttpStatus.OK);
 
     expect(response.text).toBe('¡Hola!');
   });
@@ -198,16 +199,16 @@ describe('API internationalization over HTTP', () => {
   it('preserves exception status, shape and interpolated arguments', async () => {
     const response = await httpRequest(app)
       .get('/i18n-test/error?lang=es')
-      .expect(404);
+      .expect(HttpStatus.NOT_FOUND);
 
     expect(responseBody(response)).toEqual({
-      statusCode: 404,
+      statusCode: HttpStatus.NOT_FOUND,
       error: 'Not Found',
       message: 'No se encontró el archivo del paciente file-123',
     });
     const custom = await httpRequest(app)
       .get('/i18n-test/custom-error?lang=es')
-      .expect(409);
+      .expect(HttpStatus.CONFLICT);
 
     expect(responseBody(custom)).toEqual({
       code: 'UPLOAD_IDENTITY_REQUIRED',
@@ -218,7 +219,7 @@ describe('API internationalization over HTTP', () => {
   it('leaves stored message strings and arbitrary objects unchanged', async () => {
     const response = await httpRequest(app)
       .get('/i18n-test/stored?lang=es')
-      .expect(200);
+      .expect(HttpStatus.OK);
 
     expect(responseBody(response)).toEqual({
       message: 'User not found',
@@ -249,10 +250,10 @@ describe('API internationalization over HTTP', () => {
           firstName: 'Ana',
           lastName: 'García',
         })
-        .expect(400);
+        .expect(HttpStatus.BAD_REQUEST);
 
       expect(responseBody(response)).toMatchObject({
-        statusCode: 400,
+        statusCode: HttpStatus.BAD_REQUEST,
         error: 'Bad Request',
       });
       const messages = responseBody(response).message;
@@ -277,7 +278,7 @@ describe('API internationalization over HTTP', () => {
     const response = await httpRequest(app)
       .post('/i18n-test/nested?lang=es')
       .send({ weekly: [{ dayOfWeek: 8, isOpen: true, secret: 'private' }] })
-      .expect(400);
+      .expect(HttpStatus.BAD_REQUEST);
 
     expect(responseBody(response).message).toEqual(
       expect.arrayContaining([
@@ -295,7 +296,7 @@ describe('API internationalization over HTTP', () => {
     const response = await httpRequest(app)
       .post('/i18n-test/nested?lang=es')
       .send(body)
-      .expect(201);
+      .expect(HttpStatus.CREATED);
 
     expect(response.body).toEqual(body);
   });
@@ -310,7 +311,7 @@ describe('API internationalization over HTTP', () => {
     const response = await httpRequest(app)
       .post('/i18n-test/validation?lang=es')
       .send(body)
-      .expect(201);
+      .expect(HttpStatus.CREATED);
 
     expect(responseBody(response)).toEqual(body);
   });
@@ -318,21 +319,21 @@ describe('API internationalization over HTTP', () => {
   it('localizes framework authentication, upload, and routing errors', async () => {
     const unauthorized = await httpRequest(app)
       .get('/i18n-test/unauthorized?lang=es')
-      .expect(401);
+      .expect(HttpStatus.UNAUTHORIZED);
 
     expect(responseBody(unauthorized).message).toBe(
       'Debes autenticarte para continuar',
     );
     const upload = await httpRequest(app)
       .get('/i18n-test/upload?lang=es')
-      .expect(413);
+      .expect(HttpStatus.PAYLOAD_TOO_LARGE);
 
     expect(responseBody(upload).message).toBe(
       'El archivo o la solicitud supera el tamaño permitido',
     );
     const missing = await httpRequest(app)
       .get('/not-a-route?lang=es')
-      .expect(404);
+      .expect(HttpStatus.NOT_FOUND);
 
     expect(responseBody(missing).message).toBe(
       'No se encontró el recurso solicitado',
@@ -347,10 +348,10 @@ describe('API internationalization over HTTP', () => {
     try {
       const response = await httpRequest(app)
         .get('/i18n-test/unexpected?lang=es')
-        .expect(500);
+        .expect(HttpStatus.INTERNAL_SERVER_ERROR);
 
       expect(responseBody(response)).toEqual({
-        statusCode: 500,
+        statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
         message: 'Se produjo un error interno. Inténtalo de nuevo más tarde',
       });
     } finally {

@@ -1,4 +1,4 @@
-import { Query } from '@nestjs/common';
+import { HttpStatus, Query } from '@nestjs/common';
 import {
   Body,
   Controller,
@@ -42,7 +42,7 @@ export class TreatmentSessionsController {
 
   @Post()
   @ApiOperation({ summary: 'Crear sesión de tratamiento' })
-  @ApiResponse({ status: 201, description: 'Sesión creada' })
+  @ApiResponse({ status: HttpStatus.CREATED, description: 'Sesión creada' })
   create(
     @GetClinicId() clinicId: string,
     @GetClinicMembershipId() membershipId: string,
@@ -75,7 +75,7 @@ export class TreatmentSessionsController {
   @Get(':id')
   @ApiOperation({ summary: 'Obtener sesión por ID' })
   @ApiParam({ name: 'id', description: 'UUID de la sesión' })
-  @ApiResponse({ status: 200, description: 'Sesión encontrada' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Sesión encontrada' })
   findOne(
     @GetClinicId() clinicId: string,
     @GetClinicMembershipId() membershipId: string,
@@ -92,7 +92,7 @@ export class TreatmentSessionsController {
   @Patch(':id')
   @ApiOperation({ summary: 'Actualizar sesión de tratamiento' })
   @ApiParam({ name: 'id', description: 'UUID de la sesión' })
-  @ApiResponse({ status: 200, description: 'Sesión actualizada' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Sesión actualizada' })
   update(
     @GetClinicId() clinicId: string,
     @GetClinicMembershipId() membershipId: string,
@@ -111,7 +111,7 @@ export class TreatmentSessionsController {
   @Delete(':id')
   @ApiOperation({ summary: 'Eliminar sesión de tratamiento' })
   @ApiParam({ name: 'id', description: 'UUID de la sesión' })
-  @ApiResponse({ status: 200, description: 'Sesión eliminada' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Sesión eliminada' })
   remove(
     @GetClinicId() clinicId: string,
     @GetClinicMembershipId() membershipId: string,

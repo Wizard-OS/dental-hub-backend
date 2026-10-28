@@ -1,4 +1,4 @@
-import { INestApplication } from '@nestjs/common';
+import { HttpStatus, INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { I18nValidationPipe } from 'nestjs-i18n';
 import request from 'supertest';
@@ -46,7 +46,7 @@ describe('i18n responses (e2e)', () => {
         email: 'test1@google.com',
         password: 'Abc123',
       })
-      .expect(201);
+      .expect(HttpStatus.CREATED);
 
     adminToken = readJsonString(loginResponse.body, 'token');
   });
@@ -64,7 +64,7 @@ describe('i18n responses (e2e)', () => {
         email: 'noexiste@example.com',
         password: 'WrongPass123',
       })
-      .expect(401);
+      .expect(HttpStatus.UNAUTHORIZED);
 
     expect(readJsonValue(response.body, 'message')).toBe(
       'Credenciales inválidas',
@@ -79,7 +79,7 @@ describe('i18n responses (e2e)', () => {
         email: 'noexiste@example.com',
         password: 'WrongPass123',
       })
-      .expect(401);
+      .expect(HttpStatus.UNAUTHORIZED);
 
     expect(readJsonValue(response.body, 'message')).toBe(
       'Credentials are not valid',
@@ -92,7 +92,7 @@ describe('i18n responses (e2e)', () => {
       .set('Authorization', `Bearer ${adminToken}`)
       .set('x-clinic-id', clinicMainId)
       .set('x-lang', 'en')
-      .expect(400);
+      .expect(HttpStatus.BAD_REQUEST);
 
     expect(readJsonValue(response.body, 'message')).toBe(
       'El ID de la cita no es válido',
@@ -106,7 +106,7 @@ describe('i18n responses (e2e)', () => {
         email: 'noexiste@example.com',
         password: 'WrongPass123',
       })
-      .expect(401);
+      .expect(HttpStatus.UNAUTHORIZED);
 
     expect(readJsonValue(response.body, 'message')).toBe(
       'Credentials are not valid',

@@ -1,4 +1,4 @@
-import { Query } from '@nestjs/common';
+import { HttpStatus, Query } from '@nestjs/common';
 import {
   Body,
   Controller,
@@ -48,7 +48,7 @@ export class PaymentsController {
 
   @Post()
   @ApiOperation({ summary: 'Registrar pago' })
-  @ApiResponse({ status: 201, description: 'Pago registrado' })
+  @ApiResponse({ status: HttpStatus.CREATED, description: 'Pago registrado' })
   create(
     @GetClinicId() clinicId: string,
     @Body() createPaymentDto: CreatePaymentDto,
@@ -66,7 +66,7 @@ export class PaymentsController {
   @Get(':id')
   @ApiOperation({ summary: 'Obtener pago por ID' })
   @ApiParam({ name: 'id', description: 'UUID del pago' })
-  @ApiResponse({ status: 200, description: 'Pago encontrado' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Pago encontrado' })
   findOne(@GetClinicId() clinicId: string, @Param('id') id: string) {
     return this.paymentsService.findOne(clinicId, id);
   }
@@ -74,7 +74,7 @@ export class PaymentsController {
   @Patch(':id')
   @ApiOperation({ summary: 'Actualizar pago' })
   @ApiParam({ name: 'id', description: 'UUID del pago' })
-  @ApiResponse({ status: 200, description: 'Pago actualizado' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Pago actualizado' })
   update(
     @GetClinicId() clinicId: string,
     @Param('id') id: string,
@@ -86,7 +86,7 @@ export class PaymentsController {
   @Delete(':id')
   @ApiOperation({ summary: 'Eliminar pago' })
   @ApiParam({ name: 'id', description: 'UUID del pago' })
-  @ApiResponse({ status: 200, description: 'Pago eliminado' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Pago eliminado' })
   remove(@GetClinicId() clinicId: string, @Param('id') id: string) {
     return this.paymentsService.remove(clinicId, id);
   }
@@ -94,7 +94,7 @@ export class PaymentsController {
   @Patch(':id/void')
   @ApiOperation({ summary: 'Anular pago' })
   @ApiParam({ name: 'id', description: 'UUID del pago' })
-  @ApiResponse({ status: 200, description: 'Pago anulado' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Pago anulado' })
   void(
     @GetClinicId() clinicId: string,
     @Param('id') id: string,

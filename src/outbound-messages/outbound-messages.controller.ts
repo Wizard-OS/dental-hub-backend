@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  HttpStatus,
   Param,
   Patch,
   Post,
@@ -33,7 +34,7 @@ export class OutboundMessagesController {
 
   @Post()
   @ApiOperation({ summary: 'Crear mensaje saliente' })
-  @ApiResponse({ status: 201, description: 'Mensaje creado' })
+  @ApiResponse({ status: HttpStatus.CREATED, description: 'Mensaje creado' })
   create(
     @GetClinicId() clinicId: string,
     @Body() createOutboundMessageDto: CreateOutboundMessageDto,
@@ -46,7 +47,10 @@ export class OutboundMessagesController {
 
   @Get()
   @ApiOperation({ summary: 'Listar mensajes salientes' })
-  @ApiResponse({ status: 200, description: 'Lista de mensajes salientes' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Lista de mensajes salientes',
+  })
   findAll(@GetClinicId() clinicId: string) {
     return this.outboundMessagesService.findAll(clinicId);
   }
@@ -54,7 +58,7 @@ export class OutboundMessagesController {
   @Get(':id')
   @ApiOperation({ summary: 'Obtener mensaje saliente por ID' })
   @ApiParam({ name: 'id', description: 'UUID del mensaje' })
-  @ApiResponse({ status: 200, description: 'Mensaje encontrado' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Mensaje encontrado' })
   findOne(@GetClinicId() clinicId: string, @Param('id') id: string) {
     return this.outboundMessagesService.findOne(clinicId, id);
   }
@@ -62,7 +66,7 @@ export class OutboundMessagesController {
   @Patch(':id')
   @ApiOperation({ summary: 'Actualizar mensaje saliente' })
   @ApiParam({ name: 'id', description: 'UUID del mensaje' })
-  @ApiResponse({ status: 200, description: 'Mensaje actualizado' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Mensaje actualizado' })
   update(
     @GetClinicId() clinicId: string,
     @Param('id') id: string,
@@ -78,7 +82,7 @@ export class OutboundMessagesController {
   @Delete(':id')
   @ApiOperation({ summary: 'Eliminar mensaje saliente' })
   @ApiParam({ name: 'id', description: 'UUID del mensaje' })
-  @ApiResponse({ status: 200, description: 'Mensaje eliminado' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Mensaje eliminado' })
   remove(@GetClinicId() clinicId: string, @Param('id') id: string) {
     return this.outboundMessagesService.remove(clinicId, id);
   }

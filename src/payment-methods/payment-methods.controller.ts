@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  HttpStatus,
   Param,
   Patch,
   Post,
@@ -30,14 +31,20 @@ export class PaymentMethodsController {
 
   @Post()
   @ApiOperation({ summary: 'Crear método de pago' })
-  @ApiResponse({ status: 201, description: 'Método de pago creado' })
+  @ApiResponse({
+    status: HttpStatus.CREATED,
+    description: 'Método de pago creado',
+  })
   create(@GetUser() user: User, @Body() dto: CreatePaymentMethodDto) {
     return this.paymentMethodsService.create(user.id, dto);
   }
 
   @Get()
   @ApiOperation({ summary: 'Listar métodos de pago del usuario' })
-  @ApiResponse({ status: 200, description: 'Lista de métodos de pago' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Lista de métodos de pago',
+  })
   findAll(@GetUser() user: User) {
     return this.paymentMethodsService.findAll(user.id);
   }
@@ -45,7 +52,10 @@ export class PaymentMethodsController {
   @Get(':id')
   @ApiOperation({ summary: 'Obtener método de pago por ID' })
   @ApiParam({ name: 'id', description: 'UUID del método de pago' })
-  @ApiResponse({ status: 200, description: 'Método de pago encontrado' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Método de pago encontrado',
+  })
   findOne(@GetUser() user: User, @Param('id') id: string) {
     return this.paymentMethodsService.findOne(user.id, id);
   }
@@ -53,7 +63,10 @@ export class PaymentMethodsController {
   @Patch(':id')
   @ApiOperation({ summary: 'Actualizar método de pago' })
   @ApiParam({ name: 'id', description: 'UUID del método de pago' })
-  @ApiResponse({ status: 200, description: 'Método de pago actualizado' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Método de pago actualizado',
+  })
   update(
     @GetUser() user: User,
     @Param('id') id: string,
@@ -65,7 +78,10 @@ export class PaymentMethodsController {
   @Delete(':id')
   @ApiOperation({ summary: 'Eliminar método de pago' })
   @ApiParam({ name: 'id', description: 'UUID del método de pago' })
-  @ApiResponse({ status: 200, description: 'Método de pago eliminado' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Método de pago eliminado',
+  })
   remove(@GetUser() user: User, @Param('id') id: string) {
     return this.paymentMethodsService.remove(user.id, id);
   }
@@ -74,7 +90,7 @@ export class PaymentMethodsController {
   @ApiOperation({ summary: 'Establecer método de pago como predeterminado' })
   @ApiParam({ name: 'id', description: 'UUID del método de pago' })
   @ApiResponse({
-    status: 200,
+    status: HttpStatus.OK,
     description: 'Método de pago establecido como predeterminado',
   })
   setDefault(@GetUser() user: User, @Param('id') id: string) {

@@ -1,4 +1,4 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get, HttpStatus } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 
 import { Auth } from '../auth/decorators';
@@ -13,7 +13,10 @@ export class SeedController {
 
   @Get()
   @ApiOperation({ summary: 'Ejecutar seed de datos de prueba' })
-  @ApiResponse({ status: 200, description: 'Seed ejecutado correctamente' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Seed ejecutado correctamente',
+  })
   executeSeed() {
     return this.seedService.runSeed();
   }

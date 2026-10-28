@@ -6,6 +6,7 @@ import * as path from 'node:path';
 import {
   Body,
   Controller,
+  HttpStatus,
   INestApplication,
   Post,
   UploadedFile as UploadedFileParameter,
@@ -77,7 +78,7 @@ describe('upload dependency compatibility', () => {
           filename: 'document.pdf',
           contentType: 'application/pdf',
         })
-        .expect(201);
+        .expect(HttpStatus.CREATED);
 
       expect(response.body).toEqual({ size });
     },
@@ -90,7 +91,7 @@ describe('upload dependency compatibility', () => {
         filename: 'document.pdf',
         contentType: 'application/pdf',
       })
-      .expect(413);
+      .expect(HttpStatus.PAYLOAD_TOO_LARGE);
 
     expect(storedPaths.size).toBe(1);
     for (const filePath of storedPaths) {
@@ -107,7 +108,7 @@ describe('upload dependency compatibility', () => {
         filename: 'script.js',
         contentType: 'application/javascript',
       })
-      .expect(400);
+      .expect(HttpStatus.BAD_REQUEST);
 
     expect(storedPaths.size).toBe(0);
   });
@@ -116,7 +117,7 @@ describe('upload dependency compatibility', () => {
     const response = await request(app.getHttpServer() as Server)
       .post('/upload-contract')
       .field('note', 'a'.repeat(1024 * 1024 - 1))
-      .expect(201);
+      .expect(HttpStatus.CREATED);
 
     expect(response.body).toEqual({ fieldLength: 1024 * 1024 - 1 });
   });
@@ -127,7 +128,7 @@ describe('upload dependency compatibility', () => {
       await request(app.getHttpServer() as Server)
         .post('/upload-contract')
         .field('note', 'a'.repeat(size))
-        .expect(400);
+        .expect(HttpStatus.BAD_REQUEST);
     },
   );
   it('rejects excessive multipart fields', async () => {
@@ -136,7 +137,7 @@ describe('upload dependency compatibility', () => {
     );
 
     for (let i = 0; i < 11; i++) upload = upload.field(`field${i}`, 'value');
-    await upload.expect(400);
+    await upload.expect(HttpStatus.BAD_REQUEST);
   });
 
   it('rejects additional files and removes already written files', async () => {
@@ -150,7 +151,7 @@ describe('upload dependency compatibility', () => {
         filename: 'second.pdf',
         contentType: 'application/pdf',
       })
-      .expect(400);
+      .expect(HttpStatus.BAD_REQUEST);
     for (const stored of storedPaths)
       await expect(fs.access(stored)).rejects.toThrow();
   });

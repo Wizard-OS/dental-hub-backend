@@ -1,6 +1,13 @@
 import type { Server } from 'node:http';
 
-import { Body, Controller, Get, INestApplication, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpStatus,
+  INestApplication,
+  Post,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
@@ -115,10 +122,10 @@ describe('production HTTP security pipeline', () => {
   it('requires a bearer token on an undecorated route and permits an explicit public route', async () => {
     await request(app.getHttpServer() as Server)
       .get('/api/security/private')
-      .expect(401);
+      .expect(HttpStatus.UNAUTHORIZED);
     await request(app.getHttpServer() as Server)
       .get('/api/security/public')
-      .expect(200)
+      .expect(HttpStatus.OK)
       .expect('X-Content-Type-Options', 'nosniff');
   });
 
@@ -128,7 +135,7 @@ describe('production HTTP security pipeline', () => {
     await request(app.getHttpServer() as Server)
       .get('/api/security/private')
       .auth(token, { type: 'bearer' })
-      .expect(200);
+      .expect(HttpStatus.OK);
   });
 
   it('rejects expired, wrong-algorithm and wrong-secret tokens', async () => {
@@ -143,7 +150,7 @@ describe('production HTTP security pipeline', () => {
       await request(app.getHttpServer() as Server)
         .get('/api/security/private')
         .auth(token, { type: 'bearer' })
-        .expect(401);
+        .expect(HttpStatus.UNAUTHORIZED);
     }
     expect(users.findOneBy).not.toHaveBeenCalled();
   });
@@ -152,7 +159,7 @@ describe('production HTTP security pipeline', () => {
     const denied = await request(app.getHttpServer() as Server)
       .get('/api/security/public')
       .set('Origin', 'https://attacker.example')
-      .expect(200);
+      .expect(HttpStatus.OK);
 
     expect(denied.headers['access-control-allow-origin']).toBeUndefined();
     await request(app.getHttpServer() as Server)
@@ -165,11 +172,11 @@ describe('production HTTP security pipeline', () => {
     await request(app.getHttpServer() as Server)
       .post('/api/security/validate')
       .send({ password: 'x'.repeat(2000) })
-      .expect(413);
+      .expect(HttpStatus.PAYLOAD_TOO_LARGE);
     const response = await request(app.getHttpServer() as Server)
       .post('/api/security/validate')
       .send({ email: 'invalid', password: 'private-secret', admin: true })
-      .expect(400);
+      .expect(HttpStatus.BAD_REQUEST);
 
     expect(JSON.stringify(response.body)).not.toContain('private-secret');
     expect(JSON.stringify(response.body)).not.toContain('target');
@@ -177,14 +184,14 @@ describe('production HTTP security pipeline', () => {
   it('enforces rate limits and ignores spoofed forwarded IPs with proxy trust disabled', async () => {
     await request(app.getHttpServer() as Server)
       .get('/api/security/rate')
-      .expect(200);
+      .expect(HttpStatus.OK);
     await request(app.getHttpServer() as Server)
       .get('/api/security/rate')
-      .expect(200);
+      .expect(HttpStatus.OK);
     await request(app.getHttpServer() as Server)
       .get('/api/security/rate')
       .set('X-Forwarded-For', '203.0.113.42')
-      .expect(429);
+      .expect(HttpStatus.TOO_MANY_REQUESTS);
   });
 
   it('returns 400 for malformed JSON without echoing its contents', async () => {
@@ -192,7 +199,7 @@ describe('production HTTP security pipeline', () => {
       .post('/api/security/validate')
       .set('Content-Type', 'application/json')
       .send('{"password":"private-secret"')
-      .expect(400);
+      .expect(HttpStatus.BAD_REQUEST);
 
     expect(JSON.stringify(response.body)).not.toContain('private-secret');
   });

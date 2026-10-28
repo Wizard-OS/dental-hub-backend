@@ -1,4 +1,4 @@
-import { INestApplication } from '@nestjs/common';
+import { HttpStatus, INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
 import { App } from 'supertest/types';
@@ -44,7 +44,7 @@ describe('Messaging, reminders, and expenses (e2e)', () => {
         email: 'test1@google.com',
         password: 'Abc123',
       })
-      .expect(201);
+      .expect(HttpStatus.CREATED);
 
     adminToken = readJsonString(loginResponse.body, 'token');
 
@@ -52,7 +52,7 @@ describe('Messaging, reminders, and expenses (e2e)', () => {
       .get('/patients/ana.perez@example.com')
       .set('Authorization', `Bearer ${adminToken}`)
       .set('x-clinic-id', clinicMainId)
-      .expect(200);
+      .expect(HttpStatus.OK);
 
     patientAnaId = readJsonString(patientAna.body, 'id');
 
@@ -60,7 +60,7 @@ describe('Messaging, reminders, and expenses (e2e)', () => {
       .get('/appointments')
       .set('Authorization', `Bearer ${adminToken}`)
       .set('x-clinic-id', clinicMainId)
-      .expect(200);
+      .expect(HttpStatus.OK);
 
     appointmentId = readJsonString(appointments.body, 'items', 0, 'id');
   });
@@ -82,7 +82,7 @@ describe('Messaging, reminders, and expenses (e2e)', () => {
         name: 'Recordatorio 24h',
         body: 'Hola {{firstName}}, te recordamos tu cita para mañana.',
       })
-      .expect(201);
+      .expect(HttpStatus.CREATED);
 
     templateId = readJsonString(templateResponse.body, 'id');
 
@@ -96,7 +96,7 @@ describe('Messaging, reminders, and expenses (e2e)', () => {
         channel: 'email',
         scheduledAt: new Date(Date.now() + 3_600_000).toISOString(),
       })
-      .expect(201);
+      .expect(HttpStatus.CREATED);
 
     reminderId = readJsonString(reminderResponse.body, 'id');
 
@@ -119,7 +119,7 @@ describe('Messaging, reminders, and expenses (e2e)', () => {
           appointmentDate: '2026-03-10',
         },
       })
-      .expect(201);
+      .expect(HttpStatus.CREATED);
 
     outboundMessageId = readJsonString(outboundResponse.body, 'id');
 
@@ -130,7 +130,7 @@ describe('Messaging, reminders, and expenses (e2e)', () => {
       .send({
         status: 'sent',
       })
-      .expect(200);
+      .expect(HttpStatus.OK);
 
     expect(readJsonValue(updated.body, 'status')).toBe('sent');
     expect(readJsonValue(updated.body, 'providerMessageId')).toBeNull();
@@ -148,13 +148,13 @@ describe('Messaging, reminders, and expenses (e2e)', () => {
         spentAt: new Date().toISOString(),
         notes: 'Guantes y mascarillas',
       })
-      .expect(201);
+      .expect(HttpStatus.CREATED);
 
     const totals = await request(app.getHttpServer())
       .get('/expenses/totals')
       .set('Authorization', `Bearer ${adminToken}`)
       .set('x-clinic-id', clinicMainId)
-      .expect(200);
+      .expect(HttpStatus.OK);
 
     expect(Number(totals.text)).toBeGreaterThan(0);
 
@@ -162,7 +162,7 @@ describe('Messaging, reminders, and expenses (e2e)', () => {
       .get('/common/dashboard')
       .set('Authorization', `Bearer ${adminToken}`)
       .set('x-clinic-id', clinicMainId)
-      .expect(200);
+      .expect(HttpStatus.OK);
 
     expect(
       Number(readJsonString(dashboard.body, 'financial', 'expenseTotal')),
@@ -180,6 +180,6 @@ describe('Messaging, reminders, and expenses (e2e)', () => {
       .send({
         status: 'sent',
       })
-      .expect(401);
+      .expect(HttpStatus.UNAUTHORIZED);
   });
 });

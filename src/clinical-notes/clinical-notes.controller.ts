@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  HttpStatus,
   Param,
   ParseUUIDPipe,
   Patch,
@@ -52,7 +53,10 @@ export class ClinicalNotesController {
 
   @Post()
   @ApiOperation({ summary: 'Crear nota clínica' })
-  @ApiResponse({ status: 201, description: 'Nota clínica creada' })
+  @ApiResponse({
+    status: HttpStatus.CREATED,
+    description: 'Nota clínica creada',
+  })
   create(
     @GetClinicId() clinicId: string,
     @GetUser('id') authorId: string,
@@ -88,7 +92,10 @@ export class ClinicalNotesController {
   @Get('patient/:patientId')
   @ApiOperation({ summary: 'Obtener nota clínica por ID' })
   @ApiParam({ name: 'patientId', description: 'UUID de la nota clínica' })
-  @ApiResponse({ status: 200, description: 'Nota clínica encontrada' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Nota clínica encontrada',
+  })
   findByPatient(
     @GetClinicId() clinicId: string,
     @GetClinicMembershipId() membershipId: string,
@@ -107,7 +114,10 @@ export class ClinicalNotesController {
   @Get(':id')
   @ApiOperation({ summary: 'Obtener nota clínica por ID' })
   @ApiParam({ name: 'id', description: 'UUID de la nota clínica' })
-  @ApiResponse({ status: 200, description: 'Nota clínica encontrada' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Nota clínica encontrada',
+  })
   findOne(
     @GetClinicId() clinicId: string,
     @GetClinicMembershipId() membershipId: string,
@@ -124,7 +134,10 @@ export class ClinicalNotesController {
   @Patch(':id')
   @ApiOperation({ summary: 'Actualizar nota clínica' })
   @ApiParam({ name: 'id', description: 'UUID de la nota clínica' })
-  @ApiResponse({ status: 200, description: 'Nota clínica actualizada' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Nota clínica actualizada',
+  })
   update(
     @GetClinicId() clinicId: string,
     @GetClinicMembershipId() membershipId: string,
@@ -143,7 +156,7 @@ export class ClinicalNotesController {
   @Delete(':id')
   @ApiOperation({ summary: 'Eliminar nota clínica' })
   @ApiParam({ name: 'id', description: 'UUID de la nota clínica' })
-  @ApiResponse({ status: 200, description: 'Nota clínica eliminada' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Nota clínica eliminada' })
   remove(
     @GetClinicId() clinicId: string,
     @GetClinicMembershipId() membershipId: string,

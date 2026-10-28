@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  HttpStatus,
   Param,
   Patch,
   Post,
@@ -50,7 +51,7 @@ export class PatientsController {
 
   @Post('create')
   @ApiOperation({ summary: 'Crear paciente' })
-  @ApiResponse({ status: 201, description: 'Paciente creado' })
+  @ApiResponse({ status: HttpStatus.CREATED, description: 'Paciente creado' })
   create(
     @GetClinicId() clinicId: string,
     @GetClinicMembershipId() membershipId: string,
@@ -66,7 +67,7 @@ export class PatientsController {
 
   @Get()
   @ApiOperation({ summary: 'Listar pacientes (paginado)' })
-  @ApiResponse({ status: 200, description: 'Lista de pacientes' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Lista de pacientes' })
   findAll(
     @GetClinicId() clinicId: string,
     @GetClinicMembershipId() membershipId: string,
@@ -83,8 +84,11 @@ export class PatientsController {
   @Get(':term')
   @ApiOperation({ summary: 'Buscar paciente por ID o término' })
   @ApiParam({ name: 'term', description: 'UUID o término de búsqueda' })
-  @ApiResponse({ status: 200, description: 'Paciente encontrado' })
-  @ApiResponse({ status: 404, description: 'Paciente no encontrado' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Paciente encontrado' })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: 'Paciente no encontrado',
+  })
   findOne(
     @GetClinicId() clinicId: string,
     @GetClinicMembershipId() membershipId: string,
@@ -101,7 +105,7 @@ export class PatientsController {
   @Patch(':id')
   @ApiOperation({ summary: 'Actualizar paciente' })
   @ApiParam({ name: 'id', description: 'UUID del paciente' })
-  @ApiResponse({ status: 200, description: 'Paciente actualizado' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Paciente actualizado' })
   update(
     @GetClinicId() clinicId: string,
     @GetClinicMembershipId() membershipId: string,
@@ -120,7 +124,7 @@ export class PatientsController {
   @Delete(':id')
   @ApiOperation({ summary: 'Archivar paciente' })
   @ApiParam({ name: 'id', description: 'UUID del paciente' })
-  @ApiResponse({ status: 200, description: 'Paciente archivado' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Paciente archivado' })
   remove(
     @GetClinicId() clinicId: string,
     @GetClinicMembershipId() membershipId: string,
@@ -137,7 +141,7 @@ export class PatientsController {
   @Patch(':id/reactivate')
   @ApiOperation({ summary: 'Reactivar paciente archivado' })
   @ApiParam({ name: 'id', description: 'UUID del paciente' })
-  @ApiResponse({ status: 200, description: 'Paciente reactivado' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Paciente reactivado' })
   reactivate(
     @GetClinicId() clinicId: string,
     @GetClinicMembershipId() membershipId: string,

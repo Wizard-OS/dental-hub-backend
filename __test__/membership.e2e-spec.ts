@@ -1,4 +1,4 @@
-import { INestApplication } from '@nestjs/common';
+import { HttpStatus, INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
 import { App } from 'supertest/types';
@@ -45,7 +45,7 @@ describe('Membership limits (e2e)', () => {
         firstName: 'Owner',
         lastName: 'Membership',
       })
-      .expect(201);
+      .expect(HttpStatus.CREATED);
 
     ownerToken = readJsonString(owner.body, 'token');
 
@@ -57,7 +57,7 @@ describe('Membership limits (e2e)', () => {
         firstName: 'Specialist',
         lastName: 'Dental',
       })
-      .expect(201);
+      .expect(HttpStatus.CREATED);
 
     specialistToken = readJsonString(specialist.body, 'token');
     specialistUserId = readJsonString(specialist.body, 'id');
@@ -70,7 +70,7 @@ describe('Membership limits (e2e)', () => {
         firstName: 'Extra',
         lastName: 'Specialist',
       })
-      .expect(201);
+      .expect(HttpStatus.CREATED);
 
     extraSpecialistUserId = readJsonString(extraSpecialist.body, 'id');
 
@@ -82,7 +82,7 @@ describe('Membership limits (e2e)', () => {
         timezone: 'America/Montevideo',
         currency: 'USD',
       })
-      .expect(201);
+      .expect(HttpStatus.CREATED);
 
     clinicId = readJsonString(clinic.body, 'id');
   });
@@ -98,7 +98,7 @@ describe('Membership limits (e2e)', () => {
       .get('/membership/current')
       .set('Authorization', `Bearer ${ownerToken}`)
       .set('x-clinic-id', clinicId)
-      .expect(200);
+      .expect(HttpStatus.OK);
 
     expect(readJsonValue(current.body, 'plan')).toEqual(
       expect.objectContaining({ code: 'free' }),
@@ -131,7 +131,7 @@ describe('Membership limits (e2e)', () => {
         userId: specialistUserId,
         role: 'specialist',
       })
-      .expect(201);
+      .expect(HttpStatus.CREATED);
 
     specialistMembershipId = readJsonString(specialistMembership.body, 'id');
 
@@ -144,7 +144,7 @@ describe('Membership limits (e2e)', () => {
         userId: extraSpecialistUserId,
         role: 'specialist',
       })
-      .expect(400);
+      .expect(HttpStatus.BAD_REQUEST);
   });
 
   it('allows multiple free patients and reactivates archived patients without a commercial patient limit', async () => {
@@ -167,7 +167,7 @@ describe('Membership limits (e2e)', () => {
             .toString()
             .padStart(2, '0')}`,
         })
-        .expect(201);
+        .expect(HttpStatus.CREATED);
 
       if (i === 0) archivedPatientId = readJsonString(patient.body, 'id');
 
@@ -178,19 +178,19 @@ describe('Membership limits (e2e)', () => {
       .delete(`/patients/${archivedPatientId}`)
       .set('Authorization', `Bearer ${ownerToken}`)
       .set('x-clinic-id', clinicId)
-      .expect(200);
+      .expect(HttpStatus.OK);
 
     await request(app.getHttpServer())
       .patch(`/patients/${archivedPatientId}/reactivate`)
       .set('Authorization', `Bearer ${ownerToken}`)
       .set('x-clinic-id', clinicId)
-      .expect(200);
+      .expect(HttpStatus.OK);
 
     const afterPatients = await request(app.getHttpServer())
       .get('/membership/current')
       .set('Authorization', `Bearer ${ownerToken}`)
       .set('x-clinic-id', clinicId)
-      .expect(200);
+      .expect(HttpStatus.OK);
 
     expect(
       readJsonValue(afterPatients.body, 'limits', 'activePatients'),
@@ -229,7 +229,7 @@ describe('Membership limits (e2e)', () => {
         filename: 'blocked-storage.pdf',
         contentType: 'application/pdf',
       })
-      .expect(400);
+      .expect(HttpStatus.BAD_REQUEST);
   });
 
   it('allows premium capacity and keeps specialist patient contact hidden', async () => {
@@ -241,7 +241,7 @@ describe('Membership limits (e2e)', () => {
         planCode: 'premium',
         reason: 'E2E upgrade',
       })
-      .expect(200);
+      .expect(HttpStatus.OK);
 
     await request(app.getHttpServer())
       .post('/clinic-memberships')
@@ -252,7 +252,7 @@ describe('Membership limits (e2e)', () => {
         userId: extraSpecialistUserId,
         role: 'specialist',
       })
-      .expect(201);
+      .expect(HttpStatus.CREATED);
 
     const patient = await request(app.getHttpServer())
       .post('/patients/create')
@@ -270,7 +270,7 @@ describe('Membership limits (e2e)', () => {
         address: 'Hidden address',
         emergencyContact: 'Hidden contact',
       })
-      .expect(201);
+      .expect(HttpStatus.CREATED);
 
     await request(app.getHttpServer())
       .post('/patient-assignments')
@@ -280,13 +280,13 @@ describe('Membership limits (e2e)', () => {
         patientId: readJsonString(patient.body, 'id'),
         professionalMembershipId: specialistMembershipId,
       })
-      .expect(201);
+      .expect(HttpStatus.CREATED);
 
     const patients = await request(app.getHttpServer())
       .get('/patients')
       .set('Authorization', `Bearer ${specialistToken}`)
       .set('x-clinic-id', clinicId)
-      .expect(200);
+      .expect(HttpStatus.OK);
 
     expect(patients.body).toEqual(
       expect.arrayContaining([

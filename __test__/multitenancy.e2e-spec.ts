@@ -1,4 +1,4 @@
-import { INestApplication } from '@nestjs/common';
+import { HttpStatus, INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
 import { App } from 'supertest/types';
@@ -51,7 +51,7 @@ describe('Multi-tenant clinic scope (e2e)', () => {
         email: 'test1@google.com',
         password: 'Abc123',
       })
-      .expect(201);
+      .expect(HttpStatus.CREATED);
 
     adminToken = readJsonString(adminLogin.body, 'token');
     adminUserId = readJsonString(adminLogin.body, 'id');
@@ -62,7 +62,7 @@ describe('Multi-tenant clinic scope (e2e)', () => {
         email: 'test3@google.com',
         password: 'Abc123',
       })
-      .expect(201);
+      .expect(HttpStatus.CREATED);
 
     doctorEastToken = readJsonString(doctorEastLogin.body, 'token');
     doctorEastUserId = readJsonString(doctorEastLogin.body, 'id');
@@ -71,7 +71,7 @@ describe('Multi-tenant clinic scope (e2e)', () => {
       .get('/patients/ana.perez@example.com')
       .set('Authorization', `Bearer ${adminToken}`)
       .set('x-clinic-id', clinicMainId)
-      .expect(200);
+      .expect(HttpStatus.OK);
 
     patientAnaId = readJsonString(patientAna.body, 'id');
 
@@ -83,7 +83,7 @@ describe('Multi-tenant clinic scope (e2e)', () => {
         firstName: 'Recepcion',
         lastName: 'Dental',
       })
-      .expect(201);
+      .expect(HttpStatus.CREATED);
 
     receptionistUserId = readJsonString(receptionist.body, 'id');
     receptionistToken = readJsonString(receptionist.body, 'token');
@@ -102,7 +102,7 @@ describe('Multi-tenant clinic scope (e2e)', () => {
         email: 'test1@google.com',
         password: 'Abc123',
       })
-      .expect(201);
+      .expect(HttpStatus.CREATED);
 
     expect(readJsonValue(response.body, 'memberships')).toEqual(
       expect.arrayContaining([
@@ -123,7 +123,7 @@ describe('Multi-tenant clinic scope (e2e)', () => {
     const response = await request(app.getHttpServer())
       .get('/common/countries')
       .set('Authorization', `Bearer ${adminToken}`)
-      .expect(200);
+      .expect(HttpStatus.OK);
 
     expect(response.body).toEqual(
       expect.arrayContaining([
@@ -142,7 +142,7 @@ describe('Multi-tenant clinic scope (e2e)', () => {
     const clinics = await request(app.getHttpServer())
       .get('/clinics')
       .set('Authorization', `Bearer ${adminToken}`)
-      .expect(200);
+      .expect(HttpStatus.OK);
 
     expect(clinics.body).toHaveLength(1);
     expect(readJsonString(clinics.body, 0, 'id')).toBe(clinicMainId);
@@ -153,7 +153,7 @@ describe('Multi-tenant clinic scope (e2e)', () => {
       .get('/patients/sofia.romero@example.com')
       .set('Authorization', `Bearer ${adminToken}`)
       .set('x-clinic-id', clinicEastId)
-      .expect(401);
+      .expect(HttpStatus.UNAUTHORIZED);
   });
 
   it('allows duplicate patient contact data across clinics but not inside one clinic', async () => {
@@ -172,7 +172,7 @@ describe('Multi-tenant clinic scope (e2e)', () => {
         birthDate: '1990-01-01',
         gender: 'Female',
       })
-      .expect(201);
+      .expect(HttpStatus.CREATED);
 
     await request(app.getHttpServer())
       .post('/patients/create')
@@ -186,7 +186,7 @@ describe('Multi-tenant clinic scope (e2e)', () => {
         birthDate: '1990-01-01',
         gender: 'Female',
       })
-      .expect(201);
+      .expect(HttpStatus.CREATED);
 
     await request(app.getHttpServer())
       .post('/patients/create')
@@ -200,7 +200,7 @@ describe('Multi-tenant clinic scope (e2e)', () => {
         birthDate: '1990-01-01',
         gender: 'Female',
       })
-      .expect(400);
+      .expect(HttpStatus.BAD_REQUEST);
   });
 
   it('creates memberships only for owner/admin and blocks receptionist management', async () => {
@@ -212,7 +212,7 @@ describe('Multi-tenant clinic scope (e2e)', () => {
         planCode: 'premium',
         reason: 'Allow receptionist membership in multitenancy regression',
       })
-      .expect(200);
+      .expect(HttpStatus.OK);
 
     await request(app.getHttpServer())
       .post('/clinic-memberships')
@@ -223,13 +223,13 @@ describe('Multi-tenant clinic scope (e2e)', () => {
         userId: receptionistUserId,
         role: 'receptionist',
       })
-      .expect(201);
+      .expect(HttpStatus.CREATED);
 
     await request(app.getHttpServer())
       .get('/clinic-memberships')
       .set('Authorization', `Bearer ${receptionistToken}`)
       .set('x-clinic-id', clinicMainId)
-      .expect(403);
+      .expect(HttpStatus.FORBIDDEN);
   });
 
   it('rejects treatments assigned to professionals from another clinic', async () => {
@@ -244,7 +244,7 @@ describe('Multi-tenant clinic scope (e2e)', () => {
         description: 'No debe permitir profesional de otra clinica',
         basePrice: '250.00',
       })
-      .expect(400);
+      .expect(HttpStatus.BAD_REQUEST);
   });
 
   it('creates a new clinic with owner membership for the authenticated user', async () => {
@@ -256,7 +256,7 @@ describe('Multi-tenant clinic scope (e2e)', () => {
         timezone: 'America/Montevideo',
         currency: 'USD',
       })
-      .expect(201);
+      .expect(HttpStatus.CREATED);
 
     newClinicId = readJsonString(clinic.body, 'id');
     expect(clinic.body).toEqual(
@@ -273,7 +273,7 @@ describe('Multi-tenant clinic scope (e2e)', () => {
       .get('/clinic-memberships')
       .set('Authorization', `Bearer ${adminToken}`)
       .set('x-clinic-id', readJsonString(clinic.body, 'id'))
-      .expect(200);
+      .expect(HttpStatus.OK);
 
     expect(memberships.body).toEqual(
       expect.arrayContaining([
@@ -294,7 +294,7 @@ describe('Multi-tenant clinic scope (e2e)', () => {
       .send({
         countryCode: 'uy',
       })
-      .expect(200);
+      .expect(HttpStatus.OK);
 
     expect(derived.body).toEqual(
       expect.objectContaining({
@@ -314,7 +314,7 @@ describe('Multi-tenant clinic scope (e2e)', () => {
         countryCode: 'UY',
         currency: 'USD',
       })
-      .expect(200);
+      .expect(HttpStatus.OK);
 
     expect(overridden.body).toEqual(
       expect.objectContaining({

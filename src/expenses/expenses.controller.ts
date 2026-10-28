@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  HttpStatus,
   Param,
   Patch,
   Post,
@@ -35,7 +36,7 @@ export class ExpensesController {
 
   @Post()
   @ApiOperation({ summary: 'Registrar gasto' })
-  @ApiResponse({ status: 201, description: 'Gasto registrado' })
+  @ApiResponse({ status: HttpStatus.CREATED, description: 'Gasto registrado' })
   create(
     @GetClinicId() clinicId: string,
     @Body() createExpenseDto: CreateExpenseDto,
@@ -64,7 +65,7 @@ export class ExpensesController {
     required: false,
     description: 'Fecha fin (ISO 8601)',
   })
-  @ApiResponse({ status: 200, description: 'Totales de gastos' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Totales de gastos' })
   totals(
     @GetClinicId() clinicId: string,
     @Query('from') from?: string,
@@ -76,7 +77,7 @@ export class ExpensesController {
   @Get(':id')
   @ApiOperation({ summary: 'Obtener gasto por ID' })
   @ApiParam({ name: 'id', description: 'UUID del gasto' })
-  @ApiResponse({ status: 200, description: 'Gasto encontrado' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Gasto encontrado' })
   findOne(@GetClinicId() clinicId: string, @Param('id') id: string) {
     return this.expensesService.findOne(clinicId, id);
   }
@@ -84,7 +85,7 @@ export class ExpensesController {
   @Patch(':id')
   @ApiOperation({ summary: 'Actualizar gasto' })
   @ApiParam({ name: 'id', description: 'UUID del gasto' })
-  @ApiResponse({ status: 200, description: 'Gasto actualizado' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Gasto actualizado' })
   update(
     @GetClinicId() clinicId: string,
     @Param('id') id: string,
@@ -96,7 +97,7 @@ export class ExpensesController {
   @Delete(':id')
   @ApiOperation({ summary: 'Eliminar gasto' })
   @ApiParam({ name: 'id', description: 'UUID del gasto' })
-  @ApiResponse({ status: 200, description: 'Gasto eliminado' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Gasto eliminado' })
   remove(@GetClinicId() clinicId: string, @Param('id') id: string) {
     return this.expensesService.remove(clinicId, id);
   }

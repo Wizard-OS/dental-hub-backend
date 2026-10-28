@@ -1,4 +1,10 @@
-import { Controller, Get, Res, StreamableFile } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  HttpStatus,
+  Res,
+  StreamableFile,
+} from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiOperation,
@@ -34,14 +40,20 @@ export class BillingHistoryController {
 
   @Get()
   @ApiOperation({ summary: 'Listar historial de facturación de la clínica' })
-  @ApiResponse({ status: 200, description: 'Historial de facturación' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Historial de facturación',
+  })
   findAll(@GetClinicId() clinicId: string) {
     return this.billingService.getBillingHistory(clinicId);
   }
 
   @Get('export')
   @ApiOperation({ summary: 'Exportar historial de facturación en PDF' })
-  @ApiResponse({ status: 200, description: 'PDF del historial de facturación' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'PDF del historial de facturación',
+  })
   async export(
     @GetClinicId() clinicId: string,
     @Res({ passthrough: true }) response: Response,

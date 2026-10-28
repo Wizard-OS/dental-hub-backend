@@ -1,4 +1,4 @@
-import { INestApplication } from '@nestjs/common';
+import { HttpStatus, INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
 import { App } from 'supertest/types';
@@ -45,7 +45,7 @@ describe('User sessions by device (e2e)', () => {
         'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/118 Safari/537.36',
       )
       .send(credentials)
-      .expect(201);
+      .expect(HttpStatus.CREATED);
 
     const mobileLogin = await request(server)
       .post('/auth/login')
@@ -55,14 +55,14 @@ describe('User sessions by device (e2e)', () => {
         'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Version/17.0 Mobile/15E148 Safari/604.1',
       )
       .send(credentials)
-      .expect(201);
+      .expect(HttpStatus.CREATED);
     const desktopToken = (desktopLogin.body as { token: string }).token;
     const mobileToken = (mobileLogin.body as { token: string }).token;
 
     const sessionsResponse = await request(server)
       .get('/user-sessions')
       .set('Authorization', `Bearer ${mobileToken}`)
-      .expect(200);
+      .expect(HttpStatus.OK);
 
     expect(sessionsResponse.body).toEqual(
       expect.arrayContaining([
@@ -97,16 +97,16 @@ describe('User sessions by device (e2e)', () => {
     await request(server)
       .delete(`/user-sessions/${desktopSession.id}`)
       .set('Authorization', `Bearer ${mobileToken}`)
-      .expect(200);
+      .expect(HttpStatus.OK);
 
     await request(server)
       .get('/auth/profile')
       .set('Authorization', `Bearer ${desktopToken}`)
-      .expect(401);
+      .expect(HttpStatus.UNAUTHORIZED);
 
     await request(server)
       .get('/auth/profile')
       .set('Authorization', `Bearer ${mobileToken}`)
-      .expect(200);
+      .expect(HttpStatus.OK);
   });
 });

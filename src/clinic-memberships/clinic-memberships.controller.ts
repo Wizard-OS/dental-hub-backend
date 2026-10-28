@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  HttpStatus,
   Param,
   Patch,
   Post,
@@ -42,7 +43,7 @@ export class ClinicMembershipsController {
 
   @Post()
   @ApiOperation({ summary: 'Crear membresía de clínica' })
-  @ApiResponse({ status: 201, description: 'Membresía creada' })
+  @ApiResponse({ status: HttpStatus.CREATED, description: 'Membresía creada' })
   create(
     @GetClinicId() clinicId: string,
     @Body() createClinicMembershipDto: CreateClinicMembershipDto,
@@ -57,7 +58,7 @@ export class ClinicMembershipsController {
   @ApiOperation({
     summary: 'Listar membresías de la clínica activa',
   })
-  @ApiResponse({ status: 200, description: 'Lista de membresías' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Lista de membresías' })
   findAll(@GetClinicId() clinicId: string) {
     return this.clinicMembershipsService.findAll(clinicId);
   }
@@ -65,8 +66,11 @@ export class ClinicMembershipsController {
   @Get(':id')
   @ApiOperation({ summary: 'Obtener membresía por ID' })
   @ApiParam({ name: 'id', description: 'UUID de la membresía' })
-  @ApiResponse({ status: 200, description: 'Membresía encontrada' })
-  @ApiResponse({ status: 404, description: 'Membresía no encontrada' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Membresía encontrada' })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: 'Membresía no encontrada',
+  })
   findOne(@GetClinicId() clinicId: string, @Param('id') id: string) {
     return this.clinicMembershipsService.findOne(clinicId, id);
   }
@@ -74,7 +78,7 @@ export class ClinicMembershipsController {
   @Patch(':id')
   @ApiOperation({ summary: 'Actualizar membresía' })
   @ApiParam({ name: 'id', description: 'UUID de la membresía' })
-  @ApiResponse({ status: 200, description: 'Membresía actualizada' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Membresía actualizada' })
   update(
     @GetClinicId() clinicId: string,
     @Param('id') id: string,
@@ -90,7 +94,7 @@ export class ClinicMembershipsController {
   @Delete(':id')
   @ApiOperation({ summary: 'Eliminar membresía' })
   @ApiParam({ name: 'id', description: 'UUID de la membresía' })
-  @ApiResponse({ status: 200, description: 'Membresía eliminada' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Membresía eliminada' })
   remove(@GetClinicId() clinicId: string, @Param('id') id: string) {
     return this.clinicMembershipsService.remove(clinicId, id);
   }

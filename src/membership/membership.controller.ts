@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Patch } from '@nestjs/common';
+import { Body, Controller, Get, HttpStatus, Patch } from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiOperation,
@@ -29,7 +29,10 @@ export class MembershipController {
 
   @Get('current')
   @ApiOperation({ summary: 'Consultar membresía comercial actual' })
-  @ApiResponse({ status: 200, description: 'Membresía, límites y consumo' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Membresía, límites y consumo',
+  })
   current(@GetClinicId() clinicId: string): Promise<unknown> {
     return this.membershipService.getCurrent(clinicId);
   }
@@ -38,7 +41,7 @@ export class MembershipController {
   @ClinicRoles(ClinicMembershipRole.owner, ClinicMembershipRole.admin)
   @ClinicPermissions(ClinicPermission.manageClinic)
   @ApiOperation({ summary: 'Asignar membresía manualmente' })
-  @ApiResponse({ status: 200, description: 'Membresía actualizada' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Membresía actualizada' })
   manual(
     @GetClinicId() clinicId: string,
     @GetClinicMembershipId() membershipId: string,

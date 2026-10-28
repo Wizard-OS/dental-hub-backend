@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  HttpStatus,
   Param,
   Patch,
   Post,
@@ -33,7 +34,7 @@ export class MessageTemplatesController {
 
   @Post()
   @ApiOperation({ summary: 'Crear plantilla de mensaje' })
-  @ApiResponse({ status: 201, description: 'Plantilla creada' })
+  @ApiResponse({ status: HttpStatus.CREATED, description: 'Plantilla creada' })
   create(
     @GetClinicId() clinicId: string,
     @Body() createMessageTemplateDto: CreateMessageTemplateDto,
@@ -46,7 +47,7 @@ export class MessageTemplatesController {
 
   @Get()
   @ApiOperation({ summary: 'Listar plantillas de mensaje' })
-  @ApiResponse({ status: 200, description: 'Lista de plantillas' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Lista de plantillas' })
   findAll(@GetClinicId() clinicId: string) {
     return this.messageTemplatesService.findAll(clinicId);
   }
@@ -54,7 +55,7 @@ export class MessageTemplatesController {
   @Get(':id')
   @ApiOperation({ summary: 'Obtener plantilla por ID' })
   @ApiParam({ name: 'id', description: 'UUID de la plantilla' })
-  @ApiResponse({ status: 200, description: 'Plantilla encontrada' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Plantilla encontrada' })
   findOne(@GetClinicId() clinicId: string, @Param('id') id: string) {
     return this.messageTemplatesService.findOne(clinicId, id);
   }
@@ -62,7 +63,7 @@ export class MessageTemplatesController {
   @Patch(':id')
   @ApiOperation({ summary: 'Actualizar plantilla de mensaje' })
   @ApiParam({ name: 'id', description: 'UUID de la plantilla' })
-  @ApiResponse({ status: 200, description: 'Plantilla actualizada' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Plantilla actualizada' })
   update(
     @GetClinicId() clinicId: string,
     @Param('id') id: string,
@@ -78,7 +79,7 @@ export class MessageTemplatesController {
   @Delete(':id')
   @ApiOperation({ summary: 'Eliminar plantilla de mensaje' })
   @ApiParam({ name: 'id', description: 'UUID de la plantilla' })
-  @ApiResponse({ status: 200, description: 'Plantilla eliminada' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Plantilla eliminada' })
   remove(@GetClinicId() clinicId: string, @Param('id') id: string) {
     return this.messageTemplatesService.remove(clinicId, id);
   }

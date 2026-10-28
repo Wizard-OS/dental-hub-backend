@@ -2,6 +2,7 @@ import { IncomingHttpHeaders } from 'http';
 
 import {
   BadRequestException,
+  HttpStatus,
   Injectable,
   Logger,
   ServiceUnavailableException,
@@ -293,7 +294,8 @@ export class PayPalBillingProvider implements BillingProviderAdapter {
       throw new PayPalRequestError(response.status);
     }
 
-    if (response.status === 204) return undefined as T;
+    if (response.status === Number(HttpStatus.NO_CONTENT))
+      return undefined as T;
 
     return (await response.json()) as T;
   }

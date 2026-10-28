@@ -1,4 +1,4 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get, HttpStatus } from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiOperation,
@@ -18,7 +18,7 @@ export class CountriesController {
 
   @Get('countries')
   @ApiOperation({ summary: 'Listar países disponibles para configuración' })
-  @ApiResponse({ status: 200, description: 'Lista de países' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Lista de países' })
   findAll() {
     return this.countriesService.findAll();
   }

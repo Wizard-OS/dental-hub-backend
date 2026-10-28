@@ -1,4 +1,4 @@
-import { Query } from '@nestjs/common';
+import { HttpStatus, Query } from '@nestjs/common';
 import {
   Body,
   Controller,
@@ -48,7 +48,7 @@ export class InvoicesController {
 
   @Post()
   @ApiOperation({ summary: 'Crear factura' })
-  @ApiResponse({ status: 201, description: 'Factura creada' })
+  @ApiResponse({ status: HttpStatus.CREATED, description: 'Factura creada' })
   create(
     @GetClinicId() clinicId: string,
     @Body() createInvoiceDto: CreateInvoiceDto,
@@ -66,8 +66,11 @@ export class InvoicesController {
   @Get(':id')
   @ApiOperation({ summary: 'Obtener factura por ID' })
   @ApiParam({ name: 'id', description: 'UUID de la factura' })
-  @ApiResponse({ status: 200, description: 'Factura encontrada' })
-  @ApiResponse({ status: 404, description: 'Factura no encontrada' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Factura encontrada' })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: 'Factura no encontrada',
+  })
   findOne(@GetClinicId() clinicId: string, @Param('id') id: string) {
     return this.invoiceService.findOne(clinicId, id);
   }
@@ -75,7 +78,7 @@ export class InvoicesController {
   @Patch(':id')
   @ApiOperation({ summary: 'Actualizar factura' })
   @ApiParam({ name: 'id', description: 'UUID de la factura' })
-  @ApiResponse({ status: 200, description: 'Factura actualizada' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Factura actualizada' })
   update(
     @GetClinicId() clinicId: string,
     @Param('id') id: string,
@@ -87,7 +90,7 @@ export class InvoicesController {
   @Delete(':id')
   @ApiOperation({ summary: 'Eliminar factura' })
   @ApiParam({ name: 'id', description: 'UUID de la factura' })
-  @ApiResponse({ status: 200, description: 'Factura eliminada' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Factura eliminada' })
   remove(@GetClinicId() clinicId: string, @Param('id') id: string) {
     return this.invoiceService.remove(clinicId, id);
   }
@@ -95,7 +98,7 @@ export class InvoicesController {
   @Post(':id/items')
   @ApiOperation({ summary: 'Agregar ítem a factura' })
   @ApiParam({ name: 'id', description: 'UUID de la factura' })
-  @ApiResponse({ status: 201, description: 'Ítem agregado' })
+  @ApiResponse({ status: HttpStatus.CREATED, description: 'Ítem agregado' })
   addItem(
     @GetClinicId() clinicId: string,
     @Param('id') id: string,
@@ -108,7 +111,7 @@ export class InvoicesController {
   @ApiOperation({ summary: 'Eliminar ítem de factura' })
   @ApiParam({ name: 'invoiceId', description: 'UUID de la factura' })
   @ApiParam({ name: 'itemId', description: 'UUID del ítem' })
-  @ApiResponse({ status: 200, description: 'Ítem eliminado' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Ítem eliminado' })
   removeItem(
     @GetClinicId() clinicId: string,
     @Param('invoiceId') invoiceId: string,

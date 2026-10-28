@@ -1,4 +1,4 @@
-import { INestApplication } from '@nestjs/common';
+import { HttpStatus, INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
 import { App } from 'supertest/types';
@@ -28,11 +28,15 @@ describe('AppController (e2e)', () => {
   it('/ (GET)', () => {
     return request(app.getHttpServer())
       .get('/')
-      .expect(200)
+      .expect(HttpStatus.OK)
       .expect('Hello World!');
   });
   it('preserves public informational help endpoints', async () => {
-    await request(app.getHttpServer()).get('/help-center/faqs').expect(200);
-    await request(app.getHttpServer()).get('/help-center/contact').expect(200);
+    await request(app.getHttpServer())
+      .get('/help-center/faqs')
+      .expect(HttpStatus.OK);
+    await request(app.getHttpServer())
+      .get('/help-center/contact')
+      .expect(HttpStatus.OK);
   });
 });

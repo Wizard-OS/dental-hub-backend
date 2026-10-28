@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post } from '@nestjs/common';
+import { Body, Controller, Get, HttpStatus, Post } from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiOperation,
@@ -20,7 +20,7 @@ export class HelpCenterController {
   @Public()
   @Get('faqs')
   @ApiOperation({ summary: 'Obtener preguntas frecuentes' })
-  @ApiResponse({ status: 200, description: 'Lista de FAQs' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Lista de FAQs' })
   getFaqs() {
     return this.helpCenterService.getFaqs();
   }
@@ -28,7 +28,10 @@ export class HelpCenterController {
   @Public()
   @Get('contact')
   @ApiOperation({ summary: 'Obtener información de contacto' })
-  @ApiResponse({ status: 200, description: 'Información de contacto' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Información de contacto',
+  })
   getContactInfo() {
     return this.helpCenterService.getContactInfo();
   }
@@ -37,7 +40,7 @@ export class HelpCenterController {
   @Auth()
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Crear solicitud de soporte' })
-  @ApiResponse({ status: 201, description: 'Solicitud creada' })
+  @ApiResponse({ status: HttpStatus.CREATED, description: 'Solicitud creada' })
   createSupportRequest(
     @GetUser() user: User,
     @Body() dto: CreateSupportRequestDto,
@@ -49,7 +52,7 @@ export class HelpCenterController {
   @Auth()
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Listar solicitudes de soporte del usuario' })
-  @ApiResponse({ status: 200, description: 'Lista de solicitudes' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Lista de solicitudes' })
   getUserSupportRequests(@GetUser() user: User) {
     return this.helpCenterService.getUserSupportRequests(user.id);
   }

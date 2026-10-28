@@ -1,4 +1,4 @@
-import { INestApplication } from '@nestjs/common';
+import { HttpStatus, INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
 import { App } from 'supertest/types';
@@ -44,7 +44,7 @@ describe('Backoffice SaaS (e2e)', () => {
         email: 'test1@google.com',
         password: 'Abc123',
       })
-      .expect(201);
+      .expect(HttpStatus.CREATED);
 
     adminToken = readJsonString(adminLogin.body, 'token');
 
@@ -54,7 +54,7 @@ describe('Backoffice SaaS (e2e)', () => {
         email: 'test2@google.com',
         password: 'Abc123',
       })
-      .expect(201);
+      .expect(HttpStatus.CREATED);
 
     superUserToken = readJsonString(superUserLogin.body, 'token');
 
@@ -64,14 +64,14 @@ describe('Backoffice SaaS (e2e)', () => {
         email: 'test3@google.com',
         password: 'Abc123',
       })
-      .expect(201);
+      .expect(HttpStatus.CREATED);
 
     regularUserId = readJsonString(regularUserLogin.body, 'id');
 
     const clinics = await request(app.getHttpServer())
       .get('/backoffice/clinics')
       .set('Authorization', `Bearer ${superUserToken}`)
-      .expect(200);
+      .expect(HttpStatus.OK);
 
     clinicId = readJsonString(clinics.body, 'items', 0, 'id');
 
@@ -83,7 +83,7 @@ describe('Backoffice SaaS (e2e)', () => {
         message: 'Necesito ayuda para validar el panel interno.',
         contactEmail: 'ops@example.com',
       })
-      .expect(201);
+      .expect(HttpStatus.CREATED);
 
     supportRequestId = readJsonString(supportRequest.body, 'id');
   });
@@ -98,14 +98,14 @@ describe('Backoffice SaaS (e2e)', () => {
     await request(app.getHttpServer())
       .get('/backoffice/overview')
       .set('Authorization', `Bearer ${adminToken}`)
-      .expect(403);
+      .expect(HttpStatus.FORBIDDEN);
   });
 
   it('allows super-user to read global overview without clinic scope', async () => {
     const response = await request(app.getHttpServer())
       .get('/backoffice/overview')
       .set('Authorization', `Bearer ${superUserToken}`)
-      .expect(200);
+      .expect(HttpStatus.OK);
 
     expect(
       readJsonValue(response.body, 'totals', 'clinics', 'total'),
@@ -122,7 +122,7 @@ describe('Backoffice SaaS (e2e)', () => {
     const response = await request(app.getHttpServer())
       .get('/backoffice/clinics?limit=5&offset=0')
       .set('Authorization', `Bearer ${superUserToken}`)
-      .expect(200);
+      .expect(HttpStatus.OK);
 
     expect(readJsonValue(response.body, 'total')).toBeGreaterThanOrEqual(2);
     expect(readJsonValue(response.body, 'items', 0)).toEqual(
@@ -144,7 +144,7 @@ describe('Backoffice SaaS (e2e)', () => {
       .patch(`/backoffice/clinics/${clinicId}`)
       .set('Authorization', `Bearer ${superUserToken}`)
       .send({ isActive: false })
-      .expect(200);
+      .expect(HttpStatus.OK);
 
     expect(readJsonValue(inactive.body, 'isActive')).toBe(false);
 
@@ -152,7 +152,7 @@ describe('Backoffice SaaS (e2e)', () => {
       .patch(`/backoffice/clinics/${clinicId}`)
       .set('Authorization', `Bearer ${superUserToken}`)
       .send({ isActive: true })
-      .expect(200);
+      .expect(HttpStatus.OK);
 
     expect(readJsonValue(active.body, 'isActive')).toBe(true);
   });
@@ -165,7 +165,7 @@ describe('Backoffice SaaS (e2e)', () => {
         isActive: false,
         roles: ['user'],
       })
-      .expect(200);
+      .expect(HttpStatus.OK);
 
     expect(readJsonValue(response.body, 'isActive')).toBe(false);
     expect(readJsonValue(response.body, 'roles')).toEqual(['user']);
@@ -179,7 +179,7 @@ describe('Backoffice SaaS (e2e)', () => {
         planCode: 'premium',
         reason: 'Backoffice e2e upgrade',
       })
-      .expect(200);
+      .expect(HttpStatus.OK);
 
     expect(readJsonValue(response.body, 'plan', 'code')).toBe('premium');
 
@@ -204,7 +204,7 @@ describe('Backoffice SaaS (e2e)', () => {
     const list = await request(app.getHttpServer())
       .get('/backoffice/support-requests?status=open')
       .set('Authorization', `Bearer ${superUserToken}`)
-      .expect(200);
+      .expect(HttpStatus.OK);
 
     expect(readJsonValue(list.body, 'items')).toEqual(
       expect.arrayContaining([
@@ -216,7 +216,7 @@ describe('Backoffice SaaS (e2e)', () => {
       .patch(`/backoffice/support-requests/${supportRequestId}`)
       .set('Authorization', `Bearer ${superUserToken}`)
       .send({ status: 'in_progress' })
-      .expect(200);
+      .expect(HttpStatus.OK);
 
     expect(readJsonValue(updated.body, 'status')).toBe('in_progress');
   });

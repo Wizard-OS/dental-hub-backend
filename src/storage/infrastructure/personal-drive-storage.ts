@@ -7,6 +7,7 @@ import { pipeline } from 'stream/promises';
 
 import {
   ConflictException,
+  HttpStatus,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -960,7 +961,7 @@ export class PersonalDriveStorage implements PersonalDrivePort {
           )
         ).data;
       } catch (error) {
-        if (this.statusCode(error) === 404)
+        if (this.statusCode(error) === HttpStatus.NOT_FOUND)
           throw new NotFoundException(
             apiMessage('api.messages.this_drive_file_is_unavailable'),
           );
@@ -1401,7 +1402,7 @@ export class PersonalDriveStorage implements PersonalDrivePort {
             'nextPageToken,newStartPageToken,changes(fileId,removed,file(id,name,mimeType,size,md5Checksum,modifiedTime,headRevisionId,trashed,parents,description,appProperties))',
         });
       } catch (error) {
-        if (this.statusCode(error) !== 410) throw error;
+        if (this.statusCode(error) !== HttpStatus.GONE) throw error;
 
         const startToken = await drive.changes.getStartPageToken({
           fields: 'startPageToken',
@@ -1791,7 +1792,7 @@ export class PersonalDriveStorage implements PersonalDrivePort {
         updated += result.updated;
         unavailable += result.unavailable;
       } catch (error) {
-        if (this.statusCode(error) !== 404) throw error;
+        if (this.statusCode(error) !== HttpStatus.NOT_FOUND) throw error;
 
         await this.files.save(
           this.files.create({
@@ -2000,7 +2001,10 @@ export class PersonalDriveStorage implements PersonalDrivePort {
             )
           : '';
 
-      if (status === 401 || data.includes('invalid_grant')) {
+      if (
+        status === HttpStatus.UNAUTHORIZED ||
+        data.includes('invalid_grant')
+      ) {
         await this.integrations.update(integration.id, {
           status: StorageIntegrationStatus.ERROR,
         });
@@ -2013,12 +2017,12 @@ export class PersonalDriveStorage implements PersonalDrivePort {
         );
       }
 
-      if (status === 404)
+      if (status === HttpStatus.NOT_FOUND)
         throw new NotFoundException(
           apiMessage('api.messages.this_drive_file_is_unavailable'),
         );
 
-      if (status === 403)
+      if (status === HttpStatus.FORBIDDEN)
         throw this.error(
           'DRIVE_ACCESS_DENIED',
           apiMessage(

@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  HttpStatus,
   Param,
   Patch,
   Post,
@@ -55,7 +56,10 @@ export class AppointmentsController {
 
   @Post('types')
   @ApiOperation({ summary: 'Crear tipo de cita' })
-  @ApiResponse({ status: 201, description: 'Tipo de cita creado' })
+  @ApiResponse({
+    status: HttpStatus.CREATED,
+    description: 'Tipo de cita creado',
+  })
   createType(
     @GetClinicId() clinicId: string,
     @Body() createAppointmentTypeDto: CreateAppointmentTypeDto,
@@ -68,7 +72,7 @@ export class AppointmentsController {
 
   @Get('types/all')
   @ApiOperation({ summary: 'Listar tipos de cita' })
-  @ApiResponse({ status: 200, description: 'Lista de tipos de cita' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Lista de tipos de cita' })
   findTypes(
     @GetClinicId() clinicId: string,
     @Query() query: QueryAppointmentTypesDto,
@@ -97,7 +101,10 @@ export class AppointmentsController {
   @Patch('types/:id')
   @ApiOperation({ summary: 'Actualizar tipo de cita' })
   @ApiParam({ name: 'id', description: 'UUID del tipo de cita' })
-  @ApiResponse({ status: 200, description: 'Tipo de cita actualizado' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Tipo de cita actualizado',
+  })
   updateType(
     @GetClinicId() clinicId: string,
     @Param('id') id: string,
@@ -113,16 +120,16 @@ export class AppointmentsController {
   @Delete('types/:id')
   @ApiOperation({ summary: 'Eliminar tipo de cita' })
   @ApiParam({ name: 'id', description: 'UUID del tipo de cita' })
-  @ApiResponse({ status: 200, description: 'Tipo de cita eliminado' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Tipo de cita eliminado' })
   removeType(@GetClinicId() clinicId: string, @Param('id') id: string) {
     return this.appointmentService.removeType(clinicId, id);
   }
 
   @Post()
   @ApiOperation({ summary: 'Crear cita' })
-  @ApiResponse({ status: 201, description: 'Cita creada' })
+  @ApiResponse({ status: HttpStatus.CREATED, description: 'Cita creada' })
   @ApiResponse({
-    status: 400,
+    status: HttpStatus.BAD_REQUEST,
     description: 'Solapamiento de horario o datos inválidos',
   })
   create(
@@ -159,7 +166,7 @@ export class AppointmentsController {
     summary: 'Listar agenda de un profesional con disponibilidad',
   })
   @ApiResponse({
-    status: 200,
+    status: HttpStatus.OK,
     description: 'Citas y disponibilidad del profesional para el rango',
   })
   findAgenda(
@@ -178,8 +185,11 @@ export class AppointmentsController {
   @Get(':id')
   @ApiOperation({ summary: 'Obtener cita por ID' })
   @ApiParam({ name: 'id', description: 'UUID de la cita' })
-  @ApiResponse({ status: 200, description: 'Cita encontrada' })
-  @ApiResponse({ status: 404, description: 'Cita no encontrada' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Cita encontrada' })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: 'Cita no encontrada',
+  })
   findOne(
     @GetClinicId() clinicId: string,
     @GetClinicMembershipId() membershipId: string,
@@ -196,7 +206,7 @@ export class AppointmentsController {
   @Patch(':id')
   @ApiOperation({ summary: 'Actualizar cita' })
   @ApiParam({ name: 'id', description: 'UUID de la cita' })
-  @ApiResponse({ status: 200, description: 'Cita actualizada' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Cita actualizada' })
   update(
     @GetClinicId() clinicId: string,
     @GetClinicMembershipId() membershipId: string,
@@ -215,7 +225,7 @@ export class AppointmentsController {
   @Delete(':id')
   @ApiOperation({ summary: 'Eliminar cita' })
   @ApiParam({ name: 'id', description: 'UUID de la cita' })
-  @ApiResponse({ status: 200, description: 'Cita eliminada' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Cita eliminada' })
   remove(
     @GetClinicId() clinicId: string,
     @GetClinicMembershipId() membershipId: string,

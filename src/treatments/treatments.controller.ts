@@ -1,4 +1,4 @@
-import { Query } from '@nestjs/common';
+import { HttpStatus, Query } from '@nestjs/common';
 import {
   Body,
   Controller,
@@ -49,7 +49,10 @@ export class TreatmentsController {
 
   @Post()
   @ApiOperation({ summary: 'Crear tratamiento' })
-  @ApiResponse({ status: 201, description: 'Tratamiento creado' })
+  @ApiResponse({
+    status: HttpStatus.CREATED,
+    description: 'Tratamiento creado',
+  })
   create(
     @GetClinicId() clinicId: string,
     @GetClinicMembershipId() membershipId: string,
@@ -82,7 +85,7 @@ export class TreatmentsController {
   @Get(':id')
   @ApiOperation({ summary: 'Obtener tratamiento por ID' })
   @ApiParam({ name: 'id', description: 'UUID del tratamiento' })
-  @ApiResponse({ status: 200, description: 'Tratamiento encontrado' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Tratamiento encontrado' })
   findOne(
     @GetClinicId() clinicId: string,
     @GetClinicMembershipId() membershipId: string,
@@ -99,7 +102,10 @@ export class TreatmentsController {
   @Patch(':id')
   @ApiOperation({ summary: 'Actualizar tratamiento' })
   @ApiParam({ name: 'id', description: 'UUID del tratamiento' })
-  @ApiResponse({ status: 200, description: 'Tratamiento actualizado' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Tratamiento actualizado',
+  })
   update(
     @GetClinicId() clinicId: string,
     @GetClinicMembershipId() membershipId: string,
@@ -118,7 +124,7 @@ export class TreatmentsController {
   @Delete(':id')
   @ApiOperation({ summary: 'Eliminar tratamiento' })
   @ApiParam({ name: 'id', description: 'UUID del tratamiento' })
-  @ApiResponse({ status: 200, description: 'Tratamiento eliminado' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Tratamiento eliminado' })
   remove(
     @GetClinicId() clinicId: string,
     @GetClinicMembershipId() membershipId: string,
