@@ -50,14 +50,24 @@ import { UserSessionsModule } from './user-sessions/user-sessions.module';
   imports: [
     ConfigModule.forRoot(),
     ThrottlerModule.forRoot(createThrottlerOptions()),
-    ServeStaticModule.forRoot({
-      rootPath: path.join(process.cwd(), 'uploads', 'profile-photos'),
-      serveRoot: '/uploads/profile-photos',
-      serveStaticOptions: {
-        index: false,
+    ServeStaticModule.forRoot(
+      {
+        rootPath: path.join(process.cwd(), 'uploads', 'profile-photos'),
+        serveRoot: '/uploads/profile-photos',
+        serveStaticOptions: {
+          index: false,
+        },
+        renderPath: '/_index',
       },
-      renderPath: '/_index',
-    }),
+      {
+        rootPath: path.join(process.cwd(), 'public', 'legal'),
+        serveRoot: '/legal',
+        serveStaticOptions: {
+          index: false,
+        },
+        renderPath: '/_legal_index',
+      },
+    ),
     I18nModule.forRoot(createI18nOptions()),
     TypeOrmModule.forRoot(createTypeOrmOptions()),
 
