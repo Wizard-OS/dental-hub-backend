@@ -31,6 +31,7 @@ import { InvoicesModule } from './invoices/invoices.module';
 import { MembershipModule } from './membership/membership.module';
 import { MessageTemplatesModule } from './message-templates/message-templates.module';
 import { NotificationPreferencesModule } from './notification-preferences/notification-preferences.module';
+import { NotificationsModule } from './notifications/notifications.module';
 import { OdontogramModule } from './odontogram/odontogram.module';
 import { OutboundMessagesModule } from './outbound-messages/outbound-messages.module';
 import { PatientAssignmentsModule } from './patient-assignments/patient-assignments.module';
@@ -96,6 +97,7 @@ import { UserSessionsModule } from './user-sessions/user-sessions.module';
     PatientFilesModule,
     RemindersModule,
     NotificationPreferencesModule,
+    NotificationsModule,
     UserSessionsModule,
     PaymentMethodsModule,
     ProfessionalSpecialtiesModule,
